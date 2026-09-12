@@ -160,10 +160,19 @@ def test_押し直したら数え直す():
 
 
 def test_踊っている間は消えない():
-    """★DJモードで踊っているなら、基本の模様に戻るだけ。真っ暗にしない。"""
+    """★DJモードで踊っているなら、基本の模様に戻るだけ。真っ暗にしない。
+
+    ★一瞬だけ全消灯する拍がある模様なので、**一点で測らない。**
+      （時刻依存のテストは、たまに落ちて信用されなくなる）
+    """
+    import time as _t
     s = LedState(count=8, pattern="show")
     s.enabled = True
     s.bpm = 120.0
     s.show_pattern("laser", hold_s=20.0, now=100.0)
     s.current_pattern(now=121.0)
-    assert any(any(c) for c in s.colors()), "踊っているのに消えた"
+    for _ in range(30):
+        if any(any(c) for c in s.colors()):
+            return
+        _t.sleep(0.02)
+    raise AssertionError("踊っているのに、0.6秒のあいだ一度も光らなかった")

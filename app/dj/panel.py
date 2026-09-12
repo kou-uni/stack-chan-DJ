@@ -265,7 +265,7 @@ class AskDesk:
 
         async with self._lock:                 # ★実機は1台。順番に
             t0 = time.time()
-            con.presence.talk = "speaking"
+            _talk(con, "speaking")
             try:
                 full = await self._answer(q)
                 if not full:
@@ -274,7 +274,7 @@ class AskDesk:
                 if spoken:
                     await con.gw.call("say", text=spoken, speaker_id=14)
             finally:
-                con.presence.talk = None
+                _talk(con, None)
             rec = {"q": q, "full": full, "spoken": spoken,
                    "ms": int((time.time() - t0) * 1000)}
             self._log.append(rec)
@@ -317,6 +317,25 @@ SPEECH_LIMIT = 80        # 1回に読ませる長さ。★長すぎると読み�
 FACES_OK = ("happy", "surprised", "embarrassed", "sad", "thinking",
             "idle", "sleepy", "angry", "doubt")
 
+# ★話しているのに固まっていると、読み上げ機に見える（2026-09-12 本人の指摘）。
+#   (yaw, pitch差) の列。**pitch は45度からの差。** 大きく振らない ——
+#   人は喋りながら首を大きく回さない。**小さく、間を持って動く**
+MOVES: dict[str, tuple[tuple[float, float], ...]] = {
+    "nod":    ((0, -14), (0, 8), (0, -11), (0, 6), (0, -8), (0, 3)),   # うなずく
+    "tilt":   ((16, 6), (22, 10), (14, 5), (20, 9)),                   # かしげる
+    "look_l": ((-40, 4), (-34, 8), (-44, 3), (-36, 6)),                # 左を見る
+    "look_r": ((40, 4), (34, 8), (44, 3), (36, 6)),                    # 右を見る
+    "scan":   ((-38, 5), (-12, 2), (16, 6), (40, 3), (10, 5), (-16, 2)),  # 見回す
+    "perk":   ((0, 16), (6, 12), (-5, 15), (0, 11)),                   # 顔を上げる
+    # ★はしゃぐ用。**言い切るところで大きく振る**
+    "bounce": ((0, 18), (0, -12), (0, 16), (0, -8), (0, 14), (0, -6)),  # 跳ねる
+    "shake":  ((-20, 4), (20, 4), (-16, 6), (16, 6), (-11, 3), (11, 3)),  # ぶんぶん
+    "swing":  ((-34, 10), (0, -6), (34, 10), (0, -6)),                 # 大きく振る
+    # 無指定の行。**止まっている行を作らない**
+    "idle":   ((5, 3), (-4, 1), (3, 4), (-5, 2), (2, 3), (-3, 1)),
+}
+MOVE_STEP_S = 0.30
+
 
 @dataclass
 class Line:
@@ -325,6 +344,8 @@ class Line:
     text: str
     face: str | None = None
     pause_before: float = 0.0
+    led: str | None = None
+    move: str | None = None
 
 
 def split_speech(script: str, limit: int = SPEECH_LIMIT) -> list[Line]:
@@ -339,15 +360,18 @@ def split_speech(script: str, limit: int = SPEECH_LIMIT) -> list[Line]:
     buf = ""
     face: str | None = None
     pause = 0.0
+    led: str | None = None
+    move: str | None = None
 
     def emit():
-        nonlocal buf, face, pause
+        nonlocal buf, face, pause, led, move
         s = buf.strip()
         buf = ""
         if not s:
             return
-        out.append(Line(s, face, pause))
-        face, pause = None, 0.0        # ★指定は次の1かたまりにだけ効く
+        # ★無指定でも動かす。止まっている行を作らない
+        out.append(Line(s, face, pause, led, move or "idle"))
+        face, pause, led, move = None, 0.0, None, None   # ★次の1かたまりにだけ効く
 
     for tok in re.split(r"(\[[^\]]{0,40}\])", script):
         if not tok:
@@ -358,6 +382,18 @@ def split_speech(script: str, limit: int = SPEECH_LIMIT) -> list[Line]:
             if tag in FACES_OK:
                 emit()
                 face = tag
+            elif tag in MOVES or tag.startswith("move="):
+                name = tag.split("=", 1)[1].strip() if "=" in tag else tag
+                if name in MOVES:
+                    emit()
+                    move = name
+                # ★知らない動きは捨てる。**言葉は読む**
+            elif tag.startswith("led="):
+                name = tag.split("=", 1)[1].strip()
+                if name in LedState.PATTERNS:
+                    emit()
+                    led = name
+                # ★知らない模様は捨てる。**言葉は読む**
             elif tag.startswith("pause"):
                 emit()
                 try:
@@ -391,6 +427,43 @@ def _sentences(text: str, limit: int = SPEECH_LIMIT) -> list[str]:
     return out
 
 
+async def _play_move(con, name: str) -> None:
+    """喋り終わるまで首を動かし続ける。**必ず離す。**
+
+    ★決め打ちの回数で終わらせない。動きは1秒で終わるのに、
+      1行を読むのは3〜5秒ある。**残りが固まって読み上げ機に見えた**
+      （2026-09-12 本人の指摘）。
+    """
+    steps = MOVES.get(name)
+    if not steps:
+        return
+    try:
+        i = 0
+        while True:                       # ★呼び出し側が止めるまで回り続ける
+            yaw, pitch = steps[i % len(steps)]
+            con.pose.hold = (yaw, pitch)
+            await asyncio.sleep(MOVE_STEP_S)
+            i += 1
+    except asyncio.CancelledError:
+        raise
+    finally:
+        con.pose.hold = None
+
+
+def _talk(con, state: str | None) -> None:
+    """会話中であることを、presence と LED の両方に伝える。
+
+    ★console は set_talk() で両方に配っている。**片方だけ立てない。**
+    """
+    fn = getattr(con, "set_talk", None)
+    if callable(fn):
+        fn(state)
+        return
+    con.presence.talk = state
+    if hasattr(con, "led"):
+        con.led.talk = state
+
+
 async def perform(con, script: str, limit: int = SPEECH_LIMIT) -> dict:
     """台本を、順番に読ませる。**読み終わるまで次を出さない。**
 
@@ -402,12 +475,21 @@ async def perform(con, script: str, limit: int = SPEECH_LIMIT) -> dict:
             await asyncio.sleep(min(ln.pause_before, 10.0))
         if ln.face:
             con.presence.overlay("knob", ln.face, 8.0)
-        con.presence.talk = "speaking"
+        if ln.led:
+            con.led.show_pattern(ln.led, hold_s=600.0)
+        # ★喋りと同時に動かし、**喋り終わったら止める。**
+        mover = asyncio.ensure_future(_play_move(con, ln.move or "idle"))
+        # ★LED にも伝わる口を通す。presence だけ立てると背景が真っ暗になる
+        #   （2026-09-12 実地：締めの挨拶で LED が消えていた）
+        _talk(con, "speaking")
         try:
             await con.gw.call("say", text=ln.text, speaker_id=14)
             await asyncio.sleep(0.35)      # ★鳴り終わる前に返る分
         finally:
-            con.presence.talk = None
+            mover.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await mover
+            _talk(con, None)
     return {"ok": True, "lines": len(lines),
             "chars": sum(len(l.text) for l in lines)}
 

@@ -73,3 +73,91 @@ def test_改行は必ず割る():
     """★間の取り方は書き手のもの。改行を無視して繋げない。"""
     out = split_speech("いちぎょうめ。\nにぎょうめ。", limit=200)
     assert [l.text for l in out] == ["いちぎょうめ。", "にぎょうめ。"]
+
+
+# ── 喋っている間、LEDが消えていた（2026-09-12 実地）──────────
+#
+# 締めの挨拶を読ませたら、**背景のLEDが真っ暗だった。**
+# `presence.talk` は立てていたが、**LED側に伝えていなかった**
+# （console は set_talk() で両方に配る作りだった）。
+#
+# ★状態を持つ場所が2つあるなら、**配るところを1つに通す。**
+
+def test_台本からLEDの模様を指定できる():
+    out = split_speech("[led=laser]はじまります。")
+    assert out[0].led == "laser"
+    assert out[0].text == "はじまります。"
+
+
+def test_知らない模様は無視して読む():
+    out = split_speech("[led=そんな模様はない]よみます。")
+    assert out[0].led is None
+    assert out[0].text.endswith("よみます。")
+
+
+def test_LED指定がなければ触らない():
+    out = split_speech("ふつうに よみます。")
+    assert out[0].led is None
+
+
+# ── 首が動かなかった（2026-09-12 実地）────────────────
+#
+# > **「首振りとか頷きがないな今度はw」**
+#
+# 顔とLEDと声は出たが、**からだが止まっていた。**
+# 話しているのに固まっていると、**読み上げ機に見える。**
+
+def test_台本から動きを指定できる():
+    out = split_speech("[nod]はい、そうです。")
+    assert out[0].move == "nod"
+    assert out[0].text == "はい、そうです。"
+
+
+def test_知らない動きは無視して読む():
+    out = split_speech("[move=そんな動きはない]よみます。")
+    assert out[0].move == "idle", "知らない指示が動きとして残っている"
+    assert out[0].text.endswith("よみます。")
+
+
+def test_動きの種類がそろっている():
+    from panel import MOVES
+    for m in ("nod", "tilt", "look_l", "look_r", "scan", "perk"):
+        assert m in MOVES, m
+        assert MOVES[m], f"{m} の中身が空"
+
+
+def test_動きは可動域を超えない():
+    """★超えるとサーボが潰れる。yaw±90 / pitch差±40。"""
+    from panel import MOVES
+    for name, steps in MOVES.items():
+        for y, p in steps:
+            assert -90 <= y <= 90, (name, y)
+            assert -40 <= p <= 40, (name, p)
+
+
+# ── 喋っている間ずっと動く（2026-09-12 本人の指摘）──────────
+#
+# > **「足りないです。動きが全然なさすぎて。もっといっぱいはしゃいでほしい」**
+#
+# 動きは4ステップ＝約1.1秒で終わっていた。1行を読むのは3〜5秒。
+# **残りは固まっていた。**
+#
+# ★動きの長さを、**喋りの長さに合わせる。** 決め打ちの回数で終わらせない。
+
+def test_指定がなくても動く():
+    """★止まっている行を作らない。**固まった瞬間に読み上げ機に見える。**"""
+    out = split_speech("ふつうに よみます。")
+    assert out[0].move is not None, "無指定の行が止まっている"
+
+
+def test_動きは繰り返せる():
+    """★喋り終わるまで続けるので、頭とお尻が繋がること。"""
+    from panel import MOVES
+    for name, steps in MOVES.items():
+        assert len(steps) >= 3, f"{name} が短すぎる"
+
+
+def test_はしゃぐ動きがある():
+    from panel import MOVES
+    for m in ("bounce", "shake", "swing"):
+        assert m in MOVES, m
