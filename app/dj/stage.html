@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>STAGE</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden;
+            -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  canvas{display:block;width:100vw;height:100vh}
+  /* 繋がっていないときだけ出す。ライブ中に文字を出さない */
+  #s{position:fixed;left:12px;bottom:10px;color:#2b3a4a;font:12px ui-monospace,monospace;
+     letter-spacing:.08em;pointer-events:none;transition:opacity .4s}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="s">connecting…</div>
+<script>
+// ── スタックチャンが聴いた音が、この画面を動かす ──────────────
+// console から 20Hz で状態が届く。絵の描き方はこちら側の仕事。
+const cv = document.getElementById('c'), g = cv.getContext('2d', {alpha:false});
+const tag = document.getElementById('s');
+
+let S = {bpm:0, n:0, beat:0, series:'blue', dancing:false, drop:false,
+         groove:1, mode:'off', talk:null};
+let lastN = -1, pulse = 0, flash = 0;
+
+// ── 色。★LED テープと同じシリーズ名で切り替える ────────────
+const SERIES = {
+  blue: {core:'#7fe3ff', glow:'#00a2ff', dim:'#0b3d6b'},
+  red:  {core:'#ffb0a0', glow:'#ff2010', dim:'#5c0d08'},
+};
+const TALK = {listening:{core:'#b6ffcf', glow:'#00e05a', dim:'#0a3d22'},
+              speaking:{core:'#b9d8ff', glow:'#0078ff', dim:'#0a2a5c'}};
+
+// ── 縦の列。二進数が降ってくる ─────────────────────────
+let cols = [], CELL = 0, ROWS = 0;
+
+function layout(){
+  const dpr = Math.min(devicePixelRatio||1, 2);
+  cv.width = innerWidth*dpr; cv.height = innerHeight*dpr;
+  g.setTransform(dpr,0,0,dpr,0,0);
+  // 写真の数字は大きい。画面幅で 9〜14 列くらいに収める
+  CELL = Math.max(48, Math.min(120, innerWidth/11));
+  ROWS = Math.ceil(innerHeight/CELL)+2;
+  const n = Math.ceil(innerWidth/CELL)+1;
+  cols = Array.from({length:n}, (_,i)=>({
+    x: i*CELL,
+    off: Math.random()*ROWS,          // 降り始めの位置をばらす
+    spd: 0.35 + Math.random()*0.5,    // 列ごとに速さが違う
+    bits: Array.from({length:ROWS+2}, ()=>Math.random()<0.5?'0':'1'),
+    lit: Math.random(),               // 列ごとの明るさの癖
+  }));
+}
+addEventListener('resize', layout); layout();
+
+function pal(){
+  if (S.talk && TALK[S.talk]) return TALK[S.talk];
+  return SERIES[S.series] || SERIES.blue;
+}
+
+let prev = performance.now();
+function draw(now){
+  const dt = Math.min(0.05, (now-prev)/1000); prev = now;
+
+  // 拍が変わった瞬間に叩く
+  if (S.n !== lastN){ lastN = S.n; pulse = 1; }
+  pulse = Math.max(0, pulse - dt*3.2);
+  flash = S.drop ? 1 : Math.max(0, flash - dt*2.6);
+
+  const p = pal();
+  const live = S.dancing || S.talk;
+  const speed = S.bpm>0 ? (S.bpm/128) : 0.55;
+
+  // 背景。拍でわずかに持ち上げる（真っ黒のままだと画面が死んで見える）
+  g.fillStyle = '#000'; g.fillRect(0,0,innerWidth,innerHeight);
+  const bg = (live? 0.05:0.02) + pulse*0.05;
+  g.fillStyle = p.dim; g.globalAlpha = bg;
+  g.fillRect(0,0,innerWidth,innerHeight); g.globalAlpha = 1;
+
+  g.font = `700 ${Math.round(CELL*0.78)}px ui-monospace, "SF Mono", Menlo, monospace`;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+
+  for (const c of cols){
+    // 降る。踊っていないときは、ほぼ止まって静かに漂う
+    c.off += dt * c.spd * speed * (live ? 2.6 : 0.35);
+    if (c.off > ROWS) { c.off -= ROWS; }
+    // 拍の頭で、たまに桁を書き換える
+    if (pulse > 0.9 && Math.random() < 0.5){
+      const k = (Math.random()*c.bits.length)|0;
+      c.bits[k] = c.bits[k]==='0'?'1':'0';
+    }
+    for (let r=0; r<ROWS; r++){
+      const y = ((r - c.off + ROWS) % ROWS) * CELL + CELL*0.5;
+      // 上ほど暗く、下ほど明るい＝降ってきた感じ
+      const depth = 1 - (r/ROWS);
+      let a = 0.10 + depth*0.55*c.lit;
+      if (live) a += pulse*0.30*depth;
+      const head = (r===0);                     // 先頭は白く光らせる
+      g.shadowColor = p.glow;
+      g.shadowBlur = (head? 26:14) * (0.4 + a);
+      g.fillStyle = head ? '#ffffff' : p.core;
+      g.globalAlpha = Math.min(1, head ? 0.95 : a);
+      g.fillText(c.bits[r], c.x + CELL*0.5, y);
+    }
+  }
+  g.globalAlpha = 1; g.shadowBlur = 0;
+
+  // サビ。画面全体を白く焼く
+  if (flash > 0.01){
+    g.fillStyle = '#fff'; g.globalAlpha = flash*0.85;
+    g.fillRect(0,0,innerWidth,innerHeight); g.globalAlpha = 1;
+  }
+
+  // 下の帯。★実物の LED テープと同じ役割（写真のDJブースの光）
+  const bh = Math.max(6, innerHeight*0.012);
+  const grd = g.createLinearGradient(0, innerHeight-bh*3, 0, innerHeight);
+  grd.addColorStop(0, 'rgba(0,0,0,0)');
+  grd.addColorStop(1, p.glow);
+  g.globalAlpha = 0.35 + pulse*0.5;
+  g.fillStyle = grd; g.fillRect(0, innerHeight-bh*3, innerWidth, bh*3);
+  g.globalAlpha = 1;
+
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+// ── console と繋ぐ。切れても勝手に繋ぎ直す ─────────────────
+function connect(){
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen = ()=>{ tag.style.opacity = 0; };
+  ws.onmessage = e => { try { S = JSON.parse(e.data); } catch(_){} };
+  ws.onclose = ()=>{ tag.style.opacity = 1; tag.textContent='reconnecting…';
+                     setTimeout(connect, 1200); };
+  ws.onerror = ()=> ws.close();
+}
+connect();
+
+// iPad で画面が消えないように（対応していれば）
+if ('wakeLock' in navigator){
+  const keep = ()=> navigator.wakeLock.request('screen').catch(()=>{});
+  keep(); document.addEventListener('visibilitychange', ()=>{
+    if (document.visibilityState === 'visible') keep(); });
+}
+</script>
+</body>
+</html>

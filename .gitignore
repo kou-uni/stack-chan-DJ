@@ -1,0 +1,28 @@
+# ── 環境・秘密 ────────────────────────────────
+.venv/
+.env
+.env.gateway
+server/.env
+__pycache__/
+*.pyc
+.DS_Store
+.pytest_cache/
+.coverage
+
+# ── 外部のもの（配布元から取り直せる）──────────────
+# ★ただし vendor/stackchan-mcp にはローカル改変がある。
+#   改変は docs/vendor-patches.md に記録し、パッチとして残す
+vendor/
+
+# ── 大きいバイナリ ────────────────────────────
+firmware/*.bin
+firmware/*.zip
+backup/*.bin
+
+# ── 記録・作業ファイル ─────────────────────────
+*.log
+*.jsonl
+server/data/
+app/avatar/frames/
+app/avatar/*.png
+app/avatar/*.raw

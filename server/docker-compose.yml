@@ -1,0 +1,32 @@
+# ⚠️ 2026-09-03 確認：v0.8.2 以降の公式イメージは **x86 のみ**。
+#    Mac Studio は Apple Silicon(ARM64) なので、この compose はそのままでは動かない。
+#    → docs/README.md「サーバーの動かし方」を先に読むこと。
+#
+# イメージ名・タグ（公式 docs/Deployment.md より）
+#   ghcr.io/xinnan-tech/xiaozhi-esp32-server:server_latest
+#   ghcr.io/xinnan-tech/xiaozhi-esp32-server:web_latest
+#   （中国向けミラー: ghcr.nju.edu.cn/xinnan-tech/... 日本からは ghcr.io で良い）
+services:
+  xiaozhi-server:
+    image: ghcr.io/xinnan-tech/xiaozhi-esp32-server:server_latest
+    container_name: xiaozhi-server
+    restart: unless-stopped
+    # platform: linux/amd64   # ← 有効化すると Rosetta/qemu 経由で動くが STT が重い。非推奨
+    env_file: .env
+    ports:
+      - "8000:8000"   # WebSocket（ESP32 がここに繋ぐ）
+      - "8003:8003"   # OTA
+    volumes:
+      - ./data:/opt/xiaozhi-esp32-server/data      # .config.yaml を置く
+      - ./models:/opt/xiaozhi-esp32-server/models  # SenseVoiceSmall/model.pt
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  xiaozhi-web:
+    image: ghcr.io/xinnan-tech/xiaozhi-esp32-server:web_latest
+    container_name: xiaozhi-web
+    restart: unless-stopped
+    ports:
+      - "8002:8002"   # 管理画面
+    depends_on:
+      - xiaozhi-server

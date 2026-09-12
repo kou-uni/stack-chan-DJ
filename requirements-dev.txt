@@ -1,0 +1,5 @@
+# 開発用（実機には要らない）
+-r requirements.txt
+pytest
+pyflakes
+coverage

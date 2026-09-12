@@ -1,0 +1,109 @@
+# スタックチャン DJコンソールの設定
+#
+# ★ここに書いた値が既定になる。CLI 引数の方が強い。
+#   会場でその場を詰めるときは、まず CLI で試して、決まったらここへ書き戻す。
+#
+#   起動: ./.venv/bin/python app/dj/console.py
+#   測定: ./.venv/bin/python app/dj/console.py --verify
+
+[stream]
+gateway = "http://127.0.0.1:8767/mcp"
+host = "127.0.0.1"
+pose-port = 8770
+led-port = 8771
+hz = 30.0                  # pose 送信レート。gateway が 20Hz に落とす
+
+[mode]
+mode = "off"               # 起動時。PLAY で DJ、MASTER で OFF
+beat = true                # 音を聴く（--beat 相当）
+dj-timeout-min = 5.0       # 曲が来ないまま この分数で OFF に戻る
+
+[beat]
+# ★2026-09-08 実測。部屋は広くなく、DJの音量もそこまで上げない前提。
+sensitivity = 0.5          # 大きい音ほど下げる。scripts/tune_beat.py で選べる
+beat-timeout-ms = 3500
+beat-silent-polls = 5
+beat-poll-s = 1.0          # ★短くすると命令が音声取得と喧嘩して拍が取れなくなる
+
+[groove]
+# ノリ = どれくらい乗っているか（0..1）。振り幅がこれに比例する。
+# ★実測: DJの実音量は 0.005〜0.010。0.026 を「全開」にしていた頃は
+#   首振りが 0.9度しか出ていなかった。
+quiet-level = 0.0045
+full-level = 0.0050
+full-confidence = 0.12
+min-groove = 0.55
+stop-ratio = 0.7           # ★止める閾値は始める閾値より低く。同じ値だと点滅する
+quiet-polls = 2
+ramp-s = 1.2               # 乗り出すまで
+fall-s = 1.2               # 止まるまで
+
+[motion]
+# ★客は左右にいる。真上にも真下にもいない。横を大きく、縦は控えめに。
+sway-deg = 42.0            # 左右の振り幅
+nod-deg = 9.0              # 頷きの深さ
+motion-intensity = 1.0
+subdiv = 1.0
+phrase-beats = 8
+knob-hold = 2.0            # つまみを離してから首を踊りに明け渡すまでの秒数
+auto-release-ms = 8000
+
+[listen]
+# ★サーボ音は音楽の13倍。動いている間に測ると自分の音で踊り続ける。
+listen-check-s = 4.0
+listen-check-ms = 1500     # ★1200未満にしないこと。音量の窓が1.2秒
+listen-face = "embarrassed"
+
+[spike]
+spike-ratio = 2.2          # この倍率を超えたらサビとみなす
+spike-hold-s = 2.5
+spike-cooldown-s = 6.0
+
+[touch]
+touch-poll-s = 0.8         # ★短くすると拍の検出を邪魔する
+touch-face-s = 3.0
+touch-stuck-polls = 4
+knob-face = "embarrassed"
+
+[vision]
+face-every-s = 18.0
+camera-fov-deg = 35.0
+
+[face]
+beat-face = "happy"
+no-mouth = true            # 口は動かさない
+
+[buttons]
+# ★2026-09-08 実測値。DDJ-FLX2。
+play-ch = 0                # PLAY → DJモードON
+play-note = 11
+off-ch = 6                 # MASTER → OFF（DJ中に触らない唯一のボタン）
+off-note = 99
+
+[led]
+# ★見せ場。Alan Walker のライブの色（深い青→シアン→白）。
+#   show = 8拍ごとに strobe/laser/sweep/build を切り替える
+led-pattern = "show"
+# ★2026-09-10、0.35 → 0.65 に。実測の見立て：
+#     寒色ピーク 624mA / 平均 277mA（点滅なので平均はずっと低い）
+#   サビの白は「べた塗り」をやめて点滅にしたので、連続 1170mA にはならない。
+#   これ以上（0.8〜1.0）は、白が長く出たときに Grove の連続供給を超える
+led-brightness = 0.65
+# ★2026-09-10、外付けテープ（M5Stack A093 / 30LED / Port B）を接続。
+#   実測で「30個ぴったり」「赤→緑→青の順で正しい」を確認済み。
+#   本体リングに戻すなら led-target = "base_ring" / led-count = 12
+led-target = "port_b"      # ★"base" は無効値。購読が黙って失敗する
+led-count = 30
+led-cycle-beats = 8
+led-color = [0, 90, 255]
+
+[avatar]
+# ★顔のデータは実機の RAM にある。電源を切ると既定の顔に戻る。
+#   だから毎回の起動で読み込ませる。焼き直しではない。
+avatar = "app/avatar/avatar_layered.raw"
+
+[stage]
+# 背景スクリーン（iPad）と、スマホの操作パネル。**サーバは1本**。
+#   実機のマイクが聴いた音 → gateway → console → 画面
+#   「スタックチャンが指令している」は演出ではなく事実
+stage-port = 8779

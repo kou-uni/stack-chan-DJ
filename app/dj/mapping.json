@@ -1,0 +1,99 @@
+{
+  "_note": "1つずつ実測して確定した割り当て。pose_stream.py と face_buttons.py が読む。",
+  "port_hint": "DDJ-FLX2",
+  "controls": {
+    "yaw": {
+      "kind": "cc",
+      "ch": 6,
+      "num": 23,
+      "label": "首を左右に回すつまみ",
+      "events": 1060,
+      "confirmed": "2026-09-08",
+      "value_range_observed": [
+        0,
+        127
+      ]
+    },
+    "pitch": {
+      "kind": "cc",
+      "ch": 0,
+      "num": 15,
+      "label": "うなずくつまみ",
+      "type": "absolute",
+      "value_range_observed": [
+        0,
+        127
+      ],
+      "distinct_values": 128,
+      "full_travel_confirmed": true,
+      "confirmed": "2026-09-08",
+      "note": "最初の測定で 0..64 と誤認した。中央で止めた所を全可動域と解釈したため。再測定で 0..127 を確認"
+    },
+    "btn_happy": {
+      "kind": "note",
+      "ch": 7,
+      "num": 4,
+      "label": "笑うボタン",
+      "avatar": "happy",
+      "confirmed": "2026-09-08",
+      "note": "パッド群 ch7 #0-#7 の1つ"
+    },
+    "btn_surprised": {
+      "kind": "note",
+      "ch": 7,
+      "num": 5,
+      "label": "驚くボタン",
+      "avatar": "surprised",
+      "confirmed": "2026-09-08",
+      "note": "当初『真顔』で同定したものを付け替え。押す物理パッドは同じ"
+    },
+    "btn_embarrassed": {
+      "kind": "note",
+      "ch": 7,
+      "num": 6,
+      "label": "恥ずかしがるボタン",
+      "avatar": "embarrassed",
+      "confirmed": "2026-09-08"
+    },
+    "btn_sad": {
+      "kind": "note",
+      "ch": 7,
+      "num": 7,
+      "label": "しょんぼりボタン",
+      "avatar": "sad",
+      "confirmed": "2026-09-08"
+    },
+    "btn_play": {
+      "kind": "note",
+      "ch": 0,
+      "num": 11,
+      "label": "PLAY（左デッキ）",
+      "action": "dj_mode_on",
+      "confirmed": "2026-09-08",
+      "note": "ONにするだけ。トグルにしない（DJはセット中に何度も押すため）"
+    },
+    "btn_off": {
+      "kind": "note",
+      "ch": 6,
+      "num": 99,
+      "label": "MASTER（中央・ロゴ下）",
+      "action": "dj_mode_off",
+      "confirmed": "2026-09-08",
+      "note": "OFF専用。トグルにしない（押しっぱなしで使う人がいるため）"
+    }
+  },
+  "ready_command": "./.venv/bin/python app/dj/console.py --beat --sensitivity 0.3 --led-pattern strobe --led-brightness 0.8 --sway-deg 24 --play-ch 0 --play-note 11",
+  "avatar_policy": {
+    "auto_return_to_idle_sec": 4,
+    "why": "パッドを idle に1枚使わない。押しっぱなしで顔が固定されるのを防ぎ、落差で『反応した』に見せる"
+  },
+  "available_faces": [
+    "idle",
+    "happy",
+    "thinking",
+    "sad",
+    "surprised",
+    "embarrassed",
+    "off"
+  ]
+}
