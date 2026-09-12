@@ -203,7 +203,7 @@ function beams(t, p, energy, heat){
     const a = b.ang;
     const hue = b.hueDeg;                       // ★灯体ごとに固定。churn させない
     const half = M()*0.115;                     // 出口の半径 11.5cm
-    const spread = 0.055;                       // 開き角（固定）
+    const spread = 0.085;                       // 開き角（固定）★太く
     const far = innerHeight*1.5;
 
     g.save();
@@ -215,11 +215,13 @@ function beams(t, p, energy, heat){
     //   ・**見えているのは空気中の散乱光**。だから縁が無い。幅の違う層を重ねて溶かす
     //   ・**中心は白飛びする**（彩度が落ちる）。外側ほど色が乗る
     //   ・遠いほど広がって薄い → 層ごとに減衰の効き方を変える
-    for (const [wm, am, sat, lig] of [[3.0, 0.022, 55, 42],
-                                      [2.0, 0.040, 75, 50],
-                                      [1.25,0.075, 88, 60],
-                                      [0.65,0.125, 70, 76],
-                                      [0.28,0.200, 35, 93]]){
+    // ★ヘイズが濃い。**光は太い塊になる**（参考画像）。細い筋ではない
+    for (const [wm, am, sat, lig] of [[6.0, 0.016, 60, 40],
+                                      [4.0, 0.028, 72, 46],
+                                      [2.6, 0.048, 84, 54],
+                                      [1.6, 0.080, 88, 64],
+                                      [0.9, 0.130, 70, 80],
+                                      [0.35,0.210, 30, 95]]){
       const gg = g.createLinearGradient(0, 0, 0, far);
       // ★逆二乗を階段で近似する。d0 は「光源からこの距離で半分」の目安
       for (const s of [0, 0.06, 0.14, 0.26, 0.45, 0.70, 1.0]){
@@ -416,6 +418,50 @@ function uplights(t, p, amt, jog){
   g.globalCompositeOperation = 'source-over';
 }
 
+function wash(p, amt){
+  // ★実際のライブは**部屋全体が一色に染まる**（参考画像・2026-09-13）。
+  //   局所的なビームだけでは、あの「浸っている」感じが出ない
+  if (amt < 0.02) return;
+  let hue = 0, w = 0;
+  for (const b of BEAMS){ const q = b.pw || 0; hue += b.hueDeg*q; w += q; }
+  hue = w > 0 ? hue/w : p.h;
+  g.globalCompositeOperation = 'lighter';
+  const gr = g.createRadialGradient(innerWidth*0.5, trussY(), 0,
+                                    innerWidth*0.5, trussY(), innerHeight*1.5);
+  gr.addColorStop(0,   'hsla('+hue+',92%,52%,'+(0.26*amt)+')');
+  gr.addColorStop(0.45,'hsla('+hue+',95%,42%,'+(0.15*amt)+')');
+  gr.addColorStop(1,   'hsla('+hue+',95%,34%,'+(0.06*amt)+')');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, innerWidth, innerHeight);
+  g.globalCompositeOperation = 'source-over';
+}
+
+function crowd(p, amt){
+  // ★手前の客。**逆光の黒い塊**。これで奥行きが出る（参考画像）
+  const base = innerHeight*1.02, h = innerHeight*0.17;
+  g.fillStyle = 'rgba(2,3,6,0.93)';
+  g.beginPath();
+  g.moveTo(0, innerHeight);
+  const n = 26;
+  for (let i=0; i<=n; i++){
+    const x = (i/n)*innerWidth;
+    const s = Math.sin(i*2.7)*0.5 + Math.sin(i*1.3+1.7)*0.5;   // 頭の高さの散らばり
+    g.lineTo(x, base - h*(0.55 + 0.45*s));
+  }
+  g.lineTo(innerWidth, innerHeight);
+  g.closePath(); g.fill();
+  // 頭の輪郭が、わずかに舞台の光を拾う
+  if (amt > 0.05){
+    g.globalCompositeOperation = 'lighter';
+    const gr = g.createLinearGradient(0, base - h, 0, base - h*0.3);
+    gr.addColorStop(0, 'hsla('+p.h+',90%,62%,'+(0.10*amt)+')');
+    gr.addColorStop(1, 'hsla('+p.h+',90%,55%,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, base - h, innerWidth, h*0.7);
+    g.globalCompositeOperation = 'source-over';
+  }
+}
+
 function fireBeams(n){
   // ★拍ごとに違う組が点く。**毎回同じだと機械に見える**
   bar = (bar + 1) % 4;
@@ -513,12 +559,12 @@ function draw(now){
       } else {
         // ★止まっている間は暗く沈める（2026-09-12 本人の指摘）
         // ★止まっている間は「なんかあるな」くらいまで沈める（本人の指示）
-        const a = Math.max(0, 1 - d/TAIL) * (0.045 + 0.62*heat + energy*0.45)
+        const a = Math.max(0, 1 - d/TAIL) * (0.045 + 1.05*heat + energy*0.45)
                 * (1 - hold*0.25) * (1 + release*0.9);
         g.shadowColor = 'hsl('+hue+',100%,62%)';
         g.shadowBlur = 0 + 14*heat + 20*energy;
         g.fillStyle = 'hsla('+hue+','+(45 + 55*heat)+'%,'
-                    + (15 + 45*heat + 14*(1-d/TAIL))+'%,'+a+')';
+                    + (15 + 55*heat + 16*(1-d/TAIL))+'%,'+a+')';
       }
       g.fillText(txt, c.x, r*LH);
       if (Math.random() < 0.0004 + 0.006*heat + pulse*0.06*heat){
@@ -533,8 +579,14 @@ function draw(now){
   if (heat > 0.06) beams(t, p, energy, heat);
   uplights(t, p, playing ? hold : 0, S.jog || 0);
 
-  // ── ③ 一番手前：トラスと灯体。**光を遮る**
+  // ── ③ 部屋全体が染まる
+  wash(p, heat);
+
+  // ── ④ トラスと灯体。**光を遮る**
   if (heat > 0.06) rig(heat);
+
+  // ── ⑤ 一番手前：客のシルエット
+  crowd(p, heat);
 
   if (flash > 0.01){
     g.fillStyle = 'rgba(255,255,255,'+(flash*0.16)+')';
