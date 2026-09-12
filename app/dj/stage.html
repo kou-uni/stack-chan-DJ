@@ -202,7 +202,7 @@ function beams(t, p, energy, heat){
     //   （2026-09-12 本人の指摘）。上は仕込んだキュー通りに動く
     const a = b.ang;
     const hue = b.hueDeg;                       // ★灯体ごとに固定。churn させない
-    const half = M()*0.085;                     // 出口の半径 8.5cm
+    const half = M()*0.115;                     // 出口の半径 11.5cm
     const spread = 0.055;                       // 開き角（固定）
     const far = innerHeight*1.5;
 
@@ -280,14 +280,14 @@ function rig(heat){
     g.fillStyle = ink;
 
     // ★クランプ（トラスを挟む金具）。丸みのある小さな塊
-    rrect(-L*0.13, -trussH()*0.62, L*0.26, trussH()*0.95, L*0.05); g.fill();
+    rrect(-L*0.16, -trussH()*0.62, L*0.32, trussH()*0.95, L*0.06); g.fill();
 
     // ★ベース（本体）。角の丸い箱。ここにパンのモーターが入っている
     const by = trussH()*BASE_Y;
-    rrect(-L*0.30, by, L*0.60, L*BASE_H, L*0.10); g.fill();
+    rrect(-L*0.38, by, L*0.76, L*BASE_H, L*0.12); g.fill();
     // 上面のわずかな照り返し
     g.fillStyle = lit;
-    rrect(-L*0.30, by, L*0.60, L*0.07, L*0.035); g.fill();
+    rrect(-L*0.38, by, L*0.76, L*0.08, L*0.04); g.fill();
     g.fillStyle = ink;
 
     g.translate(0, by + L*BASE_H);
@@ -296,28 +296,28 @@ function rig(heat){
     // ★ヨーク（Uの字の腕）。**曲がった腕**。直線の棒ではない
     g.lineCap = 'round';
     g.strokeStyle = ink;
-    g.lineWidth = L*0.11;
+    g.lineWidth = L*0.14;
     g.beginPath();
-    g.moveTo(-L*0.30, -L*0.02);
-    g.quadraticCurveTo(-L*0.34, L*0.16, -L*0.27, L*0.28);
-    g.moveTo( L*0.30, -L*0.02);
-    g.quadraticCurveTo( L*0.34, L*0.16,  L*0.27, L*0.28);
+    g.moveTo(-L*0.38, -L*0.02);
+    g.quadraticCurveTo(-L*0.43, L*0.16, -L*0.34, L*0.28);
+    g.moveTo( L*0.38, -L*0.02);
+    g.quadraticCurveTo( L*0.43, L*0.16,  L*0.34, L*0.28);
     g.stroke();
 
     // ★ヘッド（円筒）。前が少しすぼまり、先端は丸いレンズ面
     g.translate(0, L*YOKE_H);
     g.rotate(0.22);                                 // 客席へ向けた固定のチルト
     g.beginPath();
-    g.moveTo(-L*0.21, -L*0.06);
-    g.quadraticCurveTo(-L*0.23, L*0.20, -L*0.17, L*0.40);
-    g.lineTo( L*0.17, L*0.40);
-    g.quadraticCurveTo( L*0.23, L*0.20,  L*0.21, -L*0.06);
+    g.moveTo(-L*0.28, -L*0.06);
+    g.quadraticCurveTo(-L*0.30, L*0.20, -L*0.23, L*0.40);
+    g.lineTo( L*0.23, L*0.40);
+    g.quadraticCurveTo( L*0.30, L*0.20,  L*0.28, -L*0.06);
     g.closePath();
     g.fill();
     // 後ろの丸み（放熱側）
-    g.beginPath(); g.ellipse(0, -L*0.06, L*0.21, L*0.10, 0, 0, 6.2832); g.fill();
+    g.beginPath(); g.ellipse(0, -L*0.06, L*0.28, L*0.12, 0, 0, 6.2832); g.fill();
     // レンズ面（円）
-    g.beginPath(); g.ellipse(0, L*0.40, L*0.17, L*0.055, 0, 0, 6.2832); g.fill();
+    g.beginPath(); g.ellipse(0, L*0.40, L*0.23, L*0.07, 0, 0, 6.2832); g.fill();
     g.restore();
   }
   g.lineCap = 'butt';
@@ -328,7 +328,7 @@ function rig(heat){
   for (const b of BEAMS){
     const pw = b.pw || 0;
     if (pw < 0.02) continue;
-    const cx = innerWidth*b.cx, ly = lensY(), hue = b.hueDeg, half = M()*0.085;
+    const cx = innerWidth*b.cx, ly = lensY(), hue = b.hueDeg, half = M()*0.115;
     for (const [r, a2, s2, l2] of [[4.2, 0.10, 90, 55],
                                    [2.0, 0.34, 70, 80],
                                    [0.85,0.90, 20, 98]]){
