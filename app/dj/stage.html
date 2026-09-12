@@ -116,6 +116,16 @@ function trussH(){ return M() * 0.30; }               // 箱トラス 30cm角
 function braceP(){ return M() * 0.55; }               // 筋交いの間隔 55cm
 function rigLen(){ return M() * 0.55; }               // ムービングヘッド 約55cm
 
+function stepHeads(dt){
+  // ★実際の灯体は、キューへ素早く動いて**止まる。** 少し行き過ぎて戻る（慣性）
+  for (const b of BEAMS){
+    const k = 26.0, damp = 8.5;
+    b.vel += (b.tgt - b.ang) * k * dt;
+    b.vel -= b.vel * damp * dt;
+    b.ang += b.vel * dt;
+  }
+}
+
 function drawTruss(a){
   // ★箱トラス。上下の弦材（パイプ）と X の筋交い。**細い線の格子ではない**
   const y = trussY(), h = trussH(), bp = braceP();
@@ -234,6 +244,48 @@ function beams(t, p, energy, heat){
     g.fill(); g.stroke();
     g.restore();
   }
+}
+
+// ── 下からのアップライト ─────────────────────────
+// ★**こすっている間だけ**、床から立ち上がる（2026-09-12 本人の案）。
+//   つまみでは出せない「チュクチュク」に、光がクイックに反応する見せ場。
+//   ★上の吊り灯体は連動しない。**手に反応するのはここだけ。**
+const UPS = [
+  {cx: 0.26, hue: 0.00, sw: 0.9, side: -1},
+  {cx: 0.74, hue: 0.55, sw: 1.2, side:  1},
+];
+
+function uplights(t, p, amt, jog){
+  if (amt < 0.02) return;
+  const y = innerHeight + M()*0.06;
+  const far = innerHeight*1.35;
+  g.globalCompositeOperation = 'lighter';
+  for (const u of UPS){
+    const cx = innerWidth*u.cx;
+    const a = u.side*0.30 + jog*1.05;          // ★揺らさない。手の動きだけ
+    const spread = 0.075;                      // ★固定
+    const hue = (p.h + 180 + u.hue*160) % 360; // ★固定
+    const pw = amt * (0.30 + 0.55*Math.abs(jog));
+    const half = M()*0.10;
+    g.save();
+    g.translate(cx, y);
+    g.rotate(Math.PI + a);                     // ★上へ向ける
+    const grd = g.createLinearGradient(0, 0, 0, far);
+    grd.addColorStop(0,    'hsla('+hue+',95%,84%,'+(0.72*pw)+')');
+    grd.addColorStop(0.14, 'hsla('+hue+',95%,64%,'+(0.24*pw)+')');
+    grd.addColorStop(1,    'hsla('+hue+',95%,52%,0)');
+    g.fillStyle = grd;
+    g.beginPath(); g.moveTo(-half, 0); g.lineTo(half, 0);
+    g.lineTo(far*spread, far); g.lineTo(-far*spread, far);
+    g.closePath(); g.fill();
+    const gl = g.createRadialGradient(0,0,0, 0,0, half*2.6);
+    gl.addColorStop(0, 'hsla('+hue+',80%,95%,'+(0.9*pw)+')');
+    gl.addColorStop(1, 'hsla('+hue+',95%,60%,0)');
+    g.fillStyle = gl;
+    g.beginPath(); g.arc(0,0, half*2.6, 0, 6.2832); g.fill();
+    g.restore();
+  }
+  g.globalCompositeOperation = 'source-over';
 }
 
 function fireBeams(n){
