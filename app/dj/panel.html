@@ -1,0 +1,218 @@
+<!doctype html><html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>スタックチャン</title>
+<style>
+/* ★外出先・片手・小さい画面。**ロボットは見えない。**
+   だから見せることが機能。カメラを主役に置く（2026-09-12 の作り直し） */
+:root{
+  --bg:#0a0c11; --card:#161b26; --line:#252c3b; --ink:#eaeef6; --dim:#8792a6;
+  --hot:#00e5ff; --warm:#ff4d6d; --ok:#3ddc97;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none}
+body{margin:0;background:var(--bg);color:var(--ink);overscroll-behavior:none;
+  font:16px/1.45 -apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
+  padding:max(10px,env(safe-area-inset-top)) 10px max(20px,env(safe-area-inset-bottom))}
+
+/* ── 主役：ロボットが見ているもの ───────────────── */
+.view{position:relative;border-radius:18px;overflow:hidden;background:#000;
+  border:1px solid var(--line);aspect-ratio:4/3;margin-bottom:8px}
+.view img{width:100%;height:100%;object-fit:cover;display:block;
+  opacity:0;transition:opacity .25s}
+.view img.show{opacity:1}
+.view .hint{position:absolute;inset:0;display:grid;place-items:center;
+  color:var(--dim);font-size:14px;text-align:center;padding:20px}
+.badge{position:absolute;left:10px;top:10px;display:flex;gap:5px;flex-wrap:wrap}
+.badge span{background:#000a;backdrop-filter:blur(8px);border-radius:999px;
+  padding:4px 10px;font-size:12px;color:var(--ink);border:1px solid #ffffff22}
+.badge .live{color:var(--ok);border-color:var(--ok)}
+.spin{position:absolute;right:10px;top:10px;width:20px;height:20px;
+  border:2px solid #ffffff33;border-top-color:var(--hot);border-radius:50%;
+  animation:r .7s linear infinite;opacity:0;transition:opacity .2s}
+.spin.on{opacity:1}
+.view .hint{flex-direction:column;gap:10px}
+.camon{background:#0d2b33;border-color:var(--hot);color:var(--hot);
+  padding:0 22px;height:58px;font-size:17px;border-radius:16px}
+.note{font-size:12px;color:var(--dim)}
+.camoff{position:absolute;right:8px;bottom:8px;height:38px;padding:0 14px;
+  font-size:13px;background:#000a;backdrop-filter:blur(8px);
+  border:1px solid #ffffff33;border-radius:12px;display:none}
+.camoff.show{display:block}
+@keyframes r{to{transform:rotate(360deg)}}
+
+/* ── ボタン ───────────────────────────────────── */
+.grid{display:grid;gap:7px;margin-bottom:7px}
+.g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+button{appearance:none;border:1px solid var(--line);background:var(--card);
+  color:var(--ink);border-radius:14px;padding:0 4px;font-size:15px;font-weight:600;
+  height:54px;transition:transform .05s,border-color .15s,background .15s;
+  font-family:inherit}
+button:active{transform:scale(.93)}
+/* ★押した瞬間に光る。往復を待たない */
+button.tap{border-color:var(--hot);background:#0d2b33;color:var(--hot)}
+button.on{border-color:var(--hot);color:var(--hot)}
+button.big{font-size:19px}
+h2{font-size:11px;color:var(--dim);margin:12px 0 6px;letter-spacing:.14em}
+input{width:100%;background:var(--card);border:1px solid var(--line);color:var(--ink);
+  border-radius:14px;padding:14px;font-size:16px;margin-bottom:7px;
+  -webkit-user-select:text;user-select:text;font-family:inherit}
+#log{font-size:12px;color:var(--dim);min-height:1.3em;margin-top:8px;text-align:center}
+#log.err{color:var(--warm)}
+</style></head><body>
+
+<!-- ★カメラは既定でオフ。**家のカメラが勝手に外へ流れない。**
+     1回押したら流れ続ける（1コマごとに押させない）2026-09-12 本人の判断 -->
+<div class="view">
+  <img id="shot" alt="スタックチャンが見ているもの">
+  <div class="hint" id="hint">
+    <button id="camon" class="camon">📷 カメラをつける</button>
+    <div class="note">つけている間だけ撮ります</div>
+  </div>
+  <div class="badge" id="badge"></div>
+  <div class="spin" id="spin"></div>
+  <button id="camoff" class="camoff">■ 切る</button>
+</div>
+
+<h2>くび</h2>
+<div class="grid g3">
+  <button data-a="head" data-v="left">◀</button>
+  <button data-a="head" data-v="up">▲</button>
+  <button data-a="head" data-v="right">▶</button>
+  <button data-a="head" data-v="center">■ まんなか</button>
+  <button data-a="head" data-v="down">▼</button>
+  <button data-a="face" data-v="idle">すまし顔</button>
+</div>
+
+<h2>かお</h2>
+<div class="grid g4">
+  <button data-a="face" data-v="happy" class="big">😊</button>
+  <button data-a="face" data-v="surprised" class="big">😲</button>
+  <button data-a="face" data-v="embarrassed" class="big">😳</button>
+  <button data-a="face" data-v="sad" class="big">😢</button>
+</div>
+
+<h2>モード</h2>
+<div class="grid g2">
+  <button data-a="mode" data-v="off">OFF しずか</button>
+  <button data-a="mode" data-v="dj">DJ おどる</button>
+</div>
+
+<h2>LED</h2>
+<div class="grid g3" id="leds"></div>
+
+<h2>しゃべる</h2>
+<div class="grid g2">
+  <button data-a="say" data-v="こんにちは">こんにちは</button>
+  <button data-a="say" data-v="いま、るすばんしています">るすばん中</button>
+</div>
+<input id="free" placeholder="じゆうに しゃべらせる" maxlength="60">
+<div class="grid"><button id="sayfree">▶ しゃべらせる</button></div>
+
+<div id="log"></div>
+<script>
+const K = new URLSearchParams(location.search).get('k') || '';
+const $ = s => document.querySelector(s);
+const log = (m,bad) => { const l=$('#log'); l.textContent=m||''; l.className = bad?'err':''; };
+const buzz = () => { try{ navigator.vibrate && navigator.vibrate(12); }catch(e){} };
+
+const PATS = ["show","laser","sweep","build","sparks","strobe_hard","wave","chase","rainbow"];
+$('#leds').innerHTML = PATS.map(p=>`<button data-a="led" data-v="${p}">${p}</button>`).join('');
+
+/* ── 状態の表示 ───────────────────────────────── */
+function paint(s){
+  if(!s) return;
+  $('#badge').innerHTML = [
+    `<span class="${s.mode==='dj'?'live':''}">${s.mode==='dj'?'DJ':'OFF'}</span>`,
+    s.dancing?'<span class="live">おどってる</span>':'',
+    s.talk?`<span class="live">${s.talk==='listening'?'きいてる':'はなしてる'}</span>`:'',
+    s.watching>0?'<span class="live">📷 撮ってる</span>':'',
+    `<span>${s.face||'-'}</span>`,
+    `<span>${s.pattern}</span>`,
+    s.bpm>1?`<span>${s.bpm.toFixed(0)} BPM</span>`:''
+  ].join('');
+  document.querySelectorAll('button[data-a="led"]').forEach(b=>
+    b.classList.toggle('on', b.dataset.v===s.pattern));
+  document.querySelectorAll('button[data-a="mode"]').forEach(b=>
+    b.classList.toggle('on', b.dataset.v===s.mode));
+}
+
+/* ── 映像。★押させない。開いたら流れている ───── */
+let cam = null, lastURL = null, camWanted = false;   /* ★既定はオフ */
+function connectStream(){
+  if(!camWanted) return;
+  if(cam){ try{ cam.close(); }catch(e){} }
+  $('#spin').classList.add('on');
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  cam = new WebSocket(`${proto}://${location.host}${location.pathname.replace(/\/panel$/,'')}/api/camws?k=${encodeURIComponent(K)}`);
+  cam.binaryType = 'blob';
+  cam.onmessage = e => {
+    const img = $('#shot');
+    const url = URL.createObjectURL(e.data);
+    img.onload = ()=>{ img.classList.add('show'); $('#hint').style.display='none';
+                       $('#spin').classList.remove('on');
+                       if(lastURL) URL.revokeObjectURL(lastURL);   /* ★溜めない */
+                       lastURL = url; };
+    img.src = url;
+  };
+  /* ★切れたら黙って繋ぎ直す。人に操作させない */
+  cam.onclose = () => { if(!camWanted) return;
+                        $('#spin').classList.add('on'); setTimeout(connectStream, 1500); };
+  cam.onerror = () => { try{ cam.close(); }catch(e){} };
+}
+function camOn(){
+  buzz(); camWanted = true;
+  $('#hint').style.display = 'none';
+  $('#camoff').classList.add('show');
+  connectStream();
+}
+function camOff(){
+  buzz(); camWanted = false;
+  try{ cam && cam.close(); }catch(e){}
+  cam = null;
+  const img = $('#shot');
+  img.classList.remove('show'); img.removeAttribute('src');
+  if(lastURL){ URL.revokeObjectURL(lastURL); lastURL = null; }
+  $('#spin').classList.remove('on');
+  $('#camoff').classList.remove('show');
+  $('#hint').style.display = '';
+}
+$('#camon').onclick = camOn;
+$('#camoff').onclick = camOff;
+/* ★端末が寝て戻ったら繋ぎ直す。ポケットから出したら映っている状態にする */
+document.addEventListener('visibilitychange', ()=>{
+  if(!document.hidden && camWanted && (!cam || cam.readyState !== 1)) connectStream();
+});
+
+/* ── 操作。★押した瞬間に光らせ、往復は待たない ──── */
+async function act(a, v, btn){
+  buzz();
+  if(btn){ btn.classList.add('tap'); setTimeout(()=>btn.classList.remove('tap'), 260); }
+  try{
+    const r = await fetch(`api/act?k=${encodeURIComponent(K)}`,{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:a, value:v})});
+    const d = await r.json();
+    if(!r.ok){ log(d.error||`失敗 (${r.status})`, true); return; }
+    paint(d.state);                       /* ★返ってきた状態を即反映（往復1回） */
+    log('');
+  }catch(e){ log('つながりません', true); }
+}
+document.body.addEventListener('click', e=>{
+  const b = e.target.closest('button[data-a]'); if(!b) return;
+  act(b.dataset.a, b.dataset.v, b);
+});
+$('#sayfree').onclick = () => { const t=$('#free').value.trim(); if(t) act('say', t, $('#sayfree')); };
+
+
+/* ── 状態だけの見張り（軽い） ─────────────────── */
+async function poll(){
+  try{
+    const r = await fetch(`api/state?k=${encodeURIComponent(K)}`);
+    if(!r.ok){ $('#badge').innerHTML = '<span>鍵がちがいます</span>'; return; }
+    paint(await r.json());
+  }catch(e){}
+}
+poll(); setInterval(poll, 3000);
+</script></body></html>

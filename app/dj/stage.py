@@ -81,8 +81,99 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
             print("← 背景スクリーンが切れました")
         return sock
 
+    # ── 外から操作するパネル（ROADMAP Phase 2）─────────────
+    #   ★同じ console の中に置く。別プロセスにすると書き手が2人になる（I2 違反）
+    from panel import (CameraFeed, apply_action, check_token, load_token,
+                       panel_state)
+    token = load_token()
+
+    async def _shoot() -> bytes | None:
+        """実機で1枚撮って、その中身を返す。★パスではなく中身。"""
+        await con.gw.call("take_photo", question="")
+        shots = sorted((Path.home() / ".stackchan" / "captures").glob("*.jpg"),
+                       key=lambda p: p.stat().st_mtime, reverse=True)
+        return shots[0].read_bytes() if shots else None
+
+    feed = CameraFeed(_shoot)
+
+    def guard(req):
+        return check_token(req.query.get("k"), token)
+
+    async def panel(req):
+        # ★鍵が違っても画面は返す。中で「鍵がちがいます」と出る方が、
+        #   真っ白より原因が分かる（api 側は必ず弾く）
+        return web.FileResponse(HERE / "panel.html")
+
+    async def api_state(req):
+        if not guard(req):
+            return web.json_response({"error": "鍵がちがいます"}, status=403)
+        s = panel_state(con)
+        s["watching"] = feed.viewers      # ★映像が流れているかを外から見えるように
+        return web.json_response(s)
+
+    async def api_act(req):
+        if not guard(req):
+            return web.json_response({"error": "鍵がちがいます"}, status=403)
+        try:
+            body = await req.json()
+        except Exception:
+            return web.json_response({"error": "読めない指示"}, status=400)
+        try:
+            out = await apply_action(con, str(body.get("action", "")),
+                                     str(body.get("value", "")))
+        except ValueError as exc:
+            return web.json_response({"error": str(exc)}, status=400)
+        except Exception as exc:
+            # ★実機が落ちていても、パネルは落ちない
+            return web.json_response(
+                {"error": f"実機に届きません（{type(exc).__name__}）"}, status=502)
+        return web.json_response(out)
+
+    async def api_camws(req):
+        """映像を WebSocket で送る。**開いた瞬間から映る。**
+
+        ★`multipart/x-mixed-replace` は cloudflared が溜め込んで通らなかった
+          （2026-09-12 実測: トンネル越し 8秒で 0 バイト）。
+          **WebSocket は同じ経路で背景スクリーンが通っている。確実な方を使う。**
+        """
+        sock = web.WebSocketResponse(heartbeat=20, max_msg_size=0)
+        if not guard(req):
+            await sock.prepare(req)
+            await sock.close(code=4403, message=b"key")
+            return sock
+        await sock.prepare(req)
+        try:
+            async with feed.viewer():
+                while not sock.closed:
+                    img = await feed.wait_new(timeout=8.0)
+                    if img:
+                        await sock.send_bytes(img)
+        except (ConnectionResetError, asyncio.CancelledError):
+            pass
+        except Exception:
+            pass
+        finally:
+            with contextlib.suppress(Exception):
+                await sock.close()
+        return sock
+
+    async def api_photo(req):
+        """最後に撮った写真を返す。★パスは外に出さない。"""
+        if not guard(req):
+            return web.Response(status=403)
+        shots = sorted((Path.home() / ".stackchan" / "captures").glob("*"),
+                       key=lambda p: p.stat().st_mtime, reverse=True)
+        if not shots:
+            return web.Response(status=404)
+        return web.FileResponse(shots[0])
+
     app = web.Application()
-    app.add_routes([web.get("/", index), web.get("/ws", ws)])
+    app.add_routes([web.get("/", index), web.get("/ws", ws),
+                    web.get("/panel", panel),
+                    web.get("/api/state", api_state),
+                    web.post("/api/act", api_act),
+                    web.get("/api/photo", api_photo),
+                    web.get("/api/camws", api_camws)])
     runner = web.AppRunner(app, access_log=None)
     await runner.setup()
     site = web.TCPSite(runner, host, port)
@@ -92,7 +183,10 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
     print(f"  iPad で開く: {stage_url(port)}")
     print(f"  （届かないときは http://{ip or '<LAN IP>'}:{port}/ ）\n")
     print_qr(stage_url(port))
-    print()
+    print(f"\n操作パネル {'='*42}")
+    print(f"  スマホで開く: http://{ip or '<LAN IP>'}:{port}/panel?k={token}")
+    print("  ★鍵は ~/.config/stackchan/panel-token。**人に見せない**")
+    print("  外から使う: scripts/expose.sh\n")
     try:
         await asyncio.Future()
     finally:
