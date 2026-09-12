@@ -471,6 +471,14 @@ function stageWell(){
   g.fillRect(0, innerHeight*0.35, innerWidth, innerHeight*0.65);
 }
 
+function litColor(p){
+  // ★いま出ている光の平均。**床も天井も柱も、この色を拾う**
+  //   （2026-09-13 本人の指摘：反射は光の色になるはず）
+  let hue = 0, w = 0;
+  for (const b of BEAMS){ const q = b.pw || 0; hue += b.hueDeg*q; w += q; }
+  return {hue: w > 0 ? hue/w : p.h, pow: Math.min(1.4, w)};
+}
+
 function wash(p, amt){
   // ★実際のライブは**部屋全体が一色に染まる**（参考画像・2026-09-13）。
   //   局所的なビームだけでは、あの「浸っている」感じが出ない
@@ -648,11 +656,18 @@ function draw(now){
   for (const x0 of [0.168, 0.824]){
     g.fillRect(innerWidth*x0, cy, innerWidth*0.008, ch);
   }
-  // 客席側の角が、わずかに光を拾う
-  g.fillStyle = 'hsla('+p.h+',70%,62%,'+(0.08 + 0.16*heat)+')';
-  for (const x0 of [0.168, 0.832]){
-    g.fillRect(innerWidth*x0 - 1, cy, 1.5, ch);
+  // ★柱も光の色を拾う。**面で受けるので、角だけでなく幅を持って光る**
+  const PC = litColor(p);
+  g.globalCompositeOperation = 'lighter';
+  for (const [x0, dir] of [[0.168, 1], [0.832, -1]]){
+    const w = innerWidth*0.014;
+    const gp = g.createLinearGradient(innerWidth*x0, 0, innerWidth*x0 + dir*w, 0);
+    gp.addColorStop(0, 'hsla('+PC.hue+',85%,72%,'+(0.10 + 0.30*PC.pow)+')');
+    gp.addColorStop(1, 'hsla('+PC.hue+',85%,60%,0)');
+    g.fillStyle = gp;
+    g.fillRect(Math.min(innerWidth*x0, innerWidth*x0 + dir*w), cy, w, ch);
   }
+  g.globalCompositeOperation = 'source-over';
 
   // ── 床。★奥行きの手がかりで**いちばん強いのは床の収束線**（2026-09-13）。
   //   これが無いと、パネルが宙に浮いて部屋に見えない
@@ -686,6 +701,49 @@ function draw(now){
     }
     g.stroke();
 
+    // ★床は艶がある。**奥の壁が映り込む。** これが無いと塗り潰した黒に見える
+    const cen = panels[1];
+    if (cen){
+      g.save();
+      g.beginPath();
+      g.moveTo(0, innerHeight); g.lineTo(innerWidth, innerHeight);
+      g.lineTo(innerWidth*0.825, backY); g.lineTo(innerWidth*0.175, backY);
+      g.closePath(); g.clip();
+      g.globalAlpha = 0.16 + 0.14*heat;
+      g.scale(1, -1);                            // 上下を反転して映す
+      g.drawImage(cen.off, 0, 0, cen.bw, innerHeight,
+                  cen.px, -(backY + innerHeight*kc), cen.pw, innerHeight*kc);
+      g.globalAlpha = 1;
+      g.restore();
+      // 遠いほど映り込みが消える
+      const fade = g.createLinearGradient(0, backY, 0, innerHeight);
+      fade.addColorStop(0,   'rgba(3,4,8,0.05)');
+      fade.addColorStop(0.45,'rgba(3,4,8,0.62)');
+      fade.addColorStop(1,   'rgba(3,4,8,0.92)');
+      g.fillStyle = fade;
+      g.fillRect(0, backY, innerWidth, innerHeight-backY);
+    }
+
+    // ★ビームが床に落ちる。**当たったところが光の色になる**
+    const L2 = litColor(p);
+    g.globalCompositeOperation = 'lighter';
+    for (const b of BEAMS){
+      const pw2 = b.pw || 0;
+      if (pw2 < 0.03) continue;
+      const ly2 = lensY();
+      const hx = innerWidth*b.cx + Math.tan(b.ang) * (innerHeight - ly2) * 0.55;
+      const rx = M()*0.55*(1 + 1.6*pw2), ry = rx*0.20;
+      const gp = g.createRadialGradient(hx, innerHeight*0.93, 0,
+                                        hx, innerHeight*0.93, rx);
+      gp.addColorStop(0,   'hsla('+b.hueDeg+',95%,72%,'+(0.32*pw2)+')');
+      gp.addColorStop(0.5, 'hsla('+b.hueDeg+',95%,58%,'+(0.10*pw2)+')');
+      gp.addColorStop(1,   'hsla('+b.hueDeg+',95%,50%,0)');
+      g.fillStyle = gp;
+      g.save(); g.translate(hx, innerHeight*0.93); g.scale(1, ry/rx);
+      g.beginPath(); g.arc(0, 0, rx, 0, 6.2832); g.fill(); g.restore();
+    }
+    g.globalCompositeOperation = 'source-over';
+
     // 壁と床の境目が、いちばん光を拾う
     const gr = g.createLinearGradient(0, backY - M()*0.12, 0, backY + M()*0.10);
     gr.addColorStop(0, 'hsla('+p.h+',80%,62%,0)');
@@ -700,8 +758,22 @@ function draw(now){
   {
     const kc = CENTER_K;
     const topY = hy - hy*kc;                 // 奥の壁の上端
+    // ★天井も光の色を拾う。**真っ黒のままだと、そこだけ別世界になる**
+    const LC = litColor(p);
+    if (LC.pow > 0.03){
+      g.globalCompositeOperation = 'lighter';
+      const cg = g.createLinearGradient(0, 0, 0, trussY()*2.4);
+      cg.addColorStop(0,   'hsla('+LC.hue+',85%,60%,'+(0.10*LC.pow)+')');
+      cg.addColorStop(0.5, 'hsla('+LC.hue+',85%,54%,'+(0.05*LC.pow)+')');
+      cg.addColorStop(1,   'hsla('+LC.hue+',85%,50%,0)');
+      g.fillStyle = cg;
+      g.fillRect(0, 0, innerWidth, trussY()*2.4);
+      g.globalCompositeOperation = 'source-over';
+    }
+
     // 天井の梁。奥へ向かって消失点に収束する
-    g.strokeStyle = 'rgba(80,94,116,'+(0.10 + 0.10*heat)+')';
+    g.strokeStyle = 'hsla('+LC.hue+',40%,'+(42 + 26*LC.pow)+'%,'
+                  + (0.10 + 0.14*heat + 0.10*LC.pow)+')';
     g.lineWidth = Math.max(1, M()*0.02);
     g.beginPath();
     for (let i=1; i<=5; i++){
@@ -771,4 +843,15 @@ function connect(){
   ws.onerror = ()=> ws.close();
 }
 connect();
+
+// ★試験から中身を確かめられるようにする。**画面を目で見るだけでは幾何は守れない**
+window.__debug = {
+  PANELS, CENTER_K, HORIZON, TRUSS_NEAR, LOOKS, BEAMS, UPS,
+  // 遠近の倍率。u=0 が手前、u=1 が奥
+  persp: (k, u) => k / (k + u*(1-k)),
+  // 元画像の位置（射影）
+  tex:   (k, u) => k*u / (1 - u*(1-k)),
+  litColor: () => litColor(pal()),
+  state: () => ({heat, hold, release, panels: panels.length}),
+};
 </script></body></html>

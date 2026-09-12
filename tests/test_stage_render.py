@@ -33,6 +33,18 @@ def test_背景が落ちずに描ける():
 
 
 @pytest.mark.skipif(not Path(node).exists(), reason="node が無い")
+def test_背景の幾何が壊れていない():
+    """★目で見るだけでは幾何は守れない。
+
+    遠近が線形に戻る／パネルの左右が非対称になる／灯体が増えすぎる、は
+    どれも**画面を見ても気づきにくい**。数字で見張る。
+    """
+    r = subprocess.run([node, str(ROOT / "tests" / "js" / "geom_check.js"),
+                        str(PAGE)], capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+@pytest.mark.skipif(not Path(node).exists(), reason="node が無い")
 def test_操作パネルも落ちない():
     """★パネルは <script> の中で DOM を触る。同じ穴を踏みうる。"""
     js = (ROOT / "app" / "dj" / "panel.html").read_text(encoding="utf-8")
