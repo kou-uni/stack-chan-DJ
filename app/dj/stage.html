@@ -41,11 +41,13 @@ const HORIZON = 0.54;          // 消失点の高さ（画面の割合）＝見�
 // ★左右のウォールは**客席側へ回り込む**（凹）。中央がいちばん奥。
 //   中央を一番手前にすると「せり出た」形になって嘘になる（2026-09-13 本人の指摘）
 const CENTER_K = 0.52;         // 中央（最奥）の見かけの高さ。★浅いと平面に見える
+// ★背面ウォールが主役。**袖は短い返し**（実際の会場もそう。2026-09-13）。
+//   袖を広く取ると、正面がせり立って見える
 const PANELS = [
   // near = 画面の外側（手前）。far = 中央寄り（奥）
-  {x0: 0.000, w: 0.290, side: 'left',  farScale: CENTER_K, dim: 0.78},
-  {x0: 0.300, w: 0.400, side: null,    farScale: CENTER_K, dim: 1.00},
-  {x0: 0.710, w: 0.290, side: 'right', farScale: CENTER_K, dim: 0.78},
+  {x0: 0.000, w: 0.170, side: 'left',  farScale: CENTER_K, dim: 0.62},
+  {x0: 0.175, w: 0.650, side: null,    farScale: CENTER_K, dim: 1.00},
+  {x0: 0.830, w: 0.170, side: 'right', farScale: CENTER_K, dim: 0.62},
 ];
 let panels = [];
 
@@ -628,12 +630,12 @@ function draw(now){
   // ── 継ぎ目の柱。★ここが**いちばん奥**なので、中央パネルと同じ高さに収める
   const kc = CENTER_K, ch = innerHeight*kc, cy = hy - hy*kc;
   g.fillStyle = 'rgba(2,3,6,0.96)';
-  for (const x0 of [0.290, 0.700]){
-    g.fillRect(innerWidth*x0, cy, innerWidth*0.010, ch);
+  for (const x0 of [0.168, 0.824]){
+    g.fillRect(innerWidth*x0, cy, innerWidth*0.008, ch);
   }
   // 客席側の角が、わずかに光を拾う
   g.fillStyle = 'hsla('+p.h+',70%,62%,'+(0.08 + 0.16*heat)+')';
-  for (const x0 of [0.290, 0.710]){
+  for (const x0 of [0.168, 0.832]){
     g.fillRect(innerWidth*x0 - 1, cy, 1.5, ch);
   }
 
@@ -646,8 +648,8 @@ function draw(now){
     g.beginPath();
     g.moveTo(0, innerHeight);
     g.lineTo(innerWidth, innerHeight);
-    g.lineTo(innerWidth*0.710, backY);
-    g.lineTo(innerWidth*0.290, backY);
+    g.lineTo(innerWidth*0.825, backY);
+    g.lineTo(innerWidth*0.175, backY);
     g.closePath(); g.fill();
 
     // ★床の目地。**手前ほど間隔が広い**。これが遠近を確定させる
@@ -658,13 +660,13 @@ function draw(now){
       const u = i/10;
       const yy = backY + (innerHeight - backY) * (u*u);   // 二乗で手前ほど広く
       const s = (yy - backY) / (innerHeight - backY);
-      const xl = innerWidth*0.290 * (1-s) + 0 * s;
-      const xr = innerWidth*0.710 * (1-s) + innerWidth * s;
+      const xl = innerWidth*0.175 * (1-s) + 0 * s;
+      const xr = innerWidth*0.825 * (1-s) + innerWidth * s;
       g.moveTo(xl, yy); g.lineTo(xr, yy);
     }
     // 消失点へ向かう線
     for (const a of [0.10, 0.30, 0.50, 0.70, 0.90]){
-      g.moveTo(innerWidth*(0.290 + 0.420*a), backY);
+      g.moveTo(innerWidth*(0.175 + 0.650*a), backY);
       g.lineTo(innerWidth*a, innerHeight);
     }
     g.stroke();
@@ -675,7 +677,7 @@ function draw(now){
     gr.addColorStop(0.6, 'hsla('+p.h+',80%,68%,'+(0.10 + 0.22*heat)+')');
     gr.addColorStop(1, 'hsla('+p.h+',80%,62%,0)');
     g.fillStyle = gr;
-    g.fillRect(innerWidth*0.28, backY - M()*0.12, innerWidth*0.44, M()*0.22);
+    g.fillRect(innerWidth*0.16, backY - M()*0.12, innerWidth*0.68, M()*0.22);
   }
 
   // ── ② 空気中の光。パネルの手前を通る
