@@ -140,9 +140,16 @@ function drawTruss(a){
   const top = y - h/2, bot = y + h/2;
   const ink = 'rgba(3,4,7,'+(0.90*a + 0.08)+')';
 
+  // ★弦材は**丸いパイプ**。平らな帯ではない。断面の陰影で丸みを出す
+  for (const cy of [top, bot]){
+    const gr = g.createLinearGradient(0, cy-pipe/2, 0, cy+pipe/2);
+    gr.addColorStop(0,    'rgba(58,68,86,'+(0.55*a+0.05)+')');
+    gr.addColorStop(0.28, 'rgba(22,27,36,'+(0.85*a+0.07)+')');
+    gr.addColorStop(1,    'rgba(2,3,6,'+(0.93*a+0.07)+')');
+    g.fillStyle = gr;
+    g.fillRect(0, cy-pipe/2, innerWidth, pipe);
+  }
   g.fillStyle = ink;
-  g.fillRect(0, top - pipe/2, innerWidth, pipe);      // 上弦
-  g.fillRect(0, bot - pipe/2, innerWidth, pipe);      // 下弦
   // 筋交い（塗りで表す。線を引かない）
   g.beginPath();
   for (let x=-bp; x<innerWidth+bp; x+=bp){
@@ -236,35 +243,76 @@ function beams(t, p, energy, heat){
 
 }
 
+function rrect(x, y, w, h, r){
+  // 角の丸い箱。★実機に角張ったところは少ない
+  const rr = Math.min(r, w/2, h/2);
+  g.beginPath();
+  g.moveTo(x+rr, y);
+  g.arcTo(x+w, y,   x+w, y+h, rr);
+  g.arcTo(x+w, y+h, x,   y+h, rr);
+  g.arcTo(x,   y+h, x,   y,   rr);
+  g.arcTo(x,   y,   x+w, y,   rr);
+  g.closePath();
+}
+
 function rig(heat){
   // ── 灯体とトラスの実体。★線は引かない。**黒い塊として置く**
-  //   ★これは**一番手前**に描く。奥から順に：
-  //     有機ELパネル（コード） → 空気中の光 → トラスと灯体
+  //   ★一番手前。奥から：有機ELパネル → 空気中の光 → トラスと灯体
   const ty = trussY(), L = rigLen();
   const fade = Math.min(1, heat*1.6);
   drawTruss(fade);
-  const ink = 'rgba(3,4,7,'+(0.92*fade + 0.06)+')';
+  const ink = 'rgba(3,4,7,'+(0.93*fade + 0.06)+')';
+  const lit = 'rgba(120,140,175,'+(0.10*fade)+')';   // 上面がわずかに光を拾う
+
   for (const b of BEAMS){
-    const a = b.ang;
+    const pan = Math.max(-1.4, Math.min(1.4, b.ang));
+    const sx = Math.max(0.20, Math.cos(pan));      // パンで細く見える
     g.save();
     g.translate(innerWidth*b.cx, ty);
     g.fillStyle = ink;
-    g.fillRect(-L*0.20, -trussH()*0.62, L*0.40, trussH()*0.9);   // クランプ
-    g.fillRect(-L*0.28, trussH()*0.42, L*0.56, L*0.34);          // ベース
-    g.translate(0, trussH()*0.42 + L*0.34);
-    g.fillRect(-L*0.30, 0, L*0.10, L*0.26);                      // ヨーク左
-    g.fillRect( L*0.20, 0, L*0.10, L*0.26);                      // ヨーク右
-    // ★ここが要。**左右はパン（垂直軸まわり）。ヘッドは横へ振れない。**
-    //   正面から見ると、その場で回るので**横幅が縮んで見えるだけ**。
-    //   振り子のように振っていたのが間違い（2026-09-12 本人の指摘）
-    g.translate(0, L*0.24);
-    const pan = Math.max(-1.4, Math.min(1.4, a));
-    const tilt = 0.22;                        // 客席へ向けた固定のチルト
-    g.rotate(tilt);
-    g.scale(Math.max(0.18, Math.cos(pan)), 1);   // ★回った分だけ細く見える
-    g.fillRect(-L*0.20, -L*0.10, L*0.40, L*0.50);                // ヘッド
+
+    // ★クランプ（トラスを挟む金具）。丸みのある小さな塊
+    rrect(-L*0.13, -trussH()*0.62, L*0.26, trussH()*0.95, L*0.05); g.fill();
+
+    // ★ベース（本体）。角の丸い箱。ここにパンのモーターが入っている
+    const by = trussH()*0.42;
+    rrect(-L*0.30, by, L*0.60, L*0.36, L*0.10); g.fill();
+    // 上面のわずかな照り返し
+    g.fillStyle = lit;
+    rrect(-L*0.30, by, L*0.60, L*0.07, L*0.035); g.fill();
+    g.fillStyle = ink;
+
+    g.translate(0, by + L*0.36);
+    g.scale(sx, 1);                                 // ★ここから先がパンで回る
+
+    // ★ヨーク（Uの字の腕）。**曲がった腕**。直線の棒ではない
+    g.lineCap = 'round';
+    g.strokeStyle = ink;
+    g.lineWidth = L*0.11;
+    g.beginPath();
+    g.moveTo(-L*0.30, -L*0.02);
+    g.quadraticCurveTo(-L*0.34, L*0.16, -L*0.27, L*0.28);
+    g.moveTo( L*0.30, -L*0.02);
+    g.quadraticCurveTo( L*0.34, L*0.16,  L*0.27, L*0.28);
+    g.stroke();
+
+    // ★ヘッド（円筒）。前が少しすぼまり、先端は丸いレンズ面
+    g.translate(0, L*0.28);
+    g.rotate(0.22);                                 // 客席へ向けた固定のチルト
+    g.beginPath();
+    g.moveTo(-L*0.21, -L*0.06);
+    g.quadraticCurveTo(-L*0.23, L*0.20, -L*0.17, L*0.40);
+    g.lineTo( L*0.17, L*0.40);
+    g.quadraticCurveTo( L*0.23, L*0.20,  L*0.21, -L*0.06);
+    g.closePath();
+    g.fill();
+    // 後ろの丸み（放熱側）
+    g.beginPath(); g.ellipse(0, -L*0.06, L*0.21, L*0.10, 0, 0, 6.2832); g.fill();
+    // レンズ面（円）
+    g.beginPath(); g.ellipse(0, L*0.40, L*0.17, L*0.055, 0, 0, 6.2832); g.fill();
     g.restore();
   }
+  g.lineCap = 'butt';
 }
 
 const UPS = [
