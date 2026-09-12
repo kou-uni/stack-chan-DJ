@@ -65,21 +65,22 @@ addEventListener('resize', layout); layout();
 // ★実際のクラブ規模だと、1本のトラスにムービングヘッドは**4〜8台**。
 //   9台は多すぎた（2026-09-12 本人の指摘）。6台にして、**左右対称に振る**
 //   —— 実際の照明も対で組む。バラバラに振ると素人の仕込みに見える
-const N_LIGHTS = 6;
+const N_LIGHTS = 3;   // ★小さな会場。**2〜3台で十分**（本人の指示）
 const BEAMS = Array.from({length:N_LIGHTS}, (_,i)=>{
   const pair = i < N_LIGHTS/2 ? i : (N_LIGHTS-1-i);   // 対になる相手と同じ癖
   return {
     base: (pair/(N_LIGHTS/2))*Math.PI*0.7,
     sw:   0.85 + pair*0.28,
     hue:  pair/(N_LIGHTS/2),
-    cx:   0.10 + (i/(N_LIGHTS-1))*0.80,   // 端は少し内側に吊る
-    mirror: i < N_LIGHTS/2 ? -1 : 1,      // ★左右で逆に振る
+    cx:   0.22 + (i/(N_LIGHTS-1))*0.56,   // 中央寄りに3台
+    mirror: i === 1 ? 0 : (i === 0 ? -1 : 1),   // 中央は正面、両脇が対称
     on:   0,
     phase: pair % 2,
     // ★実際のムービングヘッドは**ゆらゆらしない。**
     //   キューの位置へ素早く動いて、次のキューまで止まっている。
     //   光の「ぱぱぱ」はシャッターで、灯体は静止したまま（2026-09-12 本人の問い）
     ang: 0, tgt: 0, vel: 0,
+    hueDeg: 0,        // 点灯のたびに決める。**点いている間は変えない**
   };
 });
 
@@ -106,157 +107,133 @@ function newLook(n){
 newLook(0);
 let bar = 0;
 
-function trussY(){ return Math.max(26, innerHeight*0.055); }   // バーの高さ
-function rigLen(){ return Math.max(20, FS*1.9); }              // 灯体の長さ
+// ★縮尺を決める。**画面の横幅を会場9mとみなす**（2026-09-12 本人の指摘）。
+//   30cm角のトラスが画面幅の0.7%しかなく、針金のように細かった
+const VENUE_W = 9.0;                     // 画面の横幅が何メートルか
+function M(){ return innerWidth / VENUE_W; }          // 1メートルの画素数
+function trussY(){ return Math.max(30, innerHeight*0.06); }
+function trussH(){ return M() * 0.30; }               // 箱トラス 30cm角
+function braceP(){ return M() * 0.55; }               // 筋交いの間隔 55cm
+function rigLen(){ return M() * 0.55; }               // ムービングヘッド 約55cm
 
 function drawTruss(a){
-  const y = trussY(), h = Math.max(8, FS*0.75);
-  // 横棒2本＋斜めの筋交い。**逆光で黒く見えるので、暗いままでよい**
-  g.strokeStyle = 'rgba(150,170,200,'+(0.30*a)+')';
-  g.lineWidth = Math.max(2, FS*0.16);
-  g.beginPath();
-  g.moveTo(0, y-h/2); g.lineTo(innerWidth, y-h/2);
-  g.moveTo(0, y+h/2); g.lineTo(innerWidth, y+h/2);
-  g.stroke();
-  g.strokeStyle = 'rgba(150,170,200,'+(0.18*a)+')';
-  g.lineWidth = Math.max(1, FS*0.10);
-  g.beginPath();
-  for (let x=0; x<innerWidth; x+=h*1.6){
-    g.moveTo(x, y-h/2); g.lineTo(x+h*0.8, y+h/2);
-    g.moveTo(x+h*0.8, y+h/2); g.lineTo(x+h*1.6, y-h/2);
-  }
-  g.stroke();
-}
+  // ★箱トラス。上下の弦材（パイプ）と X の筋交い。**細い線の格子ではない**
+  const y = trussY(), h = trussH(), bp = braceP();
+  const pipe = M()*0.05;                       // パイプ径 5cm
+  const top = y - h/2, bot = y + h/2;
 
-function stepHeads(dt){
-  // ★実際の灯体は、素早く動いて**止まる。** 行き過ぎて少し戻る（慣性）
-  for (const b of BEAMS){
-    const k = 26.0, damp = 8.5;                 // 硬めのバネ＋強い減衰
-    b.vel += (b.tgt - b.ang) * k * dt;
-    b.vel -= b.vel * damp * dt;
-    b.ang += b.vel * dt;
+  // 筋交い（奥に見える）
+  g.strokeStyle = 'rgba(96,110,132,'+(0.55*a)+')';
+  g.lineWidth = pipe*0.7;
+  g.lineCap = 'round';
+  g.beginPath();
+  for (let x=-bp; x<innerWidth+bp; x+=bp){
+    g.moveTo(x, top); g.lineTo(x+bp*0.5, bot);
+    g.moveTo(x+bp*0.5, bot); g.lineTo(x+bp, top);
+    g.moveTo(x+bp*0.5, top); g.lineTo(x+bp*0.5, bot);   // 垂直材
   }
+  g.stroke();
+
+  // 弦材。★パイプなので、上側だけ明るい（面ではなく管に見せる）
+  for (const cy of [top, bot]){
+    const grd = g.createLinearGradient(0, cy-pipe/2, 0, cy+pipe/2);
+    grd.addColorStop(0,   'rgba(178,192,214,'+(0.85*a)+')');
+    grd.addColorStop(0.4, 'rgba(112,126,150,'+(0.85*a)+')');
+    grd.addColorStop(1,   'rgba(40,48,62,'+(0.90*a)+')');
+    g.fillStyle = grd;
+    g.fillRect(0, cy-pipe/2, innerWidth, pipe);
+  }
+  g.lineCap = 'butt';
 }
 
 function beams(t, p, energy, heat){
   const ty = trussY(), L = rigLen();
-  // ── 光の筋（加算）
+  const lensY = ty + trussH()*0.42 + L*0.34 + L*0.22;
+
+  // ── 光の筋（加算）。★揺らさない。太さも色も、点いている間は動かさない
   g.globalCompositeOperation = 'lighter';
   for (const b of BEAMS){
-    b.on = Math.max(0, b.on - 0.055);      // ★すぐ消える。残すと眠くなる
-    // ★こすっている間は点いたまま。手の向きに一斉に振れる
-    if (hold > 0.15) b.on = Math.max(b.on, 0.55 + 0.4*Math.abs(S.jog||0));
-    const cx = innerWidth*b.cx;
-    // 灯体の首振り。★下向きが基準（トラスから床を照らす）
-    //   ★右レコードを触っている間は、演者の手が勝つ（2026-09-12 本人の要望）。
-    //     離せば自動に戻る。ずっと持っていないと動かない照明は演奏の邪魔になる
-    const auto = Math.sin(t*1.5*b.sw + b.base) * 0.85 * b.mirror;
-    const handA = (S.jog || 0) * 1.25;
-    const w = Math.max(S.jogw || 0, hold);
-    const a = auto*(1-w) + handA*w;   // ★溜め中は全部が同じ向きを向く
+    b.on = Math.max(0, b.on - 0.055);
     const power = b.on*b.on * (0.55 + energy);
     if (power < 0.012) continue;
-    // ★溜め中は色を揃える。ばらけていると散漫に見える
-    const hue = (p.h + b.hue*200*(1-hold) + t*90*(1-hold*0.8)) % 360;
-    // ★細い筋にする。太いと画面全体が白く飛ぶ（2026-09-12 本人の指摘）
-    const spread = (0.030 + 0.016*Math.sin(t*2.2 + b.base))
-                 * (1 - hold*0.45) * (1 + release*1.6);
-    const far = innerHeight*1.45;
+
+    // ★上の吊り灯体は手に連動しない。**こすりに反応するのは下の2本だけ**
+    //   （2026-09-12 本人の指摘）。上は仕込んだキュー通りに動く
+    const a = b.ang;
+    const hue = b.hueDeg;                       // ★灯体ごとに固定。churn させない
+    const half = M()*0.085;                     // 出口の半径 8.5cm
+    const spread = 0.055;                       // 開き角（固定）
+    const far = innerHeight*1.5;
+
     g.save();
-    // ★レンズの位置（ヘッドの先）から出す
-    g.translate(cx, ty + FS*0.18 + L*0.34 + L*0.22);
+    g.translate(innerWidth*b.cx, lensY);
     g.rotate(a);
-    const grd = g.createLinearGradient(0, 0, 0, far);
-    // ★根元だけ明るく、すぐ落とす。**長く引くと霧になって全部が白む**
-    grd.addColorStop(0,    'hsla('+hue+',100%,84%,'+(0.78*power)+')');
-    grd.addColorStop(0.14, 'hsla('+hue+',100%,66%,'+(0.30*power)+')');
-    grd.addColorStop(0.45, 'hsla('+hue+',100%,58%,'+(0.10*power)+')');
-    grd.addColorStop(1,    'hsla('+hue+',100%,52%,0)');
-    g.fillStyle = grd;
-    g.beginPath(); g.moveTo(0,0);
-    g.lineTo(-far*spread, far); g.lineTo(far*spread, far);
+
+    // 空気に散る光。**縁がぼやけた三角**
+    const haze = g.createLinearGradient(0, 0, 0, far);
+    haze.addColorStop(0,    'hsla('+hue+',95%,72%,'+(0.30*power)+')');
+    haze.addColorStop(0.18, 'hsla('+hue+',95%,58%,'+(0.10*power)+')');
+    haze.addColorStop(1,    'hsla('+hue+',95%,50%,0)');
+    g.fillStyle = haze;
+    g.beginPath(); g.moveTo(-half, 0); g.lineTo(half, 0);
+    g.lineTo(far*spread, far); g.lineTo(-far*spread, far);
     g.closePath(); g.fill();
-    // レンズの輝き
-    const gl = g.createRadialGradient(0,0,0, 0,0, L*1.2*(0.45+power));
-    gl.addColorStop(0, 'hsla('+hue+',100%,95%,'+(0.85*power)+')');
-    gl.addColorStop(1, 'hsla('+hue+',100%,60%,0)');
+
+    // 芯。★ビームは中心が硬く明るい。ここが無いと「もや」に見える
+    const core = g.createLinearGradient(0, 0, 0, far*0.62);
+    core.addColorStop(0,   'hsla('+hue+',80%,92%,'+(0.55*power)+')');
+    core.addColorStop(0.5, 'hsla('+hue+',95%,70%,'+(0.14*power)+')');
+    core.addColorStop(1,   'hsla('+hue+',95%,60%,0)');
+    g.fillStyle = core;
+    g.beginPath(); g.moveTo(-half*0.45, 0); g.lineTo(half*0.45, 0);
+    g.lineTo(far*spread*0.30, far*0.62); g.lineTo(-far*spread*0.30, far*0.62);
+    g.closePath(); g.fill();
+
+    // レンズ
+    const gl = g.createRadialGradient(0,0,0, 0,0, half*2.2);
+    gl.addColorStop(0, 'hsla('+hue+',70%,97%,'+(0.95*power)+')');
+    gl.addColorStop(1, 'hsla('+hue+',95%,60%,0)');
     g.fillStyle = gl;
-    g.beginPath(); g.arc(0,0, L*1.2*(0.45+power), 0, 6.2832); g.fill();
+    g.beginPath(); g.arc(0,0, half*2.2, 0, 6.2832); g.fill();
     g.restore();
   }
   g.globalCompositeOperation = 'source-over';
 
-  // ── 灯体そのもの（実体。逆光の黒いシルエット）
-  drawTruss(Math.min(1, heat*1.6));
+  // ── 灯体の実体（逆光の黒いシルエット）
+  const fade = Math.min(1, heat*1.6);
+  drawTruss(fade);
   for (const b of BEAMS){
-    const cx = innerWidth*b.cx;
-    const auto2 = b.ang;
-    const w2 = Math.max(S.jogw || 0, hold);
-    const a = auto2*(1-w2) + (S.jog || 0)*1.25*w2;
+    const a = b.ang;
+    const lw = Math.max(1.2, M()*0.012);
     g.save();
-    g.translate(cx, ty);
-    // ヨーク（吊り金具）
-    const fade = Math.min(1, heat*1.6);
-    g.strokeStyle = 'rgba(120,140,170,'+(0.45*fade)+')';
-    g.lineWidth = Math.max(1.5, FS*0.12);
-    g.beginPath(); g.moveTo(0, -FS*0.3); g.lineTo(0, FS*0.15); g.stroke();
-    g.rotate(a);
-    // 本体
-    g.fillStyle = 'rgba(18,22,30,'+(0.95*fade)+')';
-    g.strokeStyle = 'rgba(140,160,190,'+(0.35*fade)+')';
-    g.lineWidth = Math.max(1, FS*0.08);
-    const w = L*0.62;
+    g.translate(innerWidth*b.cx, ty);
+    // クランプ
+    g.fillStyle = 'rgba(30,36,46,'+(0.95*fade)+')';
+    g.fillRect(-L*0.20, -trussH()*0.62, L*0.40, trussH()*0.9);
+    // ベース
+    g.fillStyle = 'rgba(22,27,36,'+(0.96*fade)+')';
+    g.strokeStyle = 'rgba(140,158,186,'+(0.30*fade)+')';
+    g.lineWidth = lw;
+    g.beginPath(); g.rect(-L*0.28, trussH()*0.42, L*0.56, L*0.34);
+    g.fill(); g.stroke();
+    // ヨーク
+    g.translate(0, trussH()*0.42 + L*0.34);
+    g.strokeStyle = 'rgba(150,168,196,'+(0.34*fade)+')';
+    g.lineWidth = lw*1.6;
     g.beginPath();
-    g.moveTo(-w*0.42, 0); g.lineTo(w*0.42, 0);
-    g.lineTo(w*0.55, L*0.55); g.lineTo(-w*0.55, L*0.55);
-    g.closePath(); g.fill(); g.stroke();
+    g.moveTo(-L*0.28, 0); g.lineTo(-L*0.28, L*0.24);
+    g.moveTo( L*0.28, 0); g.lineTo( L*0.28, L*0.24);
+    g.stroke();
+    // ヘッド
+    g.translate(0, L*0.24);
+    g.rotate(a);
+    g.fillStyle = 'rgba(16,20,28,'+(0.97*fade)+')';
+    g.strokeStyle = 'rgba(150,168,196,'+(0.30*fade)+')';
+    g.lineWidth = lw;
+    g.beginPath(); g.rect(-L*0.20, -L*0.10, L*0.40, L*0.50);
+    g.fill(); g.stroke();
     g.restore();
   }
-}
-
-// ── 下からのアップライト ─────────────────────────
-// ★**こすっている間だけ**、床から立ち上がる（2026-09-12 本人の案）。
-//   つまみでは出せない「チュクチュク」に、光がクイックに反応する見せ場。
-// ★左右の端に1本ずつ。**2本で十分**（2026-09-12 本人の指示）。
-//   本数を減らして、その分だけ太く。散らすと迫力が出ない
-const UPS = [
-  {cx: 0.07, hue: 0.00, sw: 0.9, side: -1},
-  {cx: 0.93, hue: 0.55, sw: 1.2, side:  1},
-];
-
-function uplights(t, p, amt, jog){
-  if (amt < 0.02) return;
-  const y = innerHeight + Math.max(10, FS*0.6);
-  const far = innerHeight*1.35;
-  g.globalCompositeOperation = 'lighter';
-  for (const u of UPS){
-    const cx = innerWidth*u.cx;
-    // ★手の向きに合わせて、扇が一斉に倒れる。速さもそのまま出す
-    // ★端から内側へ向けて立てる。手の動きでその角度が振れる
-    const a = u.side*0.30 + jog*1.05 + Math.sin(t*3.1*u.sw + u.cx*6)*0.08;
-    const spread = 0.085 + 0.045*Math.abs(jog);   // ★太く
-    const hue = (p.h + 180 + u.hue*160 + t*140) % 360;
-    const pw = amt * (0.45 + 0.75*Math.abs(jog));
-    g.save();
-    g.translate(cx, y);
-    g.rotate(Math.PI + a);            // ★上へ向ける
-    const grd = g.createLinearGradient(0, 0, 0, far);
-    grd.addColorStop(0,    'hsla('+hue+',100%,86%,'+(0.85*pw)+')');
-    grd.addColorStop(0.16, 'hsla('+hue+',100%,66%,'+(0.32*pw)+')');
-    grd.addColorStop(1,    'hsla('+hue+',100%,52%,0)');
-    g.fillStyle = grd;
-    g.beginPath(); g.moveTo(0,0);
-    g.lineTo(-far*spread, far); g.lineTo(far*spread, far);
-    g.closePath(); g.fill();
-    // 足元の玉
-    const gl = g.createRadialGradient(0,0,0, 0,0, FS*3.6*(0.5+pw));
-    gl.addColorStop(0, 'hsla('+hue+',100%,92%,'+(0.9*pw)+')');
-    gl.addColorStop(1, 'hsla('+hue+',100%,60%,0)');
-    g.fillStyle = gl;
-    g.beginPath(); g.arc(0,0, FS*3.6*(0.5+pw), 0, 6.2832); g.fill();
-    g.restore();
-  }
-  g.globalCompositeOperation = 'source-over';
 }
 
 function fireBeams(n){
@@ -265,7 +242,10 @@ function fireBeams(n){
   // ★全部を同時に点けない。**面になった瞬間、光ではなく霧になる**
   if (n % 4 === 0) newLook(n);                      // ★小節の頭で型を替える
   const heavy = (n % 4 === 0);                      // 4拍に1回は全灯
+  const pl = pal();
   for (const b of BEAMS){
+    // ★色は点けるときに決める。**光っている最中に色が回るのは嘘**
+    b.hueDeg = (pl.h + b.hue*70 + ((Math.random()*3)|0)*40) % 360;
     if (heavy) { b.on = 1; continue; }
     if (b.phase === bar) b.on = Math.max(b.on, 0.9);
     else if (Math.random() < 0.25) b.on = Math.max(b.on, 0.7);
@@ -318,7 +298,7 @@ function draw(now){
 
   // 背景。★静かなときは色を回さない。回ると落ち着かない
   g.fillStyle = 'hsl('+((p.h + t*26*heat) % 360)+','
-              + (40 + 45*heat)+'%,'+(0.6 + energy*3.4)+'%)';
+              + (40 + 45*heat)+'%,'+(0.6 + energy*1.6)+'%)';
   g.fillRect(0,0,innerWidth,innerHeight);
   // ★静かなときはライトを出さない。**コードがゆっくり流れているだけでちょうどいい**
   //   （2026-09-12 本人の指摘）。動き出したら吊り込まれる
@@ -371,7 +351,7 @@ function draw(now){
   g.globalCompositeOperation = 'source-over';
 
   if (flash > 0.01){
-    g.fillStyle = 'rgba(255,255,255,'+(flash*0.30)+')';
+    g.fillStyle = 'rgba(255,255,255,'+(flash*0.16)+')';
     g.fillRect(0,0,innerWidth,innerHeight);
   }
   requestAnimationFrame(draw);
