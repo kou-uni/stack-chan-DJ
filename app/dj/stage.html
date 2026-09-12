@@ -34,13 +34,14 @@ function pal(){ return (S.talk && TALK[S.talk]) || SERIES[S.series] || SERIES.bl
 
 // ── 降ってくるコード ───────────────────────────────
 let LH = 0, ROWS = 0, FS = 0;
-// ★参考画像に合わせて**3面ディスプレイ**にする（2026-09-13 本人の要望）。
-//   中央が正面、左右は角度がついて奥へ逃げる。間に柱が立つ。**それが奥行き**
-//   x0/w は画面幅に対する割合。shear は傾き（正で右へ倒れる）
+// ★3面ディスプレイ。**中央は正面、左右は奥へ向いている。**
+//   字を傾けるだけでは遠近にならない（2026-09-13 失敗）。
+//   **裏で正面から描いて、台形に縮めて貼る。** 遠い端ほど背が低くなる
+const HORIZON = 0.54;          // 消失点の高さ（画面の割合）＝見ている人の目の高さ
 const PANELS = [
-  {x0: 0.030, w: 0.255, shear:  0.30, dim: 0.52},   // 左（奥へ）
-  {x0: 0.315, w: 0.370, shear:  0.00, dim: 1.00},   // 中央（正面）
-  {x0: 0.715, w: 0.255, shear: -0.30, dim: 0.52},   // 右（奥へ）
+  {x0: 0.000, w: 0.300, far: 'left',  farScale: 0.55, dim: 0.60},
+  {x0: 0.320, w: 0.360, far: null,    farScale: 1.00, dim: 1.00},
+  {x0: 0.700, w: 0.300, far: 'right', farScale: 0.55, dim: 0.60},
 ];
 let panels = [];
 
@@ -52,10 +53,14 @@ function layout(){
   LH = FS*1.22;
   ROWS = Math.ceil(innerHeight/LH)+3;
   panels = PANELS.map(pn => {
-    const w = innerWidth*pn.w;
-    const n = Math.max(3, Math.floor(w/(FS*6.4)));
-    const cw = w/n;
-    return {...pn, px: innerWidth*pn.x0, pw: w, cw,
+    const pw = innerWidth*pn.w;
+    // ★裏キャンバスは「実寸のパネル」。奥のパネルは実際にはもっと横に長い
+    const bw = pn.far ? pw/pn.farScale : pw;
+    const n = Math.max(3, Math.floor(bw/(FS*6.4)));
+    const cw = bw/n;
+    const off = document.createElement('canvas');
+    off.width = Math.ceil(bw); off.height = Math.ceil(innerHeight);
+    return {...pn, px: innerWidth*pn.x0, pw, bw, off, octx: off.getContext('2d'),
       cols: Array.from({length:n}, (_,i)=>({
         x: i*cw,
         off: Math.random()*ROWS,
@@ -537,22 +542,21 @@ function draw(now){
   //   （2026-09-12 本人の指摘）。動き出したら吊り込まれる
   stepHeads(dt);
 
-  // ── ① 会場の奥：3面のディスプレイ。**ここにコードが映っている**
+  // ── ① 会場の奥：3面のディスプレイ。**裏で正面から描いて、台形に貼る**
   const TAIL = 26 + 14*heat;
-  g.textBaseline = 'top';
-  g.font = '600 '+FS+'px ui-monospace,SFMono-Regular,Menlo,monospace';
-  for (const pn of panels){
-    // パネルの地。★画面そのものが薄く光っている
-    g.fillStyle = 'hsla('+p.h+',60%,'+(1.5 + 3.5*heat)*pn.dim+'%,1)';
-    g.fillRect(pn.px, 0, pn.pw, innerHeight);
+  const flow = (0.22 + heat*2.4 + energy*6.0) * (1 - hold*0.45) + release*14.0;
+  const hy = innerHeight*HORIZON;
 
-    g.save();
-    g.beginPath(); g.rect(pn.px, 0, pn.pw, innerHeight); g.clip();
-    g.translate(pn.px, 0);
-    g.transform(1, 0, pn.shear, 1, 0, 0);      // ★角度をつけて奥へ逃がす
-    g.globalCompositeOperation = 'lighter';
+  for (const pn of panels){
+    const o = pn.octx;
+    o.setTransform(1,0,0,1,0,0);
+    o.globalCompositeOperation = 'source-over';
+    o.fillStyle = 'hsla('+p.h+',60%,'+(1.5 + 3.5*heat)+'%,1)';
+    o.fillRect(0, 0, pn.bw, innerHeight);
+    o.textBaseline = 'top';
+    o.font = '600 '+FS+'px ui-monospace,SFMono-Regular,Menlo,monospace';
+    o.globalCompositeOperation = 'lighter';
     for (const c of pn.cols){
-      const flow = (0.22 + heat*2.4 + energy*6.0) * (1 - hold*0.45) + release*14.0;
       c.off += dt * c.spd * flow;
       if (c.off > ROWS) c.off -= ROWS;
       for (let r=0; r<ROWS; r++){
@@ -562,38 +566,57 @@ function draw(now){
         if (!txt) continue;
         const hue = (p.h + c.hue*(30+140*heat) + (p.h2-p.h)*(d/TAIL) + t*(2+56*heat)) % 360;
         const a = Math.max(0, 1 - d/TAIL) * (0.045 + 1.05*heat + energy*0.45)
-                * (1 - hold*0.25) * (1 + release*0.9) * pn.dim;
+                * (1 - hold*0.25) * (1 + release*0.9);
         if (d < 0.9){
-          g.shadowColor = 'hsl('+hue+',100%,72%)';
-          g.shadowBlur = (0 + 30*heat + 34*energy) * pn.dim;
-          g.fillStyle = heat > 0.35 ? p.core
-                      : 'hsla('+hue+',45%,'+(26 + 56*heat)+'%,'+(0.42*pn.dim)+')';
+          o.shadowColor = 'hsl('+hue+',100%,72%)';
+          o.shadowBlur = 0 + 30*heat + 34*energy;
+          o.fillStyle = heat > 0.35 ? p.core
+                      : 'hsla('+hue+',45%,'+(26 + 56*heat)+'%,0.42)';
         } else {
-          g.shadowColor = 'hsl('+hue+',100%,62%)';
-          g.shadowBlur = (0 + 14*heat + 20*energy) * pn.dim;
-          g.fillStyle = 'hsla('+hue+','+(45 + 55*heat)+'%,'
+          o.shadowColor = 'hsl('+hue+',100%,62%)';
+          o.shadowBlur = 0 + 14*heat + 20*energy;
+          o.fillStyle = 'hsla('+hue+','+(45 + 55*heat)+'%,'
                       + (15 + 55*heat + 16*(1-d/TAIL))+'%,'+a+')';
         }
-        g.fillText(txt, c.x, r*LH);
+        o.fillText(txt, c.x, r*LH);
         if (Math.random() < 0.0004 + 0.006*heat + pulse*0.06*heat){
           c.rows[r] = CODE[(Math.random()*CODE.length)|0];
         }
       }
     }
-    g.shadowBlur = 0;
-    g.globalCompositeOperation = 'source-over';
-    g.restore();
+    o.shadowBlur = 0;
+
+    // ★台形に貼る。細い短冊に切って、遠いほど背を低くする。
+    //   これが遠近。字を傾けるのは遠近ではない
+    const N = 64;
+    for (let i=0; i<N; i++){
+      const u0 = i/N, u1 = (i+1)/N;
+      // u=0 が手前（中央寄り）、u=1 が奥（画面の端）
+      const uu = pn.far === 'left' ? 1-u0 : u0;
+      const sx = uu*pn.bw, sw = pn.bw/N;
+      const s0 = 1 + (pn.farScale - 1) * u0;
+      const dx = pn.px + (pn.far === 'left' ? u0 : u0) * pn.pw;
+      const dh = innerHeight * s0;
+      const dy = hy - hy * s0;
+      g.globalAlpha = pn.dim * (1 - 0.35*u0*(pn.far?1:0));
+      g.drawImage(pn.off, sx, 0, sw, innerHeight,
+                  dx, dy, pn.pw/N + 1, dh);
+    }
+    g.globalAlpha = 1;
   }
 
-  // ── 柱。★パネルの間に立つ構造材。これが奥行きを作る
-  g.fillStyle = 'rgba(2,3,6,0.94)';
-  for (const [a0, a1] of [[0, PANELS[0].x0], [0.285, 0.315],
-                          [0.685, 0.715], [0.970, 1.0]]){
-    g.fillRect(innerWidth*a0, 0, innerWidth*(a1-a0), innerHeight);
+  // ── 柱。★奥へ向かって細く、暗くなる。**これも遠近**
+  g.fillStyle = 'rgba(2,3,6,0.96)';
+  for (const [a0, a1] of [[0.300, 0.320], [0.680, 0.700]]){
+    const x = innerWidth*a0, w = innerWidth*(a1-a0);
+    g.beginPath();
+    g.moveTo(x, 0); g.lineTo(x+w, innerHeight*0.03);
+    g.lineTo(x+w, innerHeight*0.97); g.lineTo(x, innerHeight);
+    g.closePath(); g.fill();
   }
-  // 柱のふち。★手前側の角だけ、わずかに光を拾う
-  g.fillStyle = 'hsla('+p.h+',70%,60%,'+(0.10 + 0.16*heat)+')';
-  for (const x of [0.285, 0.315, 0.685, 0.715]){
+  // 手前の角が光を拾う
+  g.fillStyle = 'hsla('+p.h+',70%,62%,'+(0.10 + 0.18*heat)+')';
+  for (const x of [0.300, 0.700]){
     g.fillRect(innerWidth*x - 1, 0, 2, innerHeight);
   }
 

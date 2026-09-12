@@ -15,6 +15,7 @@ function ctx() {
     get(_, k) {
       if (k === 'createLinearGradient' || k === 'createRadialGradient') return () => grad;
       if (typeof k === 'string' && k in calls) return (...a) => { calls[k]++; };
+      if (k === 'canvas') return el();
       return () => {};
     },
     set() { return true; },
@@ -25,7 +26,8 @@ const el = () => ({ getContext: ctx, style: {}, width: 0, height: 0,
 
 let frames = 0, raf = null;
 const sandbox = {
-  document: { getElementById: el, addEventListener(){}, },
+  // ★裏キャンバスも作れるようにする（3面ディスプレイの遠近で使う）
+  document: { getElementById: el, createElement: () => el(), addEventListener(){} },
   addEventListener(){}, innerWidth: 1440, innerHeight: 900, devicePixelRatio: 2,
   performance: { now: () => frames * 16.7 },
   requestAnimationFrame(fn){ raf = fn; },
