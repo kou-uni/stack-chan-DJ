@@ -182,12 +182,14 @@ function beams(t, p, energy, heat){
   for (const b of BEAMS){
     // ★シャッター。**灯体は止まったまま、光だけが刻む。** これが派手さの正体
     b.on = Math.max(0, b.on - 0.055);
+    b.pw = 0;
     // ★シャッターで刻む。**灯体は止まったまま、光だけがチカチカする。**
     //   これが DJ の現場の派手さの正体（2026-09-12 本人の指摘）
     const rate = 12 + 10*heat;                  // 1秒あたりの開閉
     const ph16 = (t*rate + b.phase*0.5) % 1;
     const shut = 0.30 + 0.70*Math.pow(1 - ph16, 1.6);
     const power = b.on*b.on * (0.55 + energy) * (0.35 + 0.65*shut);
+    b.pw = power;                    // ★反射を描くために残す
     if (power < 0.012) continue;
 
     // ★上の吊り灯体は手に連動しない。**こすりに反応するのは下の2本だけ**
@@ -313,6 +315,37 @@ function rig(heat){
     g.restore();
   }
   g.lineCap = 'butt';
+
+  // ── 反射。★光ると、自分の筐体とトラスがその色を拾う
+  //   （2026-09-12 本人の指摘：真っ黒のままだった）
+  g.globalCompositeOperation = 'lighter';
+  for (const b of BEAMS){
+    const pw = b.pw || 0;
+    if (pw < 0.02) continue;
+    const hue = b.hueDeg, cx = innerWidth*b.cx;
+    const lensY = ty + trussH()*0.42 + L*0.34 + L*0.22;
+
+    // ① 灯体まわりの散り。**レンズの近くがいちばん明るい**
+    const sp = g.createRadialGradient(cx, lensY, 0, cx, lensY, L*1.5);
+    sp.addColorStop(0,   'hsla('+hue+',85%,70%,'+(0.30*pw)+')');
+    sp.addColorStop(0.4, 'hsla('+hue+',90%,58%,'+(0.10*pw)+')');
+    sp.addColorStop(1,   'hsla('+hue+',90%,50%,0)');
+    g.fillStyle = sp;
+    g.beginPath(); g.arc(cx, lensY, L*1.5, 0, 6.2832); g.fill();
+
+    // ② トラスに当たる。**弦材の丸みに沿って、上側だけ強く光る**
+    const h = trussH(), pipe = M()*0.05, top = ty - h/2, bot = ty + h/2;
+    const w = L*2.6;
+    for (const [cy, k] of [[top, 0.55], [bot, 1.0]]){   // 下弦のほうが近い
+      const gr = g.createLinearGradient(cx-w, 0, cx+w, 0);
+      gr.addColorStop(0,   'hsla('+hue+',90%,60%,0)');
+      gr.addColorStop(0.5, 'hsla('+hue+',85%,72%,'+(0.34*pw*k)+')');
+      gr.addColorStop(1,   'hsla('+hue+',90%,60%,0)');
+      g.fillStyle = gr;
+      g.fillRect(cx-w, cy-pipe*0.42, w*2, pipe*0.55);
+    }
+  }
+  g.globalCompositeOperation = 'source-over';
 }
 
 const UPS = [
