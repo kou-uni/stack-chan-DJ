@@ -29,6 +29,25 @@
 
 **手で探すな。落ちるようにしておけ。**
 
+### ★★ 出す前に検算する。指摘されてからでは遅い
+
+**「見てください」と言う前に、機械で確かめる。**
+
+```bash
+node tests/js/render_check.js app/dj/stage.html   # 落ちずに描けるか
+node tests/js/geom_check.js   app/dj/stage.html   # 幾何・明るさ・重なり
+./.venv/bin/python -m pytest tests/ -q            # 全体
+./.venv/bin/python scripts/check_mapping.py       # 実機の割り当て
+```
+
+**手で確かめたことは、その場で検算に足す。**
+一度でも手で測ったなら、次からは機械が測る。
+
+> 本人の指摘（2026-09-13）：**「お前なんで言われるまでやらないの？」**
+>
+> 数字で確かめられることを、人に見つけさせていた。
+> **HTTP 200 と「落ちずに描けた」を、確認だと思っていた。**
+
 ### ★ 学びは指示されなくても書き足す
 
 **[docs/learnings.md](docs/learnings.md) を、指示を待たずに更新すること。**

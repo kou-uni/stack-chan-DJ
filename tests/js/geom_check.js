@@ -23,6 +23,7 @@ sb.window = sb; vm.createContext(sb);
 const sb0 = sb; let frameN = 0; const rafFn = (x)=>raf(x);
 vm.runInContext(js, sb, {timeout:5000});
 const D = sb.__debug;
+const src = html;
 
 let bad = 0;
 const ok = (name, cond, extra='') => {
@@ -131,9 +132,51 @@ ok('どの型も振り幅を超えない',
    D.LOOKS.every((f,_)=> D.BEAMS.every((b,i)=>
      Math.abs(f(b,i,D.BEAMS.length)) <= D.PAN_MAX + 0.35)));
 
+// ── ★出す前に必ず回す検算（2026-09-13）────────────────
+// 本人に指摘されてから手で確かめていた。**それでは遅い。**
+// ここに入れておけば、変えるたびに機械が見る
+
+// ① 光の出口が、描いた筒の先と一致しているか
+{
+  const HEAD_H = +src.match(/HEAD_H = ([0-9.]+)/)[1];
+  const BASE_Y = +src.match(/BASE_Y = ([0-9.]+)/)[1];
+  const BASE_H = +src.match(/BASE_H = ([0-9.]+)/)[1];
+  const YOKE_H = +src.match(/YOKE_H = ([0-9.]+)/)[1];
+  const L = (1600/9)*0.55*D.TRUSS_NEAR;
+  let worst = 0;
+  for (const a of [0, -0.8, 0.8, D.PAN_MAX, -D.PAN_MAX]){
+    const lp = D.lensPos(800, a);
+    const drawn = {x: 800 + Math.sin(a)*L*HEAD_H, y: D.pivotY() + Math.cos(a)*L*HEAD_H};
+    worst = Math.max(worst, Math.abs(lp.x-drawn.x), Math.abs(lp.y-drawn.y));
+  }
+  ok('光の出口と筒の先が一致する', worst < 0.5, 'ずれ ' + worst.toFixed(2) + 'px');
+}
+
+// ② 素材が明るすぎないか。**明るさは光だまりから来るべき**
+{
+  const mats = [...src.matchAll(/rgb\(\[\s*(\d+),\s*(\d+),\s*(\d+)\s*\]\)/g)]
+    .map(m => Math.max(+m[1], +m[2], +m[3]));
+  const mx = mats.length ? Math.max(...mats) : 0;
+  ok('構造材の素地が暗い（最大60未満）', mx < 60, '最大 ' + mx);
+}
+
+// ③ 灯体同士がぶつからない
+{
+  const cs = D.BEAMS.map(b => b.cx).sort((a,b)=>a-b);
+  let minGap = 9;
+  for (let i=1;i<cs.length;i++) minGap = Math.min(minGap, cs[i]-cs[i-1]);
+  ok('灯体の間隔が十分', minGap > 0.15, '最小 ' + minGap.toFixed(2));
+}
+
+// ④ パネルと柱が重ならない
+{
+  const P = D.PANELS;
+  ok('柱の位置がパネルの隙間に入る',
+     P[0].x0 + P[0].w <= P[1].x0 + 1e-9 && P[1].x0 + P[1].w <= P[2].x0 + 1e-9);
+}
+
 // ── 構造材の統一（2026-09-13 本人の指摘）────────────
 // ★横も縦も**同じ素材・同じ粒度・同じ太さ**で描く。別々に描くと柱だけ浮く
-const src = fs.readFileSync(process.argv[2], 'utf8');
 ok('トラスは1つの関数で描く', /function trussRun\(/.test(src));
 const calls = (src.match(/trussRun\(/g) || []).length - 1;   // 定義を除く
 ok('横と縦の両方に使っている（3箇所以上）', calls >= 3, calls + '箇所');
