@@ -586,21 +586,29 @@ function draw(now){
     }
     o.shadowBlur = 0;
 
-    // ★台形に貼る。細い短冊に切って、遠いほど背を低くする。
-    //   これが遠近。字を傾けるのは遠近ではない
-    const N = 64;
+    // ★**射影変換**で貼る。等間隔に切って高さだけ縮めるのはアフィンで、遠近ではない
+    //   （2026-09-13：垂れ幕に見えていた原因）。
+    //   奥へ行くほど**横方向も詰まる**。それが遠近のいちばん強い手がかり。
+    //
+    //     高さの倍率  s(u) = k / (k + u(1-k))
+    //     元画像の位置 su   = k·u / (1 - u(1-k))     （k = 奥端の倍率）
+    const N = 96, k = pn.farScale;
     for (let i=0; i<N; i++){
       const u0 = i/N, u1 = (i+1)/N;
-      // u=0 が手前（中央寄り）、u=1 が奥（画面の端）
-      const uu = pn.far === 'left' ? 1-u0 : u0;
-      const sx = uu*pn.bw, sw = pn.bw/N;
-      const s0 = 1 + (pn.farScale - 1) * u0;
-      const dx = pn.px + (pn.far === 'left' ? u0 : u0) * pn.pw;
+      const su = (a)=> k*a / (1 - a*(1-k));
+      const s0 = k / (k + u0*(1-k));
+      const t0 = su(u0), t1 = su(u1);
+      // u=0 は中央寄り（手前）、u=1 は画面の端（奥）
+      const mirror = pn.far === 'left';
+      const sx = (mirror ? 1-t1 : t0) * pn.bw;
+      const sw = Math.max(1, (t1-t0) * pn.bw);
+      const dx = pn.px + (mirror ? (1-u1) : u0) * pn.pw;
+      const dw = pn.pw/N + 1;
       const dh = innerHeight * s0;
       const dy = hy - hy * s0;
-      g.globalAlpha = pn.dim * (1 - 0.35*u0*(pn.far?1:0));
-      g.drawImage(pn.off, sx, 0, sw, innerHeight,
-                  dx, dy, pn.pw/N + 1, dh);
+      // ★奥ほど暗い。空気に負ける
+      g.globalAlpha = pn.dim * (1 - 0.42*u0*(pn.far ? 1 : 0));
+      g.drawImage(pn.off, sx, 0, sw, innerHeight, dx, dy, dw, dh);
     }
     g.globalAlpha = 1;
   }
