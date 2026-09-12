@@ -51,6 +51,17 @@ const PANELS = [
   {x0: 0.830, w: 0.170, side: 'right', farScale: CENTER_K, dim: 0.62},
 ];
 let panels = [];
+// ★夜空。屋外の会場にする（2026-09-13 本人の案）。
+//   星は**一度だけ**決める。毎フレーム作り直すと、ちらついて安っぽい
+let stars = [];
+function makeStars(){
+  let seed = 20260913;
+  const rnd = () => (seed = (seed*1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  stars = Array.from({length: 260}, () => {
+    const r = rnd();
+    return {x: rnd(), y: rnd(), m: 0.25 + r*r*0.75, tw: rnd()*6.28};
+  });
+}
 
 function layout(){
   const dpr = Math.min(devicePixelRatio||1, 2);
@@ -78,7 +89,7 @@ function layout(){
       }))};
   });
 }
-addEventListener('resize', layout); layout();
+addEventListener('resize', layout); layout(); makeStars();
 
 // ── スポットライト ───────────────────────────────
 // ★ライトは**会場のトラスに吊られている。** 光源が宙に浮いていると嘘に見える
@@ -436,42 +447,8 @@ const UPS = [
   {cx: 0.83, hue: 0.55, side:  1},
 ];
 
-function uplights(t, p, amt, jog){
-  if (amt < 0.02) return;
-  const y = innerHeight + M()*0.06;
-  const far = innerHeight*1.35;
-  g.globalCompositeOperation = 'lighter';
-  for (const u of UPS){
-    const cx = innerWidth*u.cx;
-    const a = u.side*0.30 + jog*1.05;          // ★揺らさない。手の動きだけ
-    const spread = 0.075;                      // ★固定
-    const hue = (p.h + 180 + u.hue*160) % 360; // ★固定
-    const pw = amt * (0.30 + 0.55*Math.abs(jog));
-    const half = M()*0.10;
-    g.save();
-    g.translate(cx, y);
-    g.rotate(Math.PI + a);                     // ★上へ向ける
-    const grd = g.createLinearGradient(0, 0, 0, far);
-    grd.addColorStop(0,    'hsla('+hue+',95%,84%,'+(0.72*pw)+')');
-    grd.addColorStop(0.14, 'hsla('+hue+',95%,64%,'+(0.24*pw)+')');
-    grd.addColorStop(1,    'hsla('+hue+',95%,52%,0)');
-    g.fillStyle = grd;
-    g.beginPath(); g.moveTo(-half, 0); g.lineTo(half, 0);
-    g.lineTo(far*spread, far); g.lineTo(-far*spread, far);
-    g.closePath(); g.fill();
-    const gl = g.createRadialGradient(0,0,0, 0,0, half*2.6);
-    gl.addColorStop(0, 'hsla('+hue+',80%,95%,'+(0.9*pw)+')');
-    gl.addColorStop(1, 'hsla('+hue+',95%,60%,0)');
-    g.fillStyle = gl;
-    g.beginPath(); g.arc(0,0, half*2.6, 0, 6.2832); g.fill();
-    g.restore();
-  }
-  g.globalCompositeOperation = 'source-over';
-}
-
 function stageWell(){
-  // ★実機は白い。**背後が明るいと顔が沈む。**
-  //   中央下だけを暗く落として、スタックチャンを浮かせる（実物の配置に合わせた）
+  // ★実機は白い。**背後が明るいと顔が沈む。** 中央下だけ暗く落として浮かせる
   const cx = innerWidth*0.5, cy = innerHeight*1.02;
   const r = Math.min(innerWidth*0.42, innerHeight*0.85);
   const gr = g.createRadialGradient(cx, cy, 0, cx, cy, r);
@@ -484,65 +461,113 @@ function stageWell(){
 
 function spill(clip, objX, yTop, yBot, gain){
   // ★物に当たる光。**線ではなく、まだら。**
-  //   光は上の1点から来るので、当たるのは面の一部だけ。そこから四方に落ちる
-  //   （2026-09-13 本人の指摘：一様に光る／線的でダサい）
-  let any = false;
+  //   光は1点から来るので、当たるのは面の一部だけ。そこから四方に落ちる
   g.save();
   clip();
   g.globalCompositeOperation = 'lighter';
   const ly = lensY();
-  for (const b of BEAMS){
+  // ★下からの光も物に当たる。上だけ見ていた（2026-09-13 本人の指摘）
+  const sources = [
+    ...BEAMS.map(b => ({pw: b.pw||0, hue: b.hueDeg,
+                        x: innerWidth*b.cx + Math.tan(b.ang)*(innerHeight-ly)*0.55,
+                        up: false})),
+    ...UPS.map(u => ({pw: u.pw||0, hue: u.hueDeg, x: u.x||0, up: true})),
+  ];
+  for (const b of sources){
     const pw = b.pw || 0;
     if (pw < 0.03) continue;
-    // その灯体の光が落ちる横位置
-    const hx = innerWidth*b.cx + Math.tan(b.ang) * (innerHeight - ly) * 0.55;
+    const hx = b.x;
     const d = Math.abs(hx - objX) / (M()*2.0);
     const k = (gain||1) * pw / (1 + d*d*2.2);       // ★逆二乗で落ちる
     if (k < 0.02) continue;
-    any = true;
-    // 当たるのは上寄り（光は上から来る）
-    const py = yTop + (yBot - yTop) * (0.10 + 0.18*Math.random()*0);
+    // ★上からの光は上寄り、下からの光は下寄りに当たる
+    const py = b.up ? yTop + (yBot - yTop)*0.86 : yTop + (yBot - yTop)*0.12;
     const r  = M()*1.5*(0.55 + pw);
     const gp = g.createRadialGradient(hx, py, 0, hx, py, r);
-    gp.addColorStop(0,   'hsla('+b.hueDeg+',80%,84%,'+(0.38*k)+')');
-    gp.addColorStop(0.35,'hsla('+b.hueDeg+',85%,66%,'+(0.14*k)+')');
-    gp.addColorStop(1,   'hsla('+b.hueDeg+',85%,55%,0)');
+    gp.addColorStop(0,   'hsla('+b.hue+',80%,84%,'+(0.38*k)+')');
+    gp.addColorStop(0.35,'hsla('+b.hue+',85%,66%,'+(0.14*k)+')');
+    gp.addColorStop(1,   'hsla('+b.hue+',85%,55%,0)');
     g.fillStyle = gp;
     g.fillRect(objX - r*1.6, yTop, r*3.2, yBot - yTop);
   }
   g.globalCompositeOperation = 'source-over';
   g.restore();
-  return any;
 }
 
 function litColor(p){
-  // ★いま出ている光の平均。**床も天井も柱も、この色を拾う**
-  //   （2026-09-13 本人の指摘：反射は光の色になるはず）
+  // ★いま出ている光の平均。床も天井も柱も、この色を拾う
   let hue = 0, w = 0;
   for (const b of BEAMS){ const q = b.pw || 0; hue += b.hueDeg*q; w += q; }
+  for (const u of UPS){   const q = u.pw || 0; hue += (u.hueDeg||0)*q; w += q; }
   return {hue: w > 0 ? hue/w : p.h, pow: Math.min(1.4, w)};
 }
 
 function wash(p, amt){
-  // ★実際のライブは**部屋全体が一色に染まる**（参考画像・2026-09-13）。
-  //   局所的なビームだけでは、あの「浸っている」感じが出ない
+  // ★実際のライブは部屋全体が一色に染まる。局所的なビームだけでは足りない
   if (amt < 0.02) return;
-  let hue = 0, w = 0;
-  for (const b of BEAMS){ const q = b.pw || 0; hue += b.hueDeg*q; w += q; }
-  hue = w > 0 ? hue/w : p.h;
+  const L = litColor(p);
   g.globalCompositeOperation = 'lighter';
   const gr = g.createRadialGradient(innerWidth*0.5, trussY(), 0,
                                     innerWidth*0.5, trussY(), innerHeight*1.5);
-  gr.addColorStop(0,   'hsla('+hue+',92%,52%,'+(0.26*amt)+')');
-  gr.addColorStop(0.45,'hsla('+hue+',95%,42%,'+(0.15*amt)+')');
-  gr.addColorStop(1,   'hsla('+hue+',95%,34%,'+(0.06*amt)+')');
+  gr.addColorStop(0,   'hsla('+L.hue+',92%,52%,'+(0.26*amt)+')');
+  gr.addColorStop(0.45,'hsla('+L.hue+',95%,42%,'+(0.15*amt)+')');
+  gr.addColorStop(1,   'hsla('+L.hue+',95%,34%,'+(0.06*amt)+')');
   g.fillStyle = gr;
   g.fillRect(0, 0, innerWidth, innerHeight);
   g.globalCompositeOperation = 'source-over';
 }
 
-// ★客のシルエットは描かない。**手前にスタックチャンの実機がいる**（本人の指摘）。
-//   画面にも客を描くと、二重になって嘘になる
+function uplights(t, p, amt, jog){
+  // ★ステージ前縁に置いた**アップライト**。こすっている間だけ立ち上がる。
+  //   上の吊り灯体と同じ質にする（層を重ねて縁を溶かす・逆二乗・揺らさない）
+  if (amt < 0.02) return;
+  const y = innerHeight*0.965;
+  const far = innerHeight*1.5;
+  for (const u of UPS){
+    const cx = innerWidth*u.cx;
+    const a = u.side*0.26 + jog*1.05;
+    const pw = amt * (0.35 + 0.65*Math.abs(jog));
+    const hue = (p.h + 170 + u.hue*150) % 360;
+    const half = M()*0.13;
+    u.pw = pw; u.hueDeg = hue; u.x = cx;      // 反射で使う
+
+    g.globalCompositeOperation = 'lighter';
+    g.save();
+    g.translate(cx, y);
+    g.rotate(Math.PI + a);                    // 上へ向ける
+    // ★層を重ねて縁を溶かす。逆二乗で落とす
+    for (const [wm, am, sat, lig] of [[5.0, 0.014, 60, 42],
+                                      [3.2, 0.026, 74, 50],
+                                      [2.0, 0.046, 86, 60],
+                                      [1.2, 0.080, 84, 72],
+                                      [0.6, 0.140, 40, 92]]){
+      const gg = g.createLinearGradient(0, 0, 0, far);
+      for (const s2 of [0, 0.08, 0.18, 0.34, 0.58, 1.0]){
+        const d = 1 + s2*6.0;
+        gg.addColorStop(s2, 'hsla('+hue+','+sat+'%,'+lig+'%,'+(am*pw/(d*d))+')');
+      }
+      g.fillStyle = gg;
+      g.beginPath();
+      g.moveTo(-half*wm, 0); g.lineTo(half*wm, 0);
+      g.lineTo(far*0.075*wm, far); g.lineTo(-far*0.075*wm, far);
+      g.closePath(); g.fill();
+    }
+    g.restore();
+    // レンズのブルーム
+    for (const [r, a2, s2, l2] of [[4.0, 0.09, 88, 55], [1.8, 0.32, 66, 80],
+                                   [0.8, 0.85, 20, 98]]){
+      const gl = g.createRadialGradient(cx, y, 0, cx, y, half*r);
+      gl.addColorStop(0, 'hsla('+hue+','+s2+'%,'+l2+'%,'+(a2*pw)+')');
+      gl.addColorStop(1, 'hsla('+hue+',95%,55%,0)');
+      g.fillStyle = gl;
+      g.beginPath(); g.arc(cx, y, half*r, 0, 6.2832); g.fill();
+    }
+    g.globalCompositeOperation = 'source-over';
+    // ★灯体の実体（床置きの小さな箱）。光源が宙に浮かない
+    g.fillStyle = 'rgba(4,5,9,0.95)';
+    rrect(cx - M()*0.16, y, M()*0.32, M()*0.20, M()*0.03); g.fill();
+  }
+}
 
 function fireBeams(n){
   // ★拍ごとに違う組が点く。**毎回同じだと機械に見える**
@@ -840,61 +865,49 @@ function draw(now){
     g.fillRect(innerWidth*0.16, backY - M()*0.12, innerWidth*0.68, M()*0.22);
   }
 
-  // ── ウォールの上。★実際の会場は**暗幕と鉄骨、チェーンモーター、ケーブル**
-  //   ここが空だと、書き割りに見える（2026-09-13 本人の指摘）
+  // ── ウォールの上は**夜空**。屋外の会場（2026-09-13 本人の案）。
+  //   トラスは空を背にして架かる
   {
-    const kc = CENTER_K;
-    const topY = hy - hy*kc;                 // 奥の壁の上端
-    // ★天井は**H鋼**が並ぶ。一様なグラデでは、ただの汚れに見える。
-    //   見えるのは**下を向いた面（下フランジ）だけ**。そこに光が当たる
-    const LC = litColor(p);
-    for (let i=1; i<=6; i++){
-      const u = i/7;
-      const yy = topY * (1 - u*u*0.92);       // 手前ほど間隔が広い
-      const s = 1 - yy/topY;
-      const xl = innerWidth*0.175*(1-s);
-      const xr = innerWidth*0.825 + (innerWidth-innerWidth*0.825)*s;
-      const th = Math.max(2, M()*0.10*(0.45 + 0.55*s));   // 手前ほど太い
-      // ウェブ（縦板）は影
-      g.fillStyle = 'rgba(3,4,7,0.92)';
-      g.fillRect(xl, yy - th*0.5, xr-xl, th);
-      // 下フランジ。★ここだけが光を受ける
-      const fl = g.createLinearGradient(0, yy + th*0.18, 0, yy + th*0.5);
-      const li = (0.05 + 0.42*LC.pow) * (0.35 + 0.65*s);   // 手前ほど強い
-      fl.addColorStop(0, 'hsla('+LC.hue+',70%,72%,'+li+')');
-      fl.addColorStop(1, 'hsla('+LC.hue+',70%,60%,0)');
-      g.fillStyle = fl;
-      g.fillRect(xl, yy + th*0.18, xr-xl, th*0.34);
+    const skyH = hy - hy*CENTER_K;           // 奥の壁の上端まで
+    // 地平近くはうっすら明るい（街明かり）。**真っ黒な空は嘘**
+    const sg = g.createLinearGradient(0, 0, 0, skyH);
+    sg.addColorStop(0,   'rgb(2,3,8)');
+    sg.addColorStop(0.7, 'rgb(5,7,16)');
+    sg.addColorStop(1,   'rgb(10,13,26)');
+    g.fillStyle = sg;
+    g.fillRect(0, 0, innerWidth, skyH);
+
+    // 星。★下ほど少なく見える（空気が厚い）
+    for (const st of stars){
+      const y = st.y * skyH;
+      const depth = 0.35 + 0.65*(1 - st.y);
+      const tw = 0.75 + 0.25*Math.sin(t*1.6 + st.tw);
+      const a = st.m * depth * tw * (1 - Math.min(0.75, heat*0.75));  // 照明が強いと星は負ける
+      if (a < 0.02) continue;
+      g.fillStyle = 'rgba(214,226,255,'+a+')';
+      const r = Math.max(0.6, st.m*1.7);
+      g.fillRect(st.x*innerWidth, y, r, r);
     }
-    // 吊り用のチェーンとケーブル。★トラスは宙に浮かない
-    g.strokeStyle = 'rgba(60,70,88,'+(0.45 + 0.2*heat)+')';
-    g.lineWidth = Math.max(1, M()*0.012);
+
+    // 吊り。★トラスは空に浮かない。ワイヤーで上から吊られている
+    g.strokeStyle = 'rgba(70,80,100,0.40)';
+    g.lineWidth = Math.max(1, M()*0.010);
     g.beginPath();
-    for (const x of [0.10, 0.28, 0.5, 0.72, 0.90]){
-      g.moveTo(innerWidth*x, 0); g.lineTo(innerWidth*x + M()*0.03, trussY()-trussH()*0.5);
+    for (const x of [0.12, 0.30, 0.50, 0.70, 0.88]){
+      g.moveTo(innerWidth*x, 0);
+      g.lineTo(innerWidth*x + M()*0.02, trussY()-trussH()*0.5);
     }
     g.stroke();
-    // チェーンモーター（黒い箱）
+    // チェーンモーター
     g.fillStyle = 'rgba(4,5,9,0.95)';
-    for (const x of [0.28, 0.72]){
-      rrect(innerWidth*x - M()*0.09, trussY()-trussH()*1.5,
-            M()*0.18, trussH()*1.05, M()*0.03); g.fill();
+    for (const x of [0.30, 0.70]){
+      rrect(innerWidth*x - M()*0.09, trussY()-trussH()*1.4,
+            M()*0.18, trussH()*1.0, M()*0.03); g.fill();
     }
-    // だらんと垂れたケーブル
-    g.strokeStyle = 'rgba(8,10,15,0.9)';
-    g.lineWidth = Math.max(1, M()*0.016);
-    g.beginPath();
-    for (const [x0, x1, sag] of [[0.14, 0.30, 0.09], [0.66, 0.86, 0.11]]){
-      g.moveTo(innerWidth*x0, trussY()+trussH()*0.4);
-      g.quadraticCurveTo(innerWidth*(x0+x1)/2, trussY()+trussH()*0.4 + innerHeight*sag,
-                         innerWidth*x1, trussY()+trussH()*0.4);
-    }
-    g.stroke();
   }
 
   // ── ② 空気中の光。パネルの手前を通る
   if (heat > 0.06) beams(t, p, energy, heat);
-  uplights(t, p, playing ? hold : 0, S.jog || 0);
 
   // ── ③ 部屋全体が染まる
   wash(p, heat);
@@ -965,6 +978,9 @@ function draw(now){
       }, x, yTop, yTop + hgt, 1.0);
     }
   }
+
+  // ── 下からの光。★機材より**手前**（ステージ前縁に置く）
+  uplights(t, p, playing ? hold : 0, S.jog || 0);
 
   // ── ④ 実機の居場所を暗く残す（白い顔を沈ませない）
   stageWell();
