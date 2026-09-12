@@ -51,6 +51,12 @@ const PANELS = [
   {x0: 0.830, w: 0.170, side: 'right', farScale: CENTER_K, dim: 0.62},
 ];
 let panels = [];
+// ★継ぎ目の位置は**1箇所で決める。** 0.825 と 0.828、0.175 と 0.172 を
+//   別々に書いていた（同じ場所を2つの数字で。2026-09-13 本人の指摘）
+const JOINT_L = PANELS[0].x0 + PANELS[0].w;      // 左の継ぎ目
+const JOINT_R = PANELS[2].x0;                    // 右の継ぎ目
+const WALL_L  = PANELS[1].x0;                    // 正面の左端
+const WALL_R  = PANELS[1].x0 + PANELS[1].w;      // 正面の右端
 // ★夜空。屋外の会場にする（2026-09-13 本人の案）。
 //   星は**一度だけ**決める。毎フレーム作り直すと、ちらついて安っぽい
 let stars = [];
@@ -858,10 +864,10 @@ function draw(now){
   {
     const hh = M()*0.30*kc*0.85;
     // 中央（正面）
-    trussRun(innerWidth*0.172 + hh*0.6, cy,
-             innerWidth*0.828 - hh*0.6, cy, kc*0.85, 0.85);
-    trussCorner(innerWidth*0.172, cy, kc*0.85, 0.85);
-    trussCorner(innerWidth*0.828, cy, kc*0.85, 0.85);
+    trussRun(innerWidth*JOINT_L + hh*0.6, cy,
+             innerWidth*JOINT_R - hh*0.6, cy, kc*0.85, 0.85);
+    trussCorner(innerWidth*JOINT_L, cy, kc*0.85, 0.85);
+    trussCorner(innerWidth*JOINT_R, cy, kc*0.85, 0.85);
 
     // 袖。★上端は傾いている（外が手前で高い）。段に分けて縮尺を変える
     const K = CENTER_K, N = 3;
@@ -889,8 +895,8 @@ function draw(now){
     g.beginPath();
     g.moveTo(0, innerHeight);
     g.lineTo(innerWidth, innerHeight);
-    g.lineTo(innerWidth*0.825, backY);
-    g.lineTo(innerWidth*0.175, backY);
+    g.lineTo(innerWidth*WALL_R, backY);
+    g.lineTo(innerWidth*WALL_L, backY);
     g.closePath(); g.fill();
 
     // ★床の目地。**手前ほど間隔が広い**。これが遠近を確定させる
@@ -901,13 +907,13 @@ function draw(now){
       const u = i/10;
       const yy = backY + (innerHeight - backY) * (u*u);   // 二乗で手前ほど広く
       const s = (yy - backY) / (innerHeight - backY);
-      const xl = innerWidth*0.175 * (1-s) + 0 * s;
-      const xr = innerWidth*0.825 * (1-s) + innerWidth * s;
+      const xl = innerWidth*WALL_L * (1-s) + 0 * s;
+      const xr = innerWidth*WALL_R * (1-s) + innerWidth * s;
       g.moveTo(xl, yy); g.lineTo(xr, yy);
     }
     // 消失点へ向かう線
     for (const a of [0.10, 0.30, 0.50, 0.70, 0.90]){
-      g.moveTo(innerWidth*(0.175 + 0.650*a), backY);
+      g.moveTo(innerWidth*(WALL_L + (WALL_R-WALL_L)*a), backY);
       g.lineTo(innerWidth*a, innerHeight);
     }
     g.stroke();
@@ -918,7 +924,7 @@ function draw(now){
       g.save();
       g.beginPath();
       g.moveTo(0, innerHeight); g.lineTo(innerWidth, innerHeight);
-      g.lineTo(innerWidth*0.825, backY); g.lineTo(innerWidth*0.175, backY);
+      g.lineTo(innerWidth*WALL_R, backY); g.lineTo(innerWidth*WALL_L, backY);
       g.closePath(); g.clip();
       g.globalAlpha = 0.16 + 0.14*heat;
       g.scale(1, -1);                            // 上下を反転して映す
@@ -962,7 +968,7 @@ function draw(now){
     gr.addColorStop(0.6, 'hsla('+p.h+',80%,68%,'+(0.10 + 0.22*heat)+')');
     gr.addColorStop(1, 'hsla('+p.h+',80%,62%,0)');
     g.fillStyle = gr;
-    g.fillRect(innerWidth*0.16, backY - M()*0.12, innerWidth*0.68, M()*0.22);
+    g.fillRect(innerWidth*(WALL_L-0.015), backY - M()*0.12, innerWidth*(WALL_R-WALL_L+0.03), M()*0.22);
   }
 
   // ── ② 空気中の光。パネルの手前を通る
