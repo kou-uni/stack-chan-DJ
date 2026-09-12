@@ -127,33 +127,38 @@ function stepHeads(dt){
 }
 
 function drawTruss(a){
-  // ★箱トラス。上下の弦材（パイプ）と X の筋交い。**細い線の格子ではない**
+  // ★暗い会場で輪郭線は見えない（2026-09-12 本人の指摘）。
+  //   トラスは**光を遮る黒い塊**。描くのは影であって、線ではない。
+  //   コードより手前にあるので、**塗りつぶして隠す**
   const y = trussY(), h = trussH(), bp = braceP();
-  const pipe = M()*0.05;                       // パイプ径 5cm
+  const pipe = M()*0.05;
   const top = y - h/2, bot = y + h/2;
+  const ink = 'rgba(3,4,7,'+(0.90*a + 0.08)+')';
 
-  // 筋交い（奥に見える）
-  g.strokeStyle = 'rgba(96,110,132,'+(0.55*a)+')';
-  g.lineWidth = pipe*0.7;
-  g.lineCap = 'round';
+  g.fillStyle = ink;
+  g.fillRect(0, top - pipe/2, innerWidth, pipe);      // 上弦
+  g.fillRect(0, bot - pipe/2, innerWidth, pipe);      // 下弦
+  // 筋交い（塗りで表す。線を引かない）
   g.beginPath();
   for (let x=-bp; x<innerWidth+bp; x+=bp){
-    g.moveTo(x, top); g.lineTo(x+bp*0.5, bot);
-    g.moveTo(x+bp*0.5, bot); g.lineTo(x+bp, top);
-    g.moveTo(x+bp*0.5, top); g.lineTo(x+bp*0.5, bot);   // 垂直材
+    for (const [x0,y0,x1,y1] of [[x,top,x+bp*0.5,bot],[x+bp*0.5,bot,x+bp,top]]){
+      const dx = x1-x0, dy = y1-y0, len = Math.hypot(dx,dy);
+      const nx = -dy/len*pipe*0.32, ny = dx/len*pipe*0.32;
+      g.moveTo(x0+nx, y0+ny); g.lineTo(x1+nx, y1+ny);
+      g.lineTo(x1-nx, y1-ny); g.lineTo(x0-nx, y0-ny); g.closePath();
+    }
+    g.moveTo(x+bp*0.5-pipe*0.3, top); g.lineTo(x+bp*0.5+pipe*0.3, top);
+    g.lineTo(x+bp*0.5+pipe*0.3, bot); g.lineTo(x+bp*0.5-pipe*0.3, bot);
+    g.closePath();
   }
-  g.stroke();
+  g.fill();
 
-  // 弦材。★パイプなので、上側だけ明るい（面ではなく管に見せる）
-  for (const cy of [top, bot]){
-    const grd = g.createLinearGradient(0, cy-pipe/2, 0, cy+pipe/2);
-    grd.addColorStop(0,   'rgba(178,192,214,'+(0.85*a)+')');
-    grd.addColorStop(0.4, 'rgba(112,126,150,'+(0.85*a)+')');
-    grd.addColorStop(1,   'rgba(40,48,62,'+(0.90*a)+')');
-    g.fillStyle = grd;
-    g.fillRect(0, cy-pipe/2, innerWidth, pipe);
-  }
-  g.lineCap = 'butt';
+  // ★上端だけ、わずかに光を拾う。**これが無いと切り絵に見える**
+  const rim = g.createLinearGradient(0, top-pipe/2, 0, top+pipe*0.2);
+  rim.addColorStop(0, 'rgba(150,170,205,'+(0.16*a)+')');
+  rim.addColorStop(1, 'rgba(150,170,205,0)');
+  g.fillStyle = rim;
+  g.fillRect(0, top-pipe/2, innerWidth, pipe*0.7);
 }
 
 function beams(t, p, energy, heat){
@@ -179,80 +184,69 @@ function beams(t, p, energy, heat){
     g.translate(innerWidth*b.cx, lensY);
     g.rotate(a);
 
-    // 空気に散る光。**縁がぼやけた三角**
-    const haze = g.createLinearGradient(0, 0, 0, far);
-    haze.addColorStop(0,    'hsla('+hue+',95%,72%,'+(0.30*power)+')');
-    haze.addColorStop(0.18, 'hsla('+hue+',95%,58%,'+(0.10*power)+')');
-    haze.addColorStop(1,    'hsla('+hue+',95%,50%,0)');
-    g.fillStyle = haze;
-    g.beginPath(); g.moveTo(-half, 0); g.lineTo(half, 0);
-    g.lineTo(far*spread, far); g.lineTo(-far*spread, far);
-    g.closePath(); g.fill();
+    // ★光学に合わせる（2026-09-12 本人の指摘）
+    //   ・**逆二乗則**：円錐が広がるので、断面あたりの強さは距離の二乗で落ちる
+    //   ・**見えているのは空気中の散乱光**。だから縁が無い。幅の違う層を重ねて溶かす
+    //   ・**中心は白飛びする**（彩度が落ちる）。外側ほど色が乗る
+    //   ・遠いほど広がって薄い → 層ごとに減衰の効き方を変える
+    for (const [wm, am, sat, lig] of [[3.0, 0.022, 55, 42],
+                                      [2.0, 0.040, 75, 50],
+                                      [1.25,0.075, 88, 60],
+                                      [0.65,0.125, 70, 76],
+                                      [0.28,0.200, 35, 93]]){
+      const gg = g.createLinearGradient(0, 0, 0, far);
+      // ★逆二乗を階段で近似する。d0 は「光源からこの距離で半分」の目安
+      for (const s of [0, 0.06, 0.14, 0.26, 0.45, 0.70, 1.0]){
+        const d = 1 + s*7.0;                       // 距離（出口を1とする）
+        gg.addColorStop(s, 'hsla('+hue+','+sat+'%,'+lig+'%,'
+                      + (am*power/(d*d)) + ')');
+      }
+      g.fillStyle = gg;
+      g.beginPath();
+      g.moveTo(-half*wm, 0); g.lineTo(half*wm, 0);
+      g.lineTo(far*spread*wm, far); g.lineTo(-far*spread*wm, far);
+      g.closePath(); g.fill();
+    }
 
-    // 芯。★ビームは中心が硬く明るい。ここが無いと「もや」に見える
-    const core = g.createLinearGradient(0, 0, 0, far*0.62);
-    core.addColorStop(0,   'hsla('+hue+',80%,92%,'+(0.55*power)+')');
-    core.addColorStop(0.5, 'hsla('+hue+',95%,70%,'+(0.14*power)+')');
-    core.addColorStop(1,   'hsla('+hue+',95%,60%,0)');
-    g.fillStyle = core;
-    g.beginPath(); g.moveTo(-half*0.45, 0); g.lineTo(half*0.45, 0);
-    g.lineTo(far*spread*0.30, far*0.62); g.lineTo(-far*spread*0.30, far*0.62);
-    g.closePath(); g.fill();
-
-    // レンズ
-    const gl = g.createRadialGradient(0,0,0, 0,0, half*2.2);
-    gl.addColorStop(0, 'hsla('+hue+',70%,97%,'+(0.95*power)+')');
-    gl.addColorStop(1, 'hsla('+hue+',95%,60%,0)');
-    g.fillStyle = gl;
-    g.beginPath(); g.arc(0,0, half*2.2, 0, 6.2832); g.fill();
+    // レンズ。★明るい点は目でも滲む（ブルーム）。芯は白、外へ色が出る
+    for (const [r, a2, s2, l2] of [[5.0, 0.10, 90, 55],
+                                   [2.2, 0.35, 70, 78],
+                                   [0.9, 0.85, 25, 97]]){
+      const gl = g.createRadialGradient(0,0,0, 0,0, half*r);
+      gl.addColorStop(0,   'hsla('+hue+','+s2+'%,'+l2+'%,'+(a2*power)+')');
+      gl.addColorStop(0.5, 'hsla('+hue+','+(s2+8)+'%,'+(l2-16)+'%,'+(a2*0.28*power)+')');
+      gl.addColorStop(1,   'hsla('+hue+',95%,55%,0)');
+      g.fillStyle = gl;
+      g.beginPath(); g.arc(0,0, half*r, 0, 6.2832); g.fill();
+    }
     g.restore();
   }
   g.globalCompositeOperation = 'source-over';
 
-  // ── 灯体の実体（逆光の黒いシルエット）
+  // ── 灯体の実体。★線は引かない。**黒い塊として置く**
   const fade = Math.min(1, heat*1.6);
   drawTruss(fade);
+  const ink = 'rgba(3,4,7,'+(0.92*fade + 0.06)+')';
   for (const b of BEAMS){
     const a = b.ang;
-    const lw = Math.max(1.2, M()*0.012);
     g.save();
     g.translate(innerWidth*b.cx, ty);
-    // クランプ
-    g.fillStyle = 'rgba(30,36,46,'+(0.95*fade)+')';
-    g.fillRect(-L*0.20, -trussH()*0.62, L*0.40, trussH()*0.9);
-    // ベース
-    g.fillStyle = 'rgba(22,27,36,'+(0.96*fade)+')';
-    g.strokeStyle = 'rgba(140,158,186,'+(0.30*fade)+')';
-    g.lineWidth = lw;
-    g.beginPath(); g.rect(-L*0.28, trussH()*0.42, L*0.56, L*0.34);
-    g.fill(); g.stroke();
-    // ヨーク
+    g.fillStyle = ink;
+    g.fillRect(-L*0.20, -trussH()*0.62, L*0.40, trussH()*0.9);   // クランプ
+    g.fillRect(-L*0.28, trussH()*0.42, L*0.56, L*0.34);          // ベース
     g.translate(0, trussH()*0.42 + L*0.34);
-    g.strokeStyle = 'rgba(150,168,196,'+(0.34*fade)+')';
-    g.lineWidth = lw*1.6;
-    g.beginPath();
-    g.moveTo(-L*0.28, 0); g.lineTo(-L*0.28, L*0.24);
-    g.moveTo( L*0.28, 0); g.lineTo( L*0.28, L*0.24);
-    g.stroke();
-    // ヘッド
+    g.fillRect(-L*0.30, 0, L*0.10, L*0.26);                      // ヨーク左
+    g.fillRect( L*0.20, 0, L*0.10, L*0.26);                      // ヨーク右
     g.translate(0, L*0.24);
     g.rotate(a);
-    g.fillStyle = 'rgba(16,20,28,'+(0.97*fade)+')';
-    g.strokeStyle = 'rgba(150,168,196,'+(0.30*fade)+')';
-    g.lineWidth = lw;
-    g.beginPath(); g.rect(-L*0.20, -L*0.10, L*0.40, L*0.50);
-    g.fill(); g.stroke();
+    g.fillRect(-L*0.20, -L*0.10, L*0.40, L*0.50);                // ヘッド
     g.restore();
   }
 }
 
-// ── 下からのアップライト ─────────────────────────
-// ★**こすっている間だけ**、床から立ち上がる（2026-09-12 本人の案）。
-//   つまみでは出せない「チュクチュク」に、光がクイックに反応する見せ場。
-//   ★上の吊り灯体は連動しない。**手に反応するのはここだけ。**
 const UPS = [
-  {cx: 0.26, hue: 0.00, sw: 0.9, side: -1},
-  {cx: 0.74, hue: 0.55, sw: 1.2, side:  1},
+  {cx: 0.26, hue: 0.00, side: -1},
+  {cx: 0.74, hue: 0.55, side:  1},
 ];
 
 function uplights(t, p, amt, jog){
