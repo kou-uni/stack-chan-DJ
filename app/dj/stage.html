@@ -651,23 +651,60 @@ function draw(now){
   }
 
   // ── 継ぎ目の柱。★ここが**いちばん奥**なので、中央パネルと同じ高さに収める
+  //   質感：黒く塗った角パイプ。**一様に光らない。**
+  //   幅方向に陰影があり、**光源の側に細いハイライトが出る**（2026-09-13）
   const kc = CENTER_K, ch = innerHeight*kc, cy = hy - hy*kc;
-  g.fillStyle = 'rgba(2,3,6,0.96)';
-  for (const x0 of [0.168, 0.824]){
-    g.fillRect(innerWidth*x0, cy, innerWidth*0.008, ch);
+  {
+    const PC = litColor(p);
+    const pw2 = innerWidth*0.016;
+    for (const [x0, inward] of [[0.168, 1], [0.832, -1]]){
+      const x = innerWidth*x0 - (inward > 0 ? 0 : pw2);
+      // ① 素地。角パイプなので、幅の中で明暗が回る
+      const body = g.createLinearGradient(x, 0, x + pw2, 0);
+      body.addColorStop(0,    'rgb(4,5,9)');
+      body.addColorStop(0.30, 'rgb(15,18,25)');
+      body.addColorStop(0.62, 'rgb(9,11,16)');
+      body.addColorStop(1,    'rgb(2,3,6)');
+      g.fillStyle = body;
+      g.fillRect(x, cy, pw2, ch);
+
+      // ② 継ぎ目。**1mごとに割れている**。これが無いと無限に長い棒に見える
+      g.fillStyle = 'rgba(0,0,0,0.55)';
+      const seg = M()*1.0*kc;
+      for (let yy = cy + seg; yy < cy + ch; yy += seg){
+        g.fillRect(x, yy, pw2, Math.max(1, M()*0.012));
+      }
+
+      // ③ ハイライト。★**細い筋**。光の強さで太さと明るさが変わる
+      if (PC.pow > 0.02){
+        const hw = pw2 * (0.10 + 0.16*Math.min(1, PC.pow));
+        const hx = x + pw2 * (inward > 0 ? 0.22 : 0.78) - hw/2;
+        const hg = g.createLinearGradient(hx, 0, hx + hw, 0);
+        hg.addColorStop(0,   'hsla('+PC.hue+',80%,70%,0)');
+        hg.addColorStop(0.5, 'hsla('+PC.hue+',75%,86%,'+(0.30 + 0.45*Math.min(1,PC.pow))+')');
+        hg.addColorStop(1,   'hsla('+PC.hue+',80%,70%,0)');
+        g.globalCompositeOperation = 'lighter';
+        // ★上ほど強い。灯体が上にあるので、下へ行くほど届かない
+        const fall = g.createLinearGradient(0, cy, 0, cy + ch);
+        fall.addColorStop(0, 'rgba(255,255,255,1)');
+        fall.addColorStop(1, 'rgba(255,255,255,0)');
+        g.save();
+        g.fillStyle = hg;
+        g.fillRect(hx, cy, hw, ch*0.85);
+        g.globalCompositeOperation = 'destination-out';
+        g.fillStyle = 'rgba(0,0,0,0.0)';
+        g.restore();
+        g.globalCompositeOperation = 'source-over';
+      }
+
+      // ④ 足元。**床との際は暗い**（回り込む光が無い）
+      const ao = g.createLinearGradient(0, cy + ch*0.80, 0, cy + ch);
+      ao.addColorStop(0, 'rgba(0,0,0,0)');
+      ao.addColorStop(1, 'rgba(0,0,0,0.75)');
+      g.fillStyle = ao;
+      g.fillRect(x, cy + ch*0.80, pw2, ch*0.20);
+    }
   }
-  // ★柱も光の色を拾う。**面で受けるので、角だけでなく幅を持って光る**
-  const PC = litColor(p);
-  g.globalCompositeOperation = 'lighter';
-  for (const [x0, dir] of [[0.168, 1], [0.832, -1]]){
-    const w = innerWidth*0.014;
-    const gp = g.createLinearGradient(innerWidth*x0, 0, innerWidth*x0 + dir*w, 0);
-    gp.addColorStop(0, 'hsla('+PC.hue+',85%,72%,'+(0.10 + 0.30*PC.pow)+')');
-    gp.addColorStop(1, 'hsla('+PC.hue+',85%,60%,0)');
-    g.fillStyle = gp;
-    g.fillRect(Math.min(innerWidth*x0, innerWidth*x0 + dir*w), cy, w, ch);
-  }
-  g.globalCompositeOperation = 'source-over';
 
   // ── 床。★奥行きの手がかりで**いちばん強いのは床の収束線**（2026-09-13）。
   //   これが無いと、パネルが宙に浮いて部屋に見えない
@@ -758,33 +795,27 @@ function draw(now){
   {
     const kc = CENTER_K;
     const topY = hy - hy*kc;                 // 奥の壁の上端
-    // ★天井も光の色を拾う。**真っ黒のままだと、そこだけ別世界になる**
+    // ★天井は**H鋼**が並ぶ。一様なグラデでは、ただの汚れに見える。
+    //   見えるのは**下を向いた面（下フランジ）だけ**。そこに光が当たる
     const LC = litColor(p);
-    if (LC.pow > 0.03){
-      g.globalCompositeOperation = 'lighter';
-      const cg = g.createLinearGradient(0, 0, 0, trussY()*2.4);
-      cg.addColorStop(0,   'hsla('+LC.hue+',85%,60%,'+(0.10*LC.pow)+')');
-      cg.addColorStop(0.5, 'hsla('+LC.hue+',85%,54%,'+(0.05*LC.pow)+')');
-      cg.addColorStop(1,   'hsla('+LC.hue+',85%,50%,0)');
-      g.fillStyle = cg;
-      g.fillRect(0, 0, innerWidth, trussY()*2.4);
-      g.globalCompositeOperation = 'source-over';
-    }
-
-    // 天井の梁。奥へ向かって消失点に収束する
-    g.strokeStyle = 'hsla('+LC.hue+',40%,'+(42 + 26*LC.pow)+'%,'
-                  + (0.10 + 0.14*heat + 0.10*LC.pow)+')';
-    g.lineWidth = Math.max(1, M()*0.02);
-    g.beginPath();
-    for (let i=1; i<=5; i++){
-      const u = i/6;
+    for (let i=1; i<=6; i++){
+      const u = i/7;
       const yy = topY * (1 - u*u*0.92);       // 手前ほど間隔が広い
       const s = 1 - yy/topY;
       const xl = innerWidth*0.175*(1-s);
       const xr = innerWidth*0.825 + (innerWidth-innerWidth*0.825)*s;
-      g.moveTo(xl, yy); g.lineTo(xr, yy);
+      const th = Math.max(2, M()*0.10*(0.45 + 0.55*s));   // 手前ほど太い
+      // ウェブ（縦板）は影
+      g.fillStyle = 'rgba(3,4,7,0.92)';
+      g.fillRect(xl, yy - th*0.5, xr-xl, th);
+      // 下フランジ。★ここだけが光を受ける
+      const fl = g.createLinearGradient(0, yy + th*0.18, 0, yy + th*0.5);
+      const li = (0.05 + 0.42*LC.pow) * (0.35 + 0.65*s);   // 手前ほど強い
+      fl.addColorStop(0, 'hsla('+LC.hue+',70%,72%,'+li+')');
+      fl.addColorStop(1, 'hsla('+LC.hue+',70%,60%,0)');
+      g.fillStyle = fl;
+      g.fillRect(xl, yy + th*0.18, xr-xl, th*0.34);
     }
-    g.stroke();
     // 吊り用のチェーンとケーブル。★トラスは宙に浮かない
     g.strokeStyle = 'rgba(60,70,88,'+(0.45 + 0.2*heat)+')';
     g.lineWidth = Math.max(1, M()*0.012);
