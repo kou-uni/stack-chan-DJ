@@ -25,14 +25,29 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "app" / "dj"))
 from acceptance import CHECKS, Result, compare, summarize   # noqa: E402
 from gateway import Gateway                                  # noqa: E402
+from harness import ConsolePause, port_busy, throwaway_ws    # noqa: E402
 from touch_events import TouchEvents                         # noqa: E402
 
 GW = "http://127.0.0.1:8767/mcp"
+POSE_PORT, LED_PORT = 8770, 8771
 
 
 def _j(r):
     c = getattr(r, "content", None)
     return json.loads(c[0].text) if c else {}
+
+
+# ★合図は実機から出す。**端末は誰も見ない。**
+#   以前、音声認識のタイミングを端末のカウントダウンで伝えて失敗した（2026-09-12）。
+#   同じ穴を試験でも踏まない
+SAY_TAIL_S = 1.0        # 自分の声がマイクに残る分。測る前に空ける
+
+
+async def _cue(gw, text: str) -> None:
+    """実機に喋らせて合図する。ログにも残す（あとで読み返すため）。"""
+    print(f"\n     >>> {text} <<<")
+    await gw.call("say", text=text, speaker_id=14)
+    await asyncio.sleep(SAY_TAIL_S)
 
 
 async def _timed(coro):
@@ -123,7 +138,7 @@ async def run(gw, manual: bool) -> dict[str, Result]:
     #   console が管理しているので、状態を見るだけだと試験の順番で結果が変わる
     async def _pose():
         await gw.call("stackchan_follow_pose_stream", action="start",
-                      url="ws://127.0.0.1:8770/")
+                      url=f"ws://127.0.0.1:{POSE_PORT}/")
         await asyncio.sleep(0.8)
         st = _j(await gw.call("stackchan_follow_pose_stream", action="status"))
         return bool(st.get("running")), st.get("connect_state", ""), None
@@ -131,7 +146,7 @@ async def run(gw, manual: bool) -> dict[str, Result]:
 
     async def _ledstream():
         d = _j(await gw.call("stackchan_follow_led_stream", action="start",
-                             url="ws://127.0.0.1:8771/", target="port_b",
+                             url=f"ws://127.0.0.1:{LED_PORT}/", target="port_b",
                              led_count=30))
         await asyncio.sleep(0.8)
         st = _j(await gw.call("stackchan_follow_led_stream", action="status"))
@@ -162,7 +177,8 @@ async def run(gw, manual: bool) -> dict[str, Result]:
         async def _touch():
             te = TouchEvents(max_stroke_ms=10 ** 9)
             te.catch_up()
-            print("\n     >>> 20秒間、頭を何度か撫でてください <<<")
+            await _cue(gw, "あたまを、なでてください。二十秒はかります")
+            te.catch_up()          # ★合図の前の分は数えない
             hits, t0 = 0, time.time()
             while time.time() - t0 < 20:
                 if te.poll():
@@ -176,7 +192,12 @@ async def run(gw, manual: bool) -> dict[str, Result]:
                           motion_intensity=1.0, color=[0, 90, 255])
             await gw.call("beat_mode_update", motion_enabled=False, led_enabled=False)
             await asyncio.sleep(1.5)
-            print("\n     >>> 8秒間、ふつうの声で話し続けてください <<<")
+            await gw.call("beat_mode_stop")
+            await _cue(gw, "八びょうかん、ふつうの声で話してください")
+            await gw.call("beat_mode_start", sensitivity=0.5,
+                          motion_intensity=1.0, color=[0, 90, 255])
+            await gw.call("beat_mode_update", motion_enabled=False, led_enabled=False)
+            await asyncio.sleep(0.5)
             peak = 0.0
             for _ in range(8):
                 d = _j(await gw.call("beat_meta_snapshot"))
@@ -209,13 +230,14 @@ async def run(gw, manual: bool) -> dict[str, Result]:
         await check("speaker", _speaker)
 
         async def _stt():
-            await asyncio.sleep(1.0)
-            print("\n     >>> 『ファームってなんですか』と言ってください <<<")
+            await _cue(gw, "ファームってなんですか、と言ってください")
             (r, t) = await _timed(gw.call("listen", duration_ms=8000,
                                           language="ja", model="small"))
             txt = (_j(r).get("text") or "").strip()
             return bool(txt), f"「{txt[:30]}」", t
         await check("stt", _stt)
+
+        await _cue(gw, "しけん、おわりました。ありがとうございます")
     else:
         for name in ("touch", "mic", "speaker", "stt"):
             R[name] = Result(name, None, "人の手が要る（--manual で測る）")
@@ -233,9 +255,35 @@ def from_json(text: str) -> dict[str, Result]:
     return {k: Result(**v) for k, v in json.loads(text).items()}
 
 
+async def _wait_free(ports, timeout=10.0) -> bool:
+    """console が口を離すのを待つ。★止めた直後はまだ握っている。"""
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        if not any(port_busy(p) for p in ports):
+            return True
+        await asyncio.sleep(0.3)
+    return False
+
+
 async def main(a) -> int:
-    async with Gateway(GW) as gw:
-        R = await run(gw, a.manual)
+    if a.keep_console:
+        # ★逃げ道。ただし console が同時に書くので、比較の基準には使わない
+        print("※ console を動かしたまま測ります（基準には使わないこと）\n")
+        async with Gateway(GW) as gw:
+            R = await run(gw, a.manual)
+    else:
+        # ★console は「唯一の書き手」。測る間だけ黙ってもらう。
+        #   二人が書けば、測った値が誰のものか分からなくなる
+        with ConsolePause():
+            if not await _wait_free([POSE_PORT, LED_PORT]):
+                print(f"★ ポート {POSE_PORT}/{LED_PORT} が空きません")
+                return 1
+            # ★ストリーム試験の相手を自分で用意する。
+            #   console を止めただけだと繋ぐ先が無く、**偽の×**が出る
+            async with throwaway_ws(POSE_PORT), throwaway_ws(LED_PORT):
+                async with Gateway(GW) as gw:
+                    R = await run(gw, a.manual)
+            print("\n  console を戻します")
 
     if a.save:
         Path(a.save).write_text(to_json(R), encoding="utf-8")
@@ -257,6 +305,8 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(description="実機の受け入れ試験")
     p.add_argument("--save", help="結果を基準として保存する")
     p.add_argument("--compare", help="保存した基準と突き合わせる")
+    p.add_argument("--keep-console", action="store_true",
+                   help="console を止めずに測る（★同時に書かれるので基準には使えない）")
     p.add_argument("--manual", action="store_true",
                    help="人の手が要る項目（頭なで・マイク・スピーカー・聞き取り）も測る")
     raise SystemExit(asyncio.run(main(p.parse_args())))

@@ -61,7 +61,9 @@ CHECKS: dict[str, dict] = {
     "led_strip":   {"label": "外付けLEDテープ",  "manual": False},
     "avatar":      {"label": "表情の読み込み",   "manual": False},
     "screen":      {"label": "画面の明るさ",     "manual": False},
-    "touch":       {"label": "頭なで",          "manual": True},
+    # ★回数は「多いほど良い」。秒数と向きが逆（2026-09-12 の実測で気づいた）
+    "touch":       {"label": "頭なで",          "manual": True,
+                    "higher_is_better": True},
     "mic":         {"label": "マイクが音を拾う", "manual": True},
     "speaker":     {"label": "スピーカーが鳴る", "manual": True},
     "camera":      {"label": "カメラで撮れる",   "manual": False},
@@ -100,10 +102,16 @@ def compare(before: dict[str, Result], after: dict[str, Result],
             out.append(Diff(name, "改善", _txt(b), _txt(a)))
             continue
 
-        # 両方動いている。数字が悪化していないか
+        # 両方動いている。数字が悪化していないか。
+        # ★向きは項目ごとに違う。秒数は小さいほど良く、検出回数は多いほど良い。
+        #   ここを取り違えると、**直ったことをデグレと報告する**
         if (b.ok and a.ok and b.value is not None and a.value is not None
-                and b.value > 0 and a.value > b.value * worse_ratio):
-            out.append(Diff(name, "劣化", _txt(b), _txt(a)))
+                and b.value > 0):
+            hib = CHECKS.get(name, {}).get("higher_is_better", False)
+            worse = (a.value * worse_ratio < b.value) if hib \
+                else (a.value > b.value * worse_ratio)
+            if worse:
+                out.append(Diff(name, "劣化", _txt(b), _txt(a)))
 
     # ★重い順に。デグレを先頭に置く
     order = {"デグレ": 0, "劣化": 1, "未確認": 2, "改善": 3}

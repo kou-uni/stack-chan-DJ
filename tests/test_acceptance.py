@@ -100,3 +100,34 @@ def test_人手の項目でも端末入力を求めない():
     src = (ROOT / "scripts" / "device_check.py").read_text(encoding="utf-8")
     assert "input()" not in src and "to_thread(input)" not in src, \
         "端末の入力待ちが残っている"
+
+
+# ── 数字の向き（2026-09-12 に実測して気づいた） ──────────────
+#
+# 基準取りで「頭なで 20秒で1回」が出た。value=1.0 で保存される。
+# ところが compare() は **小さいほど良い**（秒数）前提で書かれていた。
+# 焼いて 15回 に**直った**瞬間、15 > 1.0×1.5 で「劣化」と報告してしまう。
+#
+# ★直ったことをデグレと呼ぶ試験は、無いより悪い。
+
+
+def test_touch_hits_more_is_better():
+    """★撫での検出回数は多いほど良い。増えたら改善であって劣化ではない。"""
+    before = {"touch": Result("touch", True, "20秒で 1回", 1.0)}
+    after = {"touch": Result("touch", True, "20秒で 15回", 15.0)}
+    kinds = [d.kind for d in compare(before, after)]
+    assert "劣化" not in kinds, f"増えたのに劣化と言っている: {kinds}"
+
+
+def test_touch_hits_fewer_is_worse():
+    """★逆に減ったら見逃さない。焼いて悪化したのに黙るほうが怖い。"""
+    before = {"touch": Result("touch", True, "20秒で 15回", 15.0)}
+    after = {"touch": Result("touch", True, "20秒で 2回", 2.0)}
+    assert [d.kind for d in compare(before, after)] == ["劣化"]
+
+
+def test_seconds_still_smaller_is_better():
+    """★秒数の向きは変えない。遅くなったら劣化のまま。"""
+    before = {"tts": Result("tts", True, "", 1.0)}
+    after = {"tts": Result("tts", True, "", 3.0)}
+    assert [d.kind for d in compare(before, after)] == ["劣化"]

@@ -1,0 +1,98 @@
+{
+ "tools": {
+  "name": "tools",
+  "ok": true,
+  "detail": "40個",
+  "value": null
+ },
+ "head": {
+  "name": "head",
+  "ok": true,
+  "detail": "yaw=16 pitch=45",
+  "value": 0.030279159545898438
+ },
+ "leds": {
+  "name": "leds",
+  "ok": true,
+  "detail": "12個",
+  "value": 0.0168759822845459
+ },
+ "led_strip": {
+  "name": "led_strip",
+  "ok": true,
+  "detail": "30個",
+  "value": null
+ },
+ "avatar": {
+  "name": "avatar",
+  "ok": true,
+  "detail": "537,600バイト",
+  "value": 0.8540031909942627
+ },
+ "screen": {
+  "name": "screen",
+  "ok": true,
+  "detail": "明るさ 75",
+  "value": null
+ },
+ "camera": {
+  "name": "camera",
+  "ok": true,
+  "detail": "{\"image_path\": \"/Users/uni/.stackchan/captures/cap",
+  "value": 0.5454649925231934
+ },
+ "servo_power": {
+  "name": "servo_power",
+  "ok": true,
+  "detail": "VM_EN=True",
+  "value": null
+ },
+ "pose_stream": {
+  "name": "pose_stream",
+  "ok": true,
+  "detail": "connected",
+  "value": null
+ },
+ "led_stream": {
+  "name": "led_stream",
+  "ok": true,
+  "detail": "port_b connected",
+  "value": null
+ },
+ "beat": {
+  "name": "beat",
+  "ok": true,
+  "detail": "listening 音量=0.00303",
+  "value": null
+ },
+ "tts": {
+  "name": "tts",
+  "ok": true,
+  "detail": "1140ms の音声",
+  "value": 1.4161663055419922
+ },
+ "touch": {
+  "name": "touch",
+  "ok": true,
+  "detail": "20秒で 1回 検出",
+  "value": 1.0
+ },
+ "mic": {
+  "name": "mic",
+  "ok": true,
+  "detail": "最大音量 0.18787",
+  "value": null
+ },
+ "speaker": {
+  "name": "speaker",
+  "ok": true,
+  "detail": "回り込み 0.0360（静音時 0.0043）",
+  "value": null
+ },
+ "stt": {
+  "name": "stt",
+  "ok": true,
+  "detail": "「スタックチャン スタックチャン」",
+  "value": 3.584333658218384
+ }
+}
