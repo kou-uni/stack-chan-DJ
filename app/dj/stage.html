@@ -33,28 +33,38 @@ const TALK = {listening:{h:150, h2:196, core:'#e6fff0'},
 function pal(){ return (S.talk && TALK[S.talk]) || SERIES[S.series] || SERIES.blue; }
 
 // ── 降ってくるコード ───────────────────────────────
-let cols = [], LH = 0, ROWS = 0, FS = 0, COLW = 0;
+let LH = 0, ROWS = 0, FS = 0;
+// ★参考画像に合わせて**3面ディスプレイ**にする（2026-09-13 本人の要望）。
+//   中央が正面、左右は角度がついて奥へ逃げる。間に柱が立つ。**それが奥行き**
+//   x0/w は画面幅に対する割合。shear は傾き（正で右へ倒れる）
+const PANELS = [
+  {x0: 0.030, w: 0.255, shear:  0.30, dim: 0.52},   // 左（奥へ）
+  {x0: 0.315, w: 0.370, shear:  0.00, dim: 1.00},   // 中央（正面）
+  {x0: 0.715, w: 0.255, shear: -0.30, dim: 0.52},   // 右（奥へ）
+];
+let panels = [];
+
 function layout(){
   const dpr = Math.min(devicePixelRatio||1, 2);
   cv.width = innerWidth*dpr; cv.height = innerHeight*dpr;
   g.setTransform(dpr,0,0,dpr,0,0);
-  // ★小さめにして、画面をコードで埋める（2026-09-12 本人の指摘）
-  //   黒が多いと寂しい。行間も詰める
-  FS = Math.max(11, Math.min(19, innerWidth/95));
+  FS = Math.max(10, Math.min(17, innerWidth/110));
   LH = FS*1.22;
   ROWS = Math.ceil(innerHeight/LH)+3;
-  // ★列を増やす。1列あたりの幅を詰めて、横も埋める
-  const n = Math.max(6, Math.floor(innerWidth/(FS*7.2)));
-  const w = innerWidth/n;
-  COLW = w;
-  cols = Array.from({length:n}, (_,i)=>({
-    x: i*w + w*0.02,
-    off: Math.random()*ROWS,
-    spd: 0.30 + Math.random()*0.55,
-    hue: Math.random(),
-    rows: Array.from({length:ROWS+3},
-                     ()=>CODE[(Math.random()*CODE.length)|0]),
-  }));
+  panels = PANELS.map(pn => {
+    const w = innerWidth*pn.w;
+    const n = Math.max(3, Math.floor(w/(FS*6.4)));
+    const cw = w/n;
+    return {...pn, px: innerWidth*pn.x0, pw: w, cw,
+      cols: Array.from({length:n}, (_,i)=>({
+        x: i*cw,
+        off: Math.random()*ROWS,
+        spd: 0.30 + Math.random()*0.55,
+        hue: Math.random(),
+        rows: Array.from({length:ROWS+3},
+                         ()=>CODE[(Math.random()*CODE.length)|0]),
+      }))};
+  });
 }
 addEventListener('resize', layout); layout();
 
@@ -527,49 +537,65 @@ function draw(now){
   //   （2026-09-12 本人の指摘）。動き出したら吊り込まれる
   stepHeads(dt);
 
-  // ── ① 会場の奥：有機ELパネル。**ここにコードが映っている**
-  // ★30行くらい残す。**すぐ消えると黒ばかりになる**（2026-09-12 本人の指摘）
+  // ── ① 会場の奥：3面のディスプレイ。**ここにコードが映っている**
   const TAIL = 26 + 14*heat;
   g.textBaseline = 'top';
   g.font = '600 '+FS+'px ui-monospace,SFMono-Regular,Menlo,monospace';
-  g.globalCompositeOperation = 'lighter';
-  for (const c of cols){
-    // ★溜めている間は止める。放った瞬間に走る
-    const flow = (0.22 + heat*2.4 + energy*6.0) * (1 - hold*0.45) + release*14.0;
-    c.off += dt * c.spd * flow;
-    if (c.off > ROWS) c.off -= ROWS;
-    // ★切り取らない。**途中で切れたコードは嘘に見える**（2026-09-12 本人の指摘）。
-    //   重なってよい。層になって流れるほうが、ライブの映像らしい
-    for (let r=0; r<ROWS; r++){
-      const d = (c.off - r + ROWS) % ROWS;
-      if (d > TAIL) continue;
-      const txt = c.rows[r];
-      if (!txt) continue;
-      const hue = (p.h + c.hue*(30+140*heat) + (p.h2-p.h)*(d/TAIL) + t*(2+56*heat)) % 360;
-      if (d < 0.9){
-        g.shadowColor = 'hsl('+hue+',100%,72%)';
-        g.shadowBlur = 0 + 30*heat + 34*energy;
-        // ★静止時は先頭も白く飛ばさない
-        g.fillStyle = heat > 0.35 ? p.core
-                    : 'hsla('+hue+',45%,'+(26 + 56*heat)+'%,0.42)';
-      } else {
-        // ★止まっている間は暗く沈める（2026-09-12 本人の指摘）
-        // ★止まっている間は「なんかあるな」くらいまで沈める（本人の指示）
+  for (const pn of panels){
+    // パネルの地。★画面そのものが薄く光っている
+    g.fillStyle = 'hsla('+p.h+',60%,'+(1.5 + 3.5*heat)*pn.dim+'%,1)';
+    g.fillRect(pn.px, 0, pn.pw, innerHeight);
+
+    g.save();
+    g.beginPath(); g.rect(pn.px, 0, pn.pw, innerHeight); g.clip();
+    g.translate(pn.px, 0);
+    g.transform(1, 0, pn.shear, 1, 0, 0);      // ★角度をつけて奥へ逃がす
+    g.globalCompositeOperation = 'lighter';
+    for (const c of pn.cols){
+      const flow = (0.22 + heat*2.4 + energy*6.0) * (1 - hold*0.45) + release*14.0;
+      c.off += dt * c.spd * flow;
+      if (c.off > ROWS) c.off -= ROWS;
+      for (let r=0; r<ROWS; r++){
+        const d = (c.off - r + ROWS) % ROWS;
+        if (d > TAIL) continue;
+        const txt = c.rows[r];
+        if (!txt) continue;
+        const hue = (p.h + c.hue*(30+140*heat) + (p.h2-p.h)*(d/TAIL) + t*(2+56*heat)) % 360;
         const a = Math.max(0, 1 - d/TAIL) * (0.045 + 1.05*heat + energy*0.45)
-                * (1 - hold*0.25) * (1 + release*0.9);
-        g.shadowColor = 'hsl('+hue+',100%,62%)';
-        g.shadowBlur = 0 + 14*heat + 20*energy;
-        g.fillStyle = 'hsla('+hue+','+(45 + 55*heat)+'%,'
-                    + (15 + 55*heat + 16*(1-d/TAIL))+'%,'+a+')';
-      }
-      g.fillText(txt, c.x, r*LH);
-      if (Math.random() < 0.0004 + 0.006*heat + pulse*0.06*heat){
-        c.rows[r] = CODE[(Math.random()*CODE.length)|0];
+                * (1 - hold*0.25) * (1 + release*0.9) * pn.dim;
+        if (d < 0.9){
+          g.shadowColor = 'hsl('+hue+',100%,72%)';
+          g.shadowBlur = (0 + 30*heat + 34*energy) * pn.dim;
+          g.fillStyle = heat > 0.35 ? p.core
+                      : 'hsla('+hue+',45%,'+(26 + 56*heat)+'%,'+(0.42*pn.dim)+')';
+        } else {
+          g.shadowColor = 'hsl('+hue+',100%,62%)';
+          g.shadowBlur = (0 + 14*heat + 20*energy) * pn.dim;
+          g.fillStyle = 'hsla('+hue+','+(45 + 55*heat)+'%,'
+                      + (15 + 55*heat + 16*(1-d/TAIL))+'%,'+a+')';
+        }
+        g.fillText(txt, c.x, r*LH);
+        if (Math.random() < 0.0004 + 0.006*heat + pulse*0.06*heat){
+          c.rows[r] = CODE[(Math.random()*CODE.length)|0];
+        }
       }
     }
+    g.shadowBlur = 0;
+    g.globalCompositeOperation = 'source-over';
+    g.restore();
   }
-  g.shadowBlur = 0;
-  g.globalCompositeOperation = 'source-over';
+
+  // ── 柱。★パネルの間に立つ構造材。これが奥行きを作る
+  g.fillStyle = 'rgba(2,3,6,0.94)';
+  for (const [a0, a1] of [[0, PANELS[0].x0], [0.285, 0.315],
+                          [0.685, 0.715], [0.970, 1.0]]){
+    g.fillRect(innerWidth*a0, 0, innerWidth*(a1-a0), innerHeight);
+  }
+  // 柱のふち。★手前側の角だけ、わずかに光を拾う
+  g.fillStyle = 'hsla('+p.h+',70%,60%,'+(0.10 + 0.16*heat)+')';
+  for (const x of [0.285, 0.315, 0.685, 0.715]){
+    g.fillRect(innerWidth*x - 1, 0, 2, innerHeight);
+  }
 
   // ── ② 空気中の光。パネルの手前を通る
   if (heat > 0.06) beams(t, p, energy, heat);
