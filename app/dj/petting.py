@@ -84,6 +84,10 @@ SULK_S = 45.0
 # 「とろける」に入る撫での長さ
 MELT_MS = 3000
 
+# ★これより長く触られ続けたら嫌がる。**ずっと喜び続けるのは機械。**
+#   実測で1分以上の撫でが来る（手を置いたままの人）
+TOO_LONG_MS = 25000
+
 # 慣れの効き方
 FAMILIAR_AFTER = 3          # これを超えたら慣れてくる
 MIN_SCALE = 0.45
@@ -124,6 +128,9 @@ class Petting:
             return "annoyed"
         # ★長さが先。通知は「離した瞬間」に来るので、長さは確定情報。
         #   久しぶりでも、3秒撫でられたなら驚きではなく「とろける」が正しい
+        if duration_ms >= TOO_LONG_MS:          # ★長すぎる。さすがに嫌がる
+            self._sulk_until = now + SULK_S
+            return "annoyed"
         if duration_ms >= MELT_MS:              # 長く撫でられた
             return "melt"
         if gap >= FRESH_AFTER_S:                # 久しぶり

@@ -110,3 +110,39 @@ def test_a_new_pet_interrupts_the_previous_one():
         assert len(r.pose.holds) > first
         assert r.pose.holds[-1] is None
     asyncio.run(_go())
+
+
+# ── 撫で方は人それぞれ（2026-09-12 実測）──────────────
+#
+# 8秒を超えたら「置きっぱなし」として捨てていた。ところが実測は
+#
+#     stroke  9499ms / 52690ms / 92700ms
+#
+# **手を置いたまま撫でる人**を想定していなかった。**全部捨てていた。**
+#
+# ★合図を捨てる閾値は、**実際の使われ方から決める。** 想像で決めない。
+
+def test_十秒の撫では反応する():
+    r = make()
+    asyncio.run(r.handle(ev(duration_ms=9499), now=100.0))
+    assert r.presence.overlays, "ふつうの長めの撫でを捨てている"
+
+
+def test_一分の撫でも反応する():
+    r = make()
+    asyncio.run(r.handle(ev(duration_ms=92700), now=100.0))
+    assert r.presence.overlays, "手を置いたままの人を捨てている"
+
+
+def test_長く触られ続けると嫌がる():
+    """★ずっと喜び続けるのは機械。**長すぎれば嫌がるのが人間。**"""
+    r = make()
+    asyncio.run(r.handle(ev(duration_ms=60000), now=100.0))
+    assert r.presence.overlays[0][1] == "sad", r.presence.overlays
+
+
+def test_数分は置きっぱなし():
+    """★何かが載っている。**合図にしない。**（実測 250899ms）"""
+    r = make()
+    asyncio.run(r.handle(ev(duration_ms=250899), now=100.0))
+    assert r.presence.overlays == []
