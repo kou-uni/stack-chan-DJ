@@ -19,8 +19,8 @@ const CODE = ["from __future__ import annotations", "import colorsys", "import j
 
 const cv = document.getElementById('c'), g = cv.getContext('2d', {alpha:false});
 const tag = document.getElementById('s');
-let S = {bpm:0, n:0, beat:0, series:'blue', dancing:false, drop:false,
-         groove:1, mode:'off', talk:null};
+let S = {bpm:0, n:0, series:'blue', dancing:false, drop:false,
+         talk:null, jog:0, jogw:0};
 let lastN = -1, pulse = 0, flash = 0;
 
 // ── 色。★ビビッドに。くすませない ─────────────────────
@@ -103,7 +103,12 @@ function beams(t, p, energy, heat){
     b.on = Math.max(0, b.on - 0.055);      // ★すぐ消える。残すと眠くなる
     const cx = innerWidth*b.cx;
     // 灯体の首振り。★下向きが基準（トラスから床を照らす）
-    const a = Math.sin(t*1.5*b.sw + b.base) * 0.85;
+    //   ★右レコードを触っている間は、演者の手が勝つ（2026-09-12 本人の要望）。
+    //     離せば自動に戻る。ずっと持っていないと動かない照明は演奏の邪魔になる
+    const auto = Math.sin(t*1.5*b.sw + b.base) * 0.85;
+    const hand = (S.jog || 0) * 0.9;
+    const w = S.jogw || 0;
+    const a = auto*(1-w) + hand*w;
     const power = b.on*b.on * (0.55 + energy);
     if (power < 0.012) continue;
     const hue = (p.h + b.hue*200 + t*90) % 360;
@@ -137,7 +142,9 @@ function beams(t, p, energy, heat){
   drawTruss(Math.min(1, heat*1.6));
   for (const b of BEAMS){
     const cx = innerWidth*b.cx;
-    const a = Math.sin(t*1.5*b.sw + b.base) * 0.85;
+    const auto2 = Math.sin(t*1.5*b.sw + b.base) * 0.85;
+    const w2 = S.jogw || 0;
+    const a = auto2*(1-w2) + (S.jog || 0)*0.9*w2;
     g.save();
     g.translate(cx, ty);
     // ヨーク（吊り金具）
@@ -197,7 +204,7 @@ function draw(now){
 
   // 背景。★静かなときは色を回さない。回ると落ち着かない
   g.fillStyle = 'hsl('+((p.h + t*26*heat) % 360)+','
-              + (40 + 45*heat)+'%,'+(2 + energy*3.2)+'%)';
+              + (40 + 45*heat)+'%,'+(0.6 + energy*3.4)+'%)';
   g.fillRect(0,0,innerWidth,innerHeight);
   // ★静かなときはライトを出さない。**コードがゆっくり流れているだけでちょうどいい**
   //   （2026-09-12 本人の指摘）。動き出したら吊り込まれる
@@ -209,7 +216,7 @@ function draw(now){
   g.font = '600 '+FS+'px ui-monospace,SFMono-Regular,Menlo,monospace';
   g.globalCompositeOperation = 'lighter';
   for (const c of cols){
-    c.off += dt * c.spd * (0.55 + heat*2.0 + energy*6.0);  // ★静かなときはゆっくり
+    c.off += dt * c.spd * (0.22 + heat*2.4 + energy*6.0);  // ★静かなときはゆっくり
     if (c.off > ROWS) c.off -= ROWS;
     // ★切り取らない。**途中で切れたコードは嘘に見える**（2026-09-12 本人の指摘）。
     //   重なってよい。層になって流れるほうが、ライブの映像らしい
@@ -218,23 +225,24 @@ function draw(now){
       if (d > TAIL) continue;
       const txt = c.rows[r];
       if (!txt) continue;
-      const hue = (p.h + c.hue*(40+130*heat) + (p.h2-p.h)*(d/TAIL) + t*(6+52*heat)) % 360;
+      const hue = (p.h + c.hue*(30+140*heat) + (p.h2-p.h)*(d/TAIL) + t*(2+56*heat)) % 360;
       if (d < 0.9){
         g.shadowColor = 'hsl('+hue+',100%,72%)';
-        g.shadowBlur = 6 + 24*heat + 34*energy;
+        g.shadowBlur = 0 + 30*heat + 34*energy;
         // ★静止時は先頭も白く飛ばさない
         g.fillStyle = heat > 0.35 ? p.core
-                    : 'hsla('+hue+',60%,'+(52 + 30*heat)+'%,0.85)';
+                    : 'hsla('+hue+',45%,'+(26 + 56*heat)+'%,0.42)';
       } else {
         // ★止まっている間は暗く沈める（2026-09-12 本人の指摘）
-        const a = Math.max(0, 1 - d/TAIL) * (0.17 + 0.48*heat + energy*0.45);
+        // ★止まっている間は「なんかあるな」くらいまで沈める（本人の指示）
+        const a = Math.max(0, 1 - d/TAIL) * (0.045 + 0.62*heat + energy*0.45);
         g.shadowColor = 'hsl('+hue+',100%,62%)';
-        g.shadowBlur = 4 + 10*heat + 20*energy;
-        g.fillStyle = 'hsla('+hue+','+(55 + 45*heat)+'%,'
-                    + (34 + 26*heat + 18*(1-d/TAIL))+'%,'+a+')';
+        g.shadowBlur = 0 + 14*heat + 20*energy;
+        g.fillStyle = 'hsla('+hue+','+(45 + 55*heat)+'%,'
+                    + (15 + 45*heat + 14*(1-d/TAIL))+'%,'+a+')';
       }
       g.fillText(txt, c.x, r*LH);
-      if (Math.random() < 0.0012 + 0.005*heat + pulse*0.06*heat){
+      if (Math.random() < 0.0004 + 0.006*heat + pulse*0.06*heat){
         c.rows[r] = CODE[(Math.random()*CODE.length)|0];
       }
     }

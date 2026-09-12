@@ -73,6 +73,10 @@ class MidiMixin:
                 self.pose.touch()
                 await self.wake_servos()
                 self._show_pose("yaw")
+            elif slot == "jog_r":
+                # ★照明だけを動かす。**首やモードは触らない**
+                #   （スクラッチ中に状態が変わると演奏が壊れる）
+                self.jog.feed(msg.value)
             elif slot == "pitch":
                 self.pose.pitch = _scale(msg.value, PITCH_REL_MIN, PITCH_REL_MAX)
                 self.pose.touch()

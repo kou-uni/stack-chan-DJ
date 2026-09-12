@@ -35,23 +35,25 @@ HERE = Path(__file__).resolve().parent
 STAGE_HOST = "stackchan.local"
 
 
-def stage_state(led, presence, now: float | None = None) -> dict:
+def stage_state(led, presence, now: float | None = None, jog=None) -> dict:
     """いまの状態を、画面が使う形にして返す。**純粋な変換。**
 
     - `beat` は秒ではなく**拍の中の位置 0..1**。画面はこれで光る
     - `series` は LED と**同じ関数**から採る（テープと画面で色が食い違わない）
     """
-    n, ph = led._phase()
+    n, _ph = led._phase()
+    # ★使っていない項目は載せない。**毎拍送るので、増やすとネットワークが先に詰まる**
+    #   （beat / groove / mode は 2026-09-12 時点でどこも読んでいなかった）
     return {
         "bpm": float(led.bpm or 0.0),
         "n": int(n),
-        "beat": float(ph),
         "series": led._series_name(n),
         "dancing": bool(led.enabled),
         "drop": bool(led.flash_white),
-        "groove": float(getattr(led, "groove", 1.0)),
-        "mode": presence.mode,
         "talk": presence.talk,
+        # ★演者の手（右レコード）。触っていなければ 0 に戻る
+        "jog": float(jog.value()) if jog is not None else 0.0,
+        "jogw": float(jog.weight()) if jog is not None else 0.0,
     }
 
 
@@ -69,7 +71,8 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
         try:
             while not sock.closed:
                 await sock.send_str(json.dumps(
-                    stage_state(con.led, con.presence)))
+                    stage_state(con.led, con.presence,
+                                jog=getattr(con, 'jog', None))))
                 await asyncio.sleep(1.0 / hz)
         except (ConnectionResetError, asyncio.CancelledError):
             raise

@@ -55,6 +55,7 @@ from motion.pose import PoseState               # noqa: E402
 from expression import ExpressionMixin          # noqa: E402
 from midi_in import MidiMixin                   # noqa: E402
 from audio import AudioMixin                    # noqa: E402
+from jog import Jog
 from touch import TouchMixin                    # noqa: E402
 from vision import VisionMixin                  # noqa: E402
 import settings                                 # noqa: E402
@@ -130,6 +131,8 @@ class Console(ExpressionMixin, MidiMixin, AudioMixin, TouchMixin, VisionMixin):
         self.presence = Presence(dance_face=args.beat_face)
         self.reconciler = Reconciler(gw, self.presence, quiet=args.quiet)
         self.pose = PoseState(hold_s=args.knob_hold)
+        # ★右レコードでスポットライトを振る（触っていなければ自動に返る）
+        self.jog = Jog()
         self.led = LedState(count=args.led_count, target=args.led_target,
                             max_brightness=args.led_brightness,
                             pattern=args.led_pattern, cycle_beats=args.led_cycle_beats)

@@ -25,13 +25,13 @@ def _parts(bpm=128.0, dancing=False, talk=None, mode=P.MODE_IDLE, now=10.0):
     return led, pres
 
 
-def test_拍の位置が0から1で返る():
-    """★画面は拍の位置で光る。秒ではなく位相で渡す。"""
-    for t in (0.0, 0.11, 0.23, 0.47):
-        led, pres = _parts()
-        led.beat0 = -t
-        s = stage_state(led, pres, now=0.0)
-        assert 0.0 <= s["beat"] < 1.0, s["beat"]
+def test_使っていない項目を載せない():
+    """★毎拍送る。**読まれていない値を運ばない**（2026-09-12 に beat/groove/mode を外した）。"""
+    led, pres = _parts()
+    s = stage_state(led, pres, now=0.0)
+    for gone in ("beat", "groove", "mode"):
+        assert gone not in s, f"{gone} がまだ載っている"
+
 
 
 def test_BPMをそのまま渡す():
@@ -72,7 +72,7 @@ def test_曲が止まっていても落ちない():
     """★BPM が無いときに割り算で落ちない。"""
     led, pres = _parts(bpm=0.0)
     s = stage_state(led, pres, now=0.0)
-    assert s["bpm"] == 0.0 and s["beat"] == 0.0
+    assert s["bpm"] == 0.0 and s["n"] == 0
 
 
 def test_送る中身は小さい():

@@ -168,6 +168,16 @@
       "label": "LED show",
       "led_pattern": "show",
       "confirmed": "2026-09-12"
+    },
+    "jog_r": {
+      "kind": "cc",
+      "ch": 1,
+      "num": 34,
+      "label": "右レコード（スポットライト）",
+      "type": "relative",
+      "center": 64,
+      "note": "中心64の相対値。実測 63〜66。スポットライトの向きに使う",
+      "confirmed": "2026-09-12"
     }
   },
   "ready_command": "./.venv/bin/python app/dj/console.py --beat --sensitivity 0.3 --led-pattern strobe --led-brightness 0.8 --sway-deg 24 --play-ch 0 --play-note 11",
