@@ -196,16 +196,18 @@ function trussRun(x0, y0, x1, y1, s, a){
   const pipe = Math.max(1.2, M()*0.05*s);       // パイプ径 5cm
   const bp = M()*0.55*s;                        // 筋交いの間隔 55cm
 
-  // ① 内側の影（箱の中）
-  g.fillStyle = 'rgba(3,4,7,'+(0.90*a+0.06)+')';
+  // ★中は塗らない。**箱トラスは骨組み。隙間から背景が透ける**
+  //   （2026-09-13 本人の指摘：塗り潰していたので板になっていた）
+  //   奥に見えるものが、ほんのり暗くなるだけ
+  g.fillStyle = 'rgba(2,3,6,'+(0.16*a)+')';
   g.beginPath();
   g.moveTo(x0+nx*h/2, y0+ny*h/2); g.lineTo(x1+nx*h/2, y1+ny*h/2);
   g.lineTo(x1-nx*h/2, y1-ny*h/2); g.lineTo(x0-nx*h/2, y0-ny*h/2);
   g.closePath(); g.fill();
 
-  // ② 筋交い（ジグザグ＋垂直材）
-  g.strokeStyle = 'rgba(96,110,132,'+(0.50*a)+')';
-  g.lineWidth = pipe*0.65;
+  // ② 筋交い（ジグザグ＋垂直材）。**これは実体なので不透明**
+  g.strokeStyle = 'rgba(30,36,46,'+(0.92*a)+')';
+  g.lineWidth = pipe*0.62;
   g.lineCap = 'round';
   g.beginPath();
   for (let d = 0; d < len; d += bp){
@@ -217,6 +219,10 @@ function trussRun(x0, y0, x1, y1, s, a){
     g.moveTo(bx,by); g.lineTo(vx,vy);
   }
   g.stroke();
+  // ★丸パイプなので、片側に細い照りが出る
+  g.strokeStyle = 'rgba(130,148,180,'+(0.30*a)+')';
+  g.lineWidth = pipe*0.20;
+  g.stroke();
 
   // ③ 弦材（丸いパイプ）。**片側だけ明るい**
   for (const side of [-1, 1]){
@@ -224,14 +230,23 @@ function trussRun(x0, y0, x1, y1, s, a){
     const cx1 = x1 + nx*h/2*side, cy1 = y1 + ny*h/2*side;
     const gr = g.createLinearGradient(cx0 - nx*pipe/2, cy0 - ny*pipe/2,
                                       cx0 + nx*pipe/2, cy0 + ny*pipe/2);
-    gr.addColorStop(0,    'rgba(150,166,196,'+(0.60*a)+')');
-    gr.addColorStop(0.35, 'rgba(60,70,90,'+(0.85*a)+')');
-    gr.addColorStop(1,    'rgba(3,4,8,'+(0.92*a)+')');
+    gr.addColorStop(0,    'rgba(158,174,204,'+(0.85*a)+')');
+    gr.addColorStop(0.32, 'rgba(52,62,80,'+(0.97*a)+')');
+    gr.addColorStop(1,    'rgba(3,4,8,'+(0.99*a)+')');
     g.strokeStyle = gr;
     g.lineWidth = pipe;
     g.beginPath(); g.moveTo(cx0,cy0); g.lineTo(cx1,cy1); g.stroke();
   }
   g.lineCap = 'butt';
+}
+
+function trussCorner(x, y, s, a){
+  // ★角には継ぎ手が入る。**トラス同士は交差せず、ブロックで繋がる**
+  const h = M()*0.30*s;
+  g.fillStyle = 'rgba(16,20,27,'+(0.95*a)+')';
+  rrect(x - h*0.58, y - h*0.58, h*1.16, h*1.16, h*0.14); g.fill();
+  g.fillStyle = 'rgba(120,136,166,'+(0.22*a)+')';
+  rrect(x - h*0.58, y - h*0.58, h*1.16, h*0.14, h*0.06); g.fill();
 }
 
 function drawTruss(a){
@@ -790,7 +805,8 @@ function draw(now){
   {
     for (const x0 of [0.172, 0.828]){
       const x = innerWidth*x0;
-      trussRun(x, cy, x, cy + ch, kc*0.85, 0.85);
+      const hh = M()*0.30*kc*0.85;
+      trussRun(x, cy + hh*0.6, x, cy + ch, kc*0.85, 0.85);   // 角の分だけ下から
       // ★光だまり。線ではなく、当たった高さから四方へ落ちる
       spill(() => { g.beginPath();
                     g.rect(x - M()*0.16*kc, cy, M()*0.32*kc, ch); },
@@ -799,7 +815,13 @@ function draw(now){
   }
 
   // ── ★ウォールの上端にも横トラス。**枠として一周させる**（本人の指摘）
-  trussRun(innerWidth*0.172, cy, innerWidth*0.828, cy, kc*0.85, 0.85);
+  {
+    const hh = M()*0.30*kc*0.85;
+    trussRun(innerWidth*0.172 + hh*0.6, cy,
+             innerWidth*0.828 - hh*0.6, cy, kc*0.85, 0.85);
+    trussCorner(innerWidth*0.172, cy, kc*0.85, 0.85);
+    trussCorner(innerWidth*0.828, cy, kc*0.85, 0.85);
+  }
 
   // ── 床。★奥行きの手がかりで**いちばん強いのは床の収束線**（2026-09-13）。
   //   これが無いと、パネルが宙に浮いて部屋に見えない
