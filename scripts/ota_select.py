@@ -7,6 +7,8 @@
 ★app は上書きしない。**切り替えるだけなので、いつでも戻せる。**
 ★crc の計算式は変種が多い。実機の entry0 で検算した式を使っている。
 """
+import glob
+import os
 import struct
 import subprocess
 import sys
@@ -14,8 +16,22 @@ import tempfile
 import zlib
 from pathlib import Path
 
-PORT = "/dev/cu.usbmodem201101"
 OTADATA_ENTRY1 = 0xE000        # entry0(0xd000) は触らない。戻り先として残す
+
+
+def find_port() -> str:
+    """USB シリアルを探す。★この機械のポート名を埋め込まない。
+
+    MacBook では別の名前になる（移植性テストが捕まえた）。
+    """
+    if os.environ.get("STACKCHAN_PORT"):
+        return os.environ["STACKCHAN_PORT"]
+    found = sorted(glob.glob("/dev/cu.usbmodem*") + glob.glob("/dev/cu.usbserial*"))
+    if not found:
+        raise SystemExit("USB シリアルが見つかりません（STACKCHAN_PORT で指定できます）")
+    if len(found) > 1:
+        print(f"  ※ 複数見つかりました: {found} → {found[0]} を使います")
+    return found[0]
 
 
 def main(slot: int) -> int:
@@ -34,8 +50,9 @@ def main(slot: int) -> int:
                     + b"\xff" * (4096 - 32))
             what = f"ota_1（seq={seq} state=VALID crc={crc:#010x}）"
         path = f.name
-    print(f"  → {what}")
-    r = subprocess.run([sys.executable, "-m", "esptool", "--port", PORT,
+    port = find_port()
+    print(f"  → {what}  port={port}")
+    r = subprocess.run([sys.executable, "-m", "esptool", "--port", port,
                         "--baud", "921600", "write-flash",
                         hex(OTADATA_ENTRY1), path])
     Path(path).unlink(missing_ok=True)

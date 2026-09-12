@@ -141,10 +141,6 @@ class Console(ExpressionMixin, MidiMixin, AudioMixin, TouchMixin, VisionMixin):
         self._knob_was = False
         self._last_check = 0.0
         self.mode = MODE_IDLE
-        self._touch_seen_ms = None
-        self._touch_task: asyncio.Task | None = None
-        self._touch_raw_was = None
-        self._touch_stuck = 0
         self._silent_since = None
         self._hold_i = 0
         self.locked_bpm = None
@@ -552,6 +548,8 @@ def main() -> int:
                     help="起動時のモード")
     ap.add_argument("--dj-timeout-min", type=float, default=5.0,
                     help="DJモードで曲が来ない時間がこれを超えたら自動でOFFに戻る。0で無効")
+    # ★0 にすると頭なでを止められる。押し出し型なので「間隔」ではないが、
+    #   設定ファイルとの互換のため名前は変えない
     ap.add_argument("--touch-poll-s", type=float, default=0.8,
                     help="頭タッチを見る間隔。0で無効。★短くすると拍の検出を邪魔する")
     ap.add_argument("--touch-face-s", type=float, default=3.0, help="撫でられた顔を出す秒数")

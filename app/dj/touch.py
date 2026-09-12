@@ -1,79 +1,101 @@
 #!/usr/bin/env python3
-"""頭を撫でられたときの反応。
+"""頭を撫でられたときの反応。仕様は tests/test_touch_reactions.py。
 
-console.py の Console から切り出した mixin。**中身は1行も変えていない。**
-Console がこれらを継承して1つのクラスになる。
+## 2026-09-12 に作り直した理由
+
+ここは `get_touch_state` を0.8秒ごとに**問い合わせて**いた。
+ところが実機は**押し出し型で通知を送る**（`touch_events.py` の冒頭を読むこと）。
+問い合わせても `idle` しか返らない経路だったので、**一度も反応していなかった。**
+
+撫でて動いていたのは**ファーム自身の反応**（顔＋サーボの揺れ）。
+こちらで用意した6つの反応（`petting.py`）は死んでいた。
+
+> **モジュールが在ることと、呼ばれていることは別。**
+
+## 作り
+
+    JSONL（押し出し）→ TouchEvents → Petting が反応を選ぶ → TouchReactor が出す
+
+実機も時計も触らない `Petting` に判断を任せ、
+`TouchReactor` は**出すだけ**にする。だから実機なしで試験できる。
+
+## 触っても状態は変えない
+
+**可愛いから触る人がいる。** その動作に機能を割り当てると
+「触ったら勝手に挙動が変わった」になって体験が壊れる。
+**意図せず起きる操作に、状態を変える意味を持たせない。**
 """
 from __future__ import annotations
 
 import asyncio
-import json
-import math
-import random
-import time
 
-from constants import (ROOT, MAPPING, YAW_MIN, YAW_MAX, PITCH_REL_MIN,
-                       PITCH_REL_MAX, MODE_IDLE, MODE_DJ, MODE_LABEL,
-                       MODE_FACE, MODE_ORDER, _scale)  # noqa: F401
+from petting import Petting
+
+# ★長すぎる「撫で」は、手ではなく置きっぱなし。合図にしない。
+#   実測: 250899ms / 57100ms（**離すまで1件で来る**）
+MAX_STROKE_MS = 8000
+
+
+class TouchReactor:
+    """撫でられた通知を、顔と首の動きにする。**出すだけ。**"""
+
+    def __init__(self, presence, pose, face_s: float = 3.0,
+                 max_stroke_ms: int = MAX_STROKE_MS, quiet: bool = False):
+        self.presence, self.pose = presence, pose
+        self.face_s, self.max_stroke_ms, self.quiet = face_s, max_stroke_ms, quiet
+        self.petting = Petting()
+        self._task: asyncio.Task | None = None
+
+    async def handle(self, ev: dict, now: float) -> None:
+        dur = int(ev.get("duration_ms") or 0)
+        if dur > self.max_stroke_ms:
+            return                                  # ★置きっぱなし
+
+        r = self.petting.react(dur, now)
+        if not self.quiet:
+            print(f"    ♡ {r.name}（{dur}ms）")
+        self.presence.overlay("touch", r.face, self.face_s)
+
+        # ★前の反応が残っていたら止める。待たせると反応の遅い機械に見える
+        if self._task and not self._task.done():
+            self._task.cancel()
+        self._task = asyncio.ensure_future(self._play(r))
+        await self._task
+
+    async def _play(self, r) -> None:
+        """首の動きを順に出して、**必ず戻す。**
+
+        ★戻さないと傾いたままになる。cancel されても戻す（finally）。
+        """
+        try:
+            for yaw, pitch in r.moves:
+                self.pose.hold = (yaw * r.scale, pitch * r.scale)
+                await asyncio.sleep(r.step_s)
+        except asyncio.CancelledError:
+            raise
+        finally:
+            self.pose.hold = None
 
 
 class TouchMixin:
-    # ── 頭を撫でたら照れる（モードは変えない）
+    """console 側の入口。**押し出し型で受け、押し出し型で出す。**"""
+
     async def touch_loop(self):
-        """頭タッチは**反応にだけ使う**。モードの切り替えには使わない。
+        from touch_events import TouchEvents, notify_config_ok
 
-        ★可愛いから触る人がいる。その動作に機能を割り当てると、
-          「触ったら勝手に挙動が変わった」になって体験が壊れる。
-          **意図せず起きる操作に、状態を変える意味を持たせない。**
+        ok, why = notify_config_ok()
+        if not ok:
+            # ★沈黙は故障と見分けがつかない。届かないなら起動時に言う
+            print(f"    ★ 頭なでが届きません: {why}")
 
-        ポーリングは遅めにする。音声と同じ WebSocket を使うので、
-        速く回すと拍の検出を邪魔する（一度それで壊した）。
-        """
+        te = TouchEvents(max_stroke_ms=10 ** 9)     # 選別は TouchReactor 側で
+        te.catch_up()                                # 起動前の分は無視する
+        reactor = TouchReactor(self.presence, self.pose,
+                               face_s=self.args.touch_face_s)
+        loop = asyncio.get_running_loop()
         while True:
-            await asyncio.sleep(self.args.touch_poll_s)
-            d = self._as_json(await self.gw.call("get_touch_state")) or {}
-            if not d.get("available"):
+            ev = te.poll()
+            if ev is None:
+                await asyncio.sleep(0.12)
                 continue
-            ev, age = d.get("last_event"), d.get("last_event_age_ms")
-            if ev in (None, "idle") or age is None:
-                continue
-            # ★ゾーンが押されっぱなしのことがある（実測：raw=56 が200秒以上固着）。
-            #   その状態のイベントは信用しない。手が乗っている／誤検出のどちらか。
-            raw = d.get("raw") or 0
-            if raw == self._touch_raw_was:
-                self._touch_stuck += 1
-            else:
-                self._touch_stuck = 0
-                self._touch_raw_was = raw
-            if self._touch_stuck >= self.args.touch_stuck_polls:
-                continue
-            # 同じイベントを二重に拾わないよう、発生時刻で照合する
-            stamp = int(time.time() * 1000) - int(age)
-            if self._touch_seen_ms is not None and abs(stamp - self._touch_seen_ms) < 1200:
-                continue
-            if age > self.args.touch_poll_s * 1000 + 1500:
-                self._touch_seen_ms = stamp      # 起動前の古いイベントは無視
-                continue
-            self._touch_seen_ms = stamp
-            await self.react_to_touch(ev)
-
-    async def react_to_touch(self, ev: str) -> None:
-        """撫でられたら照れる。触られたら驚く。数秒で戻る。
-
-        ★戻す処理を自分で持たない。顔は期限つきの上書き、首は Arbiter のポーズ。
-          以前はここで `set_avatar` と `move_head` を直接叩き、
-          戻す前に次の出来事が来ると戻らなくなっていた（設計 I1 / I5）。
-        """
-        face = "embarrassed" if ev == "stroke" else "surprised"
-        print(f"    ♡ 頭を{'なでられた' if ev == 'stroke' else '触られた'} → {face}")
-        self.presence.overlay("touch", face, seconds=self.args.touch_face_s)
-
-        if ev == "stroke":                       # 撫でられたら、うれしそうに少し首をかしげる
-            if self._touch_task and not self._touch_task.done():
-                self._touch_task.cancel()
-
-            async def tilt():
-                self.pose.hold = (12, 7)         # ★45 からの差。45 を送ると真下になる
-                await asyncio.sleep(self.args.touch_face_s)
-                self.pose.hold = None
-            self._touch_task = asyncio.create_task(tilt())
+            await reactor.handle(ev, now=loop.time())
