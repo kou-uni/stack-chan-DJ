@@ -84,7 +84,8 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
     # ── 外から操作するパネル（ROADMAP Phase 2）─────────────
     #   ★同じ console の中に置く。別プロセスにすると書き手が2人になる（I2 違反）
     from panel import (AskDesk, CameraFeed, apply_action, check_token,
-                       load_token, panel_state, perform, split_speech)
+                       fake_note, load_token, panel_state, perform,
+                       split_speech)
     ask_desk = AskDesk()
     token = load_token()
 
@@ -207,6 +208,31 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
                 {"error": f"読ませられません（{type(exc).__name__}）"}, status=502)
         return web.json_response({**r, "state": panel_state(con)})
 
+    async def api_midi(req):
+        """MIDI を流し込む。**割り当てを人手で確かめなくて済むように。**
+
+        ★試験用だが、当日「パッドが効かない」ときの切り分けにも使える
+          （鍵を持っているのは本人だけ）。
+        """
+        if not guard(req):
+            return web.json_response({"error": "鍵がちがいます"}, status=403)
+        try:
+            b = await req.json()
+            msg = fake_note(int(b["ch"]), int(b["num"]),
+                            velocity=int(b.get("velocity", 100)),
+                            kind=str(b.get("kind", "note")),
+                            value=int(b.get("value", 0)))
+        except Exception:
+            return web.json_response({"error": "ch と num が要ります"}, status=400)
+        before = panel_state(con)
+        try:
+            await con._handle(msg)
+        except Exception as exc:
+            return web.json_response(
+                {"error": f"{type(exc).__name__}: {exc}"}, status=502)
+        return web.json_response({"ok": True, "before": before,
+                                  "after": panel_state(con)})
+
     async def api_history(req):
         if not guard(req):
             return web.json_response({"error": "鍵がちがいます"}, status=403)
@@ -232,6 +258,7 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
                     web.get("/api/camws", api_camws),
                     web.post("/api/ask", api_ask),
                     web.post("/api/speak", api_speak),
+                    web.post("/api/midi", api_midi),
                     web.get("/api/history", api_history)])
     runner = web.AppRunner(app, access_log=None)
     await runner.setup()

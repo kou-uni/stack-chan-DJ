@@ -410,3 +410,31 @@ async def perform(con, script: str, limit: int = SPEECH_LIMIT) -> dict:
             con.presence.talk = None
     return {"ok": True, "lines": len(lines),
             "chars": sum(len(l.text) for l in lines)}
+
+
+# ── MIDI を流し込む（試験用）─────────────────────────
+#
+# 2026-09-12 本人の指摘：**「なんで僕が押すまでわかんないんだ」**
+#
+# 割り当てが効いているかを、人にパッドを押させて確かめていた。
+# **人の手でしか確かめられない作りは、確かめられていないのと同じ。**
+#
+# ★実機に触る必要がある部分（サーボ・LEDの見え方）と、
+#   **合成した入力で確かめられる部分（割り当て・分岐）を分ける。**
+
+
+class _Msg:
+    """mido のメッセージの代わり。**必要な属性だけ持つ。**"""
+
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
+    def __repr__(self):
+        return f"<{self.type} {self.__dict__}>"
+
+
+def fake_note(ch: int, num: int, velocity: int = 100,
+              kind: str = "note", value: int = 0) -> "_Msg":
+    if kind == "cc":
+        return _Msg(type="control_change", channel=ch, control=num, value=value)
+    return _Msg(type="note_on", channel=ch, note=num, velocity=velocity)
