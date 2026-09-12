@@ -368,8 +368,8 @@ function rig(heat){
   const lit = 'rgba(120,140,175,'+(0.10*fade)+')';   // 上面がわずかに光を拾う
 
   for (const b of BEAMS){
-    const pan = Math.max(-1.4, Math.min(1.4, b.ang));
-    const sx = Math.max(0.20, Math.cos(pan));      // パンで細く見える
+    const a = b.ang;                       // ★ビームと同じ角度
+    const pan = Math.max(-1.4, Math.min(1.4, a));
     g.save();
     g.translate(innerWidth*b.cx, ty);
     g.fillStyle = ink;
@@ -386,7 +386,7 @@ function rig(heat){
     g.fillStyle = ink;
 
     g.translate(0, by + L*BASE_H);
-    g.scale(sx, 1);                                 // ★ここから先がパンで回る
+    // ★ヨークは横に潰さない。回るのはヘッド（次の rotate(a)）
 
     // ★ヨーク（Uの字の腕）。**曲がった腕**。直線の棒ではない
     g.lineCap = 'round';

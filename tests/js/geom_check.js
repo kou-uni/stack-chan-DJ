@@ -20,6 +20,7 @@ const sb = {
   Math, JSON, console, setTimeout(){}, setInterval(){},
 };
 sb.window = sb; vm.createContext(sb);
+const sb0 = sb; let frameN = 0; const rafFn = (x)=>raf(x);
 vm.runInContext(js, sb, {timeout:5000});
 const D = sb.__debug;
 
@@ -82,6 +83,19 @@ ok('下からの光は実機の外側', D.UPS[0].cx < 0.30 && D.UPS[1].cx > 0.70
      'L=' + aL.x.toFixed(1) + ' R=' + aR.x.toFixed(1));
   ok('振ると少し上がる（円弧を描く）', aL.y < a0.y - 0.5 && aR.y < a0.y - 0.5);
   ok('左右対称', Math.abs((c - aL.x) - (aR.x - c)) < 1e-6);
+}
+
+// ★灯体が本当に動くか。**中央だけ止まる**ことがあった（2026-09-13）
+{
+  const hist = D.BEAMS.map(()=>[]);
+  sb0.__ws.onmessage({data: JSON.stringify(
+    {bpm:0,n:0,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0})});
+  for (let i=0;i<300;i++){ frameN++; rafFn(frameN*16.7);
+    D.BEAMS.forEach((b,j)=>hist[j].push(b.ang)); }
+  hist.forEach((h,j)=>{
+    const sw = Math.max(...h) - Math.min(...h);
+    ok('灯体' + (j+1) + ' が動く', sw > 0.5, '振れ幅 ' + sw.toFixed(2));
+  });
 }
 
 // ── 構造材の統一（2026-09-13 本人の指摘）────────────
