@@ -161,9 +161,16 @@ function rigLen(){ return M() * 0.55 * TRUSS_NEAR; }  // ムービングヘッ�
 // ★レンズ（光が出る口）の位置。**描く側と光る側で必ず同じ値を使う**
 //   ばらばらに計算していたので、光が出る場所がずれていた（2026-09-12）
 const BASE_Y = 0.42, BASE_H = 0.36, YOKE_H = 0.28, HEAD_H = 0.40;
-function lensY(){
-  return trussY() + trussH()*BASE_Y + rigLen()*(BASE_H + YOKE_H + HEAD_H);
+function pivotY(){                     // ヨークの支点（ここを中心にヘッドが回る）
+  return trussY() + trussH()*BASE_Y + rigLen()*(BASE_H + YOKE_H);
 }
+// ★レンズは**回った先**にある。ヘッドが向きを変えれば、光の出口も動く
+//   （2026-09-13：横に潰して固定していたので、最初の姿勢のまま止まって見えた）
+function lensPos(cx, ang){
+  const r = rigLen()*HEAD_H;
+  return {x: cx + Math.sin(ang)*r, y: pivotY() + Math.cos(ang)*r};
+}
+function lensY(){ return pivotY() + rigLen()*HEAD_H; }   // 真下を向いたとき
 
 function stepHeads(dt){
   // ★実際の灯体は、キューへ素早く動いて**止まる。** 少し行き過ぎて戻る（慣性）
@@ -234,7 +241,6 @@ function drawTruss(a){
 
 function beams(t, p, energy, heat){
   const ty = trussY(), L = rigLen();
-  const ly = lensY();
 
   // ── 光の筋（加算）。★揺らさない。太さも色も、点いている間は動かさない
   g.globalCompositeOperation = 'lighter';
@@ -259,8 +265,9 @@ function beams(t, p, energy, heat){
     const spread = 0.085;                       // 開き角（固定）★太く
     const far = innerHeight*1.5;
 
+    const LP = lensPos(innerWidth*b.cx, a);
     g.save();
-    g.translate(innerWidth*b.cx, ly);
+    g.translate(LP.x, LP.y);
     g.rotate(a);
 
     // ★光学に合わせる（2026-09-12 本人の指摘）
@@ -397,7 +404,8 @@ function rig(heat){
   for (const b of BEAMS){
     const pw = b.pw || 0;
     if (pw < 0.02) continue;
-    const cx = innerWidth*b.cx, ly = lensY(), hue = b.hueDeg, half = M()*0.115;
+    const LP = lensPos(innerWidth*b.cx, b.ang);
+    const cx = LP.x, ly = LP.y, hue = b.hueDeg, half = M()*0.115;
     for (const [r, a2, s2, l2] of [[4.2, 0.10, 90, 55],
                                    [2.0, 0.34, 70, 80],
                                    [0.85,0.90, 20, 98]]){
@@ -417,7 +425,8 @@ function rig(heat){
   for (const b of BEAMS){
     const pw = b.pw || 0;
     if (pw < 0.02) continue;
-    const hue = b.hueDeg, cx = innerWidth*b.cx, ly = lensY();
+    const LP2 = lensPos(innerWidth*b.cx, b.ang);
+    const hue = b.hueDeg, cx = LP2.x, ly = LP2.y;
 
     // ① 灯体まわりの散り。**レンズの近くがいちばん明るい**
     const sp = g.createRadialGradient(cx, ly, 0, cx, ly, L*1.1);
@@ -469,11 +478,11 @@ function spill(clip, objX, yTop, yBot, gain){
   g.save();
   clip();
   g.globalCompositeOperation = 'lighter';
-  const ly = lensY();
   // ★下からの光も物に当たる。上だけ見ていた（2026-09-13 本人の指摘）
   const sources = [
     ...BEAMS.map(b => ({pw: b.pw||0, hue: b.hueDeg,
-                        x: innerWidth*b.cx + Math.tan(b.ang)*(innerHeight-ly)*0.55,
+                        x: lensPos(innerWidth*b.cx, b.ang).x
+                           + Math.tan(b.ang)*(innerHeight-lensY())*0.55,
                         up: false})),
     ...UPS.map(u => ({pw: u.pw||0, hue: u.hueDeg, x: u.x||0, up: true})),
   ];
@@ -854,7 +863,8 @@ function draw(now){
       const pw2 = b.pw || 0;
       if (pw2 < 0.03) continue;
       const ly2 = lensY();
-      const hx = innerWidth*b.cx + Math.tan(b.ang) * (innerHeight - ly2) * 0.55;
+      const hx = lensPos(innerWidth*b.cx, b.ang).x
+               + Math.tan(b.ang) * (innerHeight - ly2) * 0.55;
       const rx = M()*0.55*(1 + 1.6*pw2), ry = rx*0.20;
       const gp = g.createRadialGradient(hx, innerHeight*0.93, 0,
                                         hx, innerHeight*0.93, rx);
@@ -1005,6 +1015,7 @@ window.__debug = {
   // 元画像の位置（射影）
   tex:   (k, u) => k*u / (1 - u*(1-k)),
   litColor: () => litColor(pal()),
+  lensPos, pivotY, lensY,
   state: () => ({heat, hold, release, panels: panels.length}),
 };
 </script></body></html>
