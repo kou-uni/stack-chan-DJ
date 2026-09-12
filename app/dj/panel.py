@@ -35,11 +35,16 @@ TOKEN_PATH = Path.home() / ".config" / "stackchan" / "panel-token"
 #     pitch 80 → 天井の見切り             ＝ 上
 #   コード内のコメント（「45 を送ると真下になる」）を測らずに信じて逆にしていた。
 #   **書かれていることではなく、撮って確かめたことを仕様にする。**
+# ★1つのボタンは1つの軸だけ動かす。**触っていない軸は保つ。**
+#   （2026-09-12：下を向いてから左を押すと、首を上げながら横を向いていた）
+#   None = その軸は今のまま
 HEAD = {
-    "left":   (-55, 0),
-    "right":  (55, 0),
-    "up":     (0, 25),
-    "down":   (0, -25),
+    "left":   (-55, None),
+    "right":  (55, None),
+    # ★±35（絶対 10〜80）。可動域は±40 だが、端ちょうどは張り付きやすい。
+    #   絶対 10 と 80 は実写で確認済み（2026-09-12）
+    "up":     (None, 35),
+    "down":   (None, -35),
     # ★「まんなか」は**中央に戻す指示**。固定を外すだけだと、その場に残る
     #   （実測 2026-09-12: center を押しても (53,44) のまま動かなかった）
     "center": (0, 0),
@@ -92,7 +97,10 @@ async def apply_action(con, action: str, value: str) -> dict:
     if action == "head":
         if value not in HEAD:
             raise ValueError(f"知らない向き: {value}")
-        con.pose.hold = HEAD[value]
+        want = HEAD[value]
+        cur = con.pose.hold or (0, 0)
+        con.pose.hold = (cur[0] if want[0] is None else want[0],
+                         cur[1] if want[1] is None else want[1])
         return _ok(con, head=value)
 
     if action == "face":

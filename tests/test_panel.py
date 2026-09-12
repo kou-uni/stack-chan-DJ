@@ -213,3 +213,45 @@ def test_up_and_down_are_symmetric():
 def test_left_and_right_are_symmetric():
     from panel import HEAD
     assert HEAD["left"][0] == -HEAD["right"][0]
+
+
+# ── 軸を混ぜない（2026-09-12 本人の指摘）──────────────
+#
+# > **「左を向いた時、斜め上を見直します。そのまま単純に左を向けばいいのでは」**
+#
+# ◀ を押すと高さも中央に戻っていた。下を向いてから左を押すと、
+# **首を上げながら横を向く。** 押したのは「左」だけなのに。
+#
+# ★1つのボタンは1つの軸だけ動かす。**触っていない軸は保つ。**
+
+def test_左右は高さを変えない():
+    con = FakeCon()
+    run(apply_action(con, "head", "down"))
+    down_pitch = con.pose.hold[1]
+    run(apply_action(con, "head", "left"))
+    assert con.pose.hold[1] == down_pitch, "左を向いたら高さが変わった"
+    assert con.pose.hold[0] < 0
+
+
+def test_上下は向きを変えない():
+    con = FakeCon()
+    run(apply_action(con, "head", "right"))
+    right_yaw = con.pose.hold[0]
+    run(apply_action(con, "head", "up"))
+    assert con.pose.hold[0] == right_yaw, "上を向いたら左右が変わった"
+    assert con.pose.hold[1] > 0
+
+
+def test_まんなかは両方戻す():
+    con = FakeCon()
+    run(apply_action(con, "head", "left"))
+    run(apply_action(con, "head", "down"))
+    run(apply_action(con, "head", "center"))
+    assert con.pose.hold == (0, 0)
+
+
+def test_固定していない状態から押しても壊れない():
+    con = FakeCon()
+    con.pose.hold = None
+    run(apply_action(con, "head", "left"))
+    assert con.pose.hold == (-55, 0)
