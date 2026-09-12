@@ -613,7 +613,9 @@ function draw(now){
       const mirror = pn.side === 'left';   // 左は画面の左端が手前
       for (let i=0; i<N; i++){
         const u0 = i/N, u1 = (i+1)/N;
-        const s0 = k / (k + (1-u0)*(1-k)) / k;      // u0=0 → 1、u0=1 → k
+        // ★u0=0（画面の端＝手前）で 1、u0=1（中央寄り＝奥）で k。
+        //   前は 1/k になっていて、**奥へ行くほど広がっていた**（2026-09-13）
+        const s0 = k / (k + u0*(1-k));
         const t0 = su(u0), t1 = su(u1);
         const sx = (mirror ? t0 : 1-t1) * pn.bw;
         const sw = Math.max(1, (t1-t0) * pn.bw);
