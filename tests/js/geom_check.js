@@ -71,5 +71,14 @@ ok('下からの光は2本', D.UPS.length === 2);
 ok('下からの光は実機の外側', D.UPS[0].cx < 0.30 && D.UPS[1].cx > 0.70,
    D.UPS.map(u=>u.cx).join(' / '));
 
+// ── 構造材の統一（2026-09-13 本人の指摘）────────────
+// ★横も縦も**同じ素材・同じ粒度・同じ太さ**で描く。別々に描くと柱だけ浮く
+const src = fs.readFileSync(process.argv[2], 'utf8');
+ok('トラスは1つの関数で描く', /function trussRun\(/.test(src));
+const calls = (src.match(/trussRun\(/g) || []).length - 1;   // 定義を除く
+ok('横と縦の両方に使っている（3箇所以上）', calls >= 3, calls + '箇所');
+ok('柱を四角塗りで描いていない',
+   !/g\.fillRect\(x, cy, pw2, ch\)/.test(src));
+
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
 process.exit(bad ? 1 : 0);
