@@ -25,11 +25,17 @@ def _parts(bpm=128.0, dancing=False, talk=None, mode=P.MODE_IDLE, now=10.0):
     return led, pres
 
 
+def test_演奏中かはモードで分かる():
+    """★こすると音楽が止まって拍が消える。**モードなら消えない。**"""
+    led, pres = _parts()
+    assert "mode" in stage_state(led, pres, now=0.0)
+
+
 def test_使っていない項目を載せない():
     """★毎拍送る。**読まれていない値を運ばない**（2026-09-12 に beat/groove/mode を外した）。"""
     led, pres = _parts()
     s = stage_state(led, pres, now=0.0)
-    for gone in ("beat", "groove", "mode"):
+    for gone in ("beat", "groove"):
         assert gone not in s, f"{gone} がまだ載っている"
 
 

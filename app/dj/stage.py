@@ -51,6 +51,10 @@ def stage_state(led, presence, now: float | None = None, jog=None) -> dict:
         "dancing": bool(led.enabled),
         "drop": bool(led.flash_white),
         "talk": presence.talk,
+        # ★「演奏中か」は拍ではなくモードで見る。
+        #   こすると音楽が止まって拍が消える（実測 198中3）。**皮肉なことに、
+        #   こすった瞬間に「踊っている」が落ちて、演出が出なくなっていた**
+        "mode": presence.mode,
         # ★演者の手（右レコード）。触っていなければ 0 に戻る
         "jog": float(jog.value()) if jog is not None else 0.0,
         "jogw": float(jog.weight()) if jog is not None else 0.0,

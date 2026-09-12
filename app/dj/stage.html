@@ -20,7 +20,7 @@ const CODE = ["from __future__ import annotations", "import colorsys", "import j
 const cv = document.getElementById('c'), g = cv.getContext('2d', {alpha:false});
 const tag = document.getElementById('s');
 let S = {bpm:0, n:0, series:'blue', dancing:false, drop:false,
-         talk:null, jog:0, jogw:0};
+         talk:null, mode:'off', jog:0, jogw:0};
 let lastN = -1, pulse = 0, flash = 0;
 
 // ── 色。★ビビッドに。くすませない ─────────────────────
@@ -243,7 +243,8 @@ function draw(now){
   //   （2026-09-12：静止中はライトを消しているので、こすっても見えなかった）
   // ★この演出は**演奏中だけ**（2026-09-12 本人の指示）。
   //   静かなときにこすっても、ライトは出さない
-  const playing = S.dancing || !!S.talk;
+  //   ★拍ではなくモードで見る。こすると音楽が止まって拍が消えるため
+  const playing = S.mode === 'dj' || S.dancing || !!S.talk;
   const hand = playing ? (S.jogw || 0) : 0;
   // ★離した瞬間を捕まえる。**放つのは、掴んでいた手が開いたとき**
   if (prevHand > 0.5 && hand <= 0.15 && hold > 0.25){ release = 1; flash = 1; fireBeams(0); }
