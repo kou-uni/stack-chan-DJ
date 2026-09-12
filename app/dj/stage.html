@@ -880,47 +880,84 @@ function draw(now){
     g.stroke();
   }
 
-  // ── 機材。★ライブ会場には**必ず物がある**。空っぽだと書き割りに見える（調査）
-  {
-    const backY2 = hy + (innerHeight - hy) * CENTER_K;
-    const LC2 = litColor(p);
-    for (const [cx, dir] of [[0.115, 1], [0.885, -1]]){
-      const x = innerWidth*cx, w = M()*0.62, hgt = M()*2.05;
-      const yTop = innerHeight*0.99 - hgt;
-      // スピーカースタック（トップ）
-      g.fillStyle = 'rgb(6,7,11)';
-      rrect(x - w/2, yTop, w, hgt*0.62, M()*0.03); g.fill();
-      // グリル。**横のスリットが入る**
-      g.fillStyle = 'rgba(24,28,36,0.75)';
-      for (let yy = yTop + M()*0.06; yy < yTop + hgt*0.58; yy += M()*0.055){
-        g.fillRect(x - w/2 + M()*0.05, yy, w - M()*0.10, M()*0.022);
-      }
-      // サブウーファー（床置き。ひと回り大きい）
-      const sw = w*1.35;
-      g.fillStyle = 'rgb(4,5,8)';
-      rrect(x - sw/2, yTop + hgt*0.62, sw, hgt*0.38, M()*0.03); g.fill();
-      g.fillStyle = 'rgba(20,24,32,0.7)';
-      g.beginPath();
-      g.arc(x, yTop + hgt*0.81, M()*0.20, 0, 6.2832); g.fill();
-      // ★光を受ける側の面だけ、細く光る
-      if (LC2.pow > 0.02){
-        g.globalCompositeOperation = 'lighter';
-        const eg = g.createLinearGradient(x + dir*w*0.5, 0, x + dir*w*0.2, 0);
-        eg.addColorStop(0, 'hsla('+LC2.hue+',80%,78%,'+(0.16 + 0.34*LC2.pow)+')');
-        eg.addColorStop(1, 'hsla('+LC2.hue+',80%,60%,0)');
-        g.fillStyle = eg;
-        g.fillRect(Math.min(x + dir*w*0.2, x + dir*w*0.5), yTop, w*0.3, hgt);
-        g.globalCompositeOperation = 'source-over';
-      }
-    }
-  }
-
   // ── ② 空気中の光。パネルの手前を通る
   if (heat > 0.06) beams(t, p, energy, heat);
   uplights(t, p, playing ? hold : 0, S.jog || 0);
 
   // ── ③ 部屋全体が染まる
   wash(p, heat);
+
+  // ── 機材。★手前にあるので、**部屋の色を乗せたあとに描く。**
+  //   先に描くと wash で一様に染まって、のっぺりした板になる（2026-09-13）
+  {
+    const LC2 = litColor(p);
+    for (const [cx, dir] of [[0.115, 1], [0.885, -1]]){
+      const x = innerWidth*cx, w = M()*0.60, hgt = M()*2.05;
+      const yTop = innerHeight*0.99 - hgt;
+      const topH = hgt*0.62, subY = yTop + topH, subH = hgt*0.38;
+      const sw = w*1.30;
+
+      // ── トップ。**箱なので、面ごとに明るさが違う**
+      const face = g.createLinearGradient(x - w/2, 0, x + w/2, 0);
+      face.addColorStop(0,    'rgb(9,10,13)');
+      face.addColorStop(0.18, 'rgb(26,28,33)');   // 角のハイライト
+      face.addColorStop(0.55, 'rgb(14,15,19)');
+      face.addColorStop(1,    'rgb(5,6,8)');
+      g.fillStyle = face;
+      rrect(x - w/2, yTop, w, topH, M()*0.025); g.fill();
+
+      // グリル。★細かいメッシュ。太いスリットだとおもちゃに見える
+      g.save();
+      rrect(x - w/2 + M()*0.045, yTop + M()*0.05,
+            w - M()*0.09, topH - M()*0.10, M()*0.012); g.clip();
+      g.fillStyle = 'rgba(0,0,0,0.55)';
+      g.fillRect(x - w/2, yTop, w, topH);
+      g.fillStyle = 'rgba(70,76,88,0.16)';
+      for (let yy = yTop + M()*0.05; yy < yTop + topH; yy += Math.max(2, M()*0.018)){
+        g.fillRect(x - w/2, yy, w, Math.max(1, M()*0.008));
+      }
+      g.restore();
+
+      // ── サブ。**床に置くので、上面が見える**（消失点より下）
+      const sface = g.createLinearGradient(x - sw/2, 0, x + sw/2, 0);
+      sface.addColorStop(0,    'rgb(7,8,11)');
+      sface.addColorStop(0.16, 'rgb(22,24,29)');
+      sface.addColorStop(0.6,  'rgb(11,12,16)');
+      sface.addColorStop(1,    'rgb(4,5,7)');
+      g.fillStyle = sface;
+      rrect(x - sw/2, subY, sw, subH, M()*0.025); g.fill();
+      // 上面（薄く見える）
+      g.fillStyle = 'rgba(40,45,55,0.35)';
+      g.beginPath();
+      g.moveTo(x - sw/2, subY); g.lineTo(x + sw/2, subY);
+      g.lineTo(x + sw/2 - M()*0.05, subY - M()*0.05);
+      g.lineTo(x - sw/2 + M()*0.05, subY - M()*0.05);
+      g.closePath(); g.fill();
+      // ウーファー。**落とし込みなので、縁に影がつく**
+      const wr = M()*0.21, wy = subY + subH*0.52;
+      const wg = g.createRadialGradient(x, wy - wr*0.25, wr*0.1, x, wy, wr);
+      wg.addColorStop(0,   'rgb(24,26,31)');
+      wg.addColorStop(0.6, 'rgb(10,11,14)');
+      wg.addColorStop(1,   'rgb(2,3,5)');
+      g.fillStyle = wg;
+      g.beginPath(); g.arc(x, wy, wr, 0, 6.2832); g.fill();
+      g.strokeStyle = 'rgba(70,78,92,0.30)';
+      g.lineWidth = Math.max(1, M()*0.010);
+      g.beginPath(); g.arc(x, wy, wr*0.98, 0, 6.2832); g.stroke();
+
+      // ── ★光を受ける側の**角だけ**細く光る。面全体を光らせない
+      if (LC2.pow > 0.02){
+        g.globalCompositeOperation = 'lighter';
+        const ex = x + dir*w*0.5, w2 = w*0.16;
+        const eg = g.createLinearGradient(ex, 0, ex - dir*w2, 0);
+        eg.addColorStop(0, 'hsla('+LC2.hue+',75%,80%,'+(0.14 + 0.40*LC2.pow)+')');
+        eg.addColorStop(1, 'hsla('+LC2.hue+',75%,60%,0)');
+        g.fillStyle = eg;
+        g.fillRect(Math.min(ex, ex - dir*w2), yTop, w2, hgt);
+        g.globalCompositeOperation = 'source-over';
+      }
+    }
+  }
 
   // ── ④ 実機の居場所を暗く残す（白い顔を沈ませない）
   stageWell();
