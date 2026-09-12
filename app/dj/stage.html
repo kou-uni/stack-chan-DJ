@@ -380,9 +380,11 @@ function rig(heat){
   g.globalCompositeOperation = 'source-over';
 }
 
+// ★実機は画面の**中央下**に立つ（実物の配置・2026-09-13）。
+//   真後ろに置くと隠れるので、**実機の外側**から立ち上げて、実機を挟む
 const UPS = [
-  {cx: 0.26, hue: 0.00, side: -1},
-  {cx: 0.74, hue: 0.55, side:  1},
+  {cx: 0.17, hue: 0.00, side: -1},
+  {cx: 0.83, hue: 0.55, side:  1},
 ];
 
 function uplights(t, p, amt, jog){
@@ -416,6 +418,19 @@ function uplights(t, p, amt, jog){
     g.restore();
   }
   g.globalCompositeOperation = 'source-over';
+}
+
+function stageWell(){
+  // ★実機は白い。**背後が明るいと顔が沈む。**
+  //   中央下だけを暗く落として、スタックチャンを浮かせる（実物の配置に合わせた）
+  const cx = innerWidth*0.5, cy = innerHeight*1.02;
+  const r = Math.min(innerWidth*0.42, innerHeight*0.85);
+  const gr = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+  gr.addColorStop(0,   'rgba(0,0,0,0.86)');
+  gr.addColorStop(0.55,'rgba(0,0,0,0.55)');
+  gr.addColorStop(1,   'rgba(0,0,0,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, innerHeight*0.35, innerWidth, innerHeight*0.65);
 }
 
 function wash(p, amt){
@@ -559,7 +574,10 @@ function draw(now){
   // ── ③ 部屋全体が染まる
   wash(p, heat);
 
-  // ── ④ トラスと灯体。**光を遮る**
+  // ── ④ 実機の居場所を暗く残す（白い顔を沈ませない）
+  stageWell();
+
+  // ── ⑤ トラスと灯体。**光を遮る**
   if (heat > 0.06) rig(heat);
 
 
