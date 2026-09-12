@@ -91,8 +91,12 @@ ok('トラスは1つの関数で描く', /function trussRun\(/.test(src));
 const calls = (src.match(/trussRun\(/g) || []).length - 1;   // 定義を除く
 ok('横と縦の両方に使っている（3箇所以上）', calls >= 3, calls + '箇所');
 // ★箱トラスは骨組み。**中を塗り潰すと板になる**（2026-09-13 本人の指摘）
-ok('トラスの中を塗り潰していない',
-   !/rgba\(3,4,7,'\+\(0\.9/.test(src) && /0\.16\*a/.test(src));
+ok('トラスの中を塗り潰していない（骨組みなので透ける）',
+   /中は塗らない/.test(src));
+ok('トラスを不透明で描く（交差部が透けない）',
+   /不透明で描く/.test(src) && !/g\.strokeStyle = 'rgba\(96,110,132/.test(src));
+ok('明るさは光だまりから来る（素材を光らせない）',
+   /明るさは光だまり/.test(src));
 ok('角に継ぎ手がある', /function trussCorner\(/.test(src));
 ok('柱を四角塗りで描いていない',
    !/g\.fillRect\(x, cy, pw2, ch\)/.test(src));

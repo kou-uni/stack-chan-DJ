@@ -185,67 +185,76 @@ function stepHeads(dt){
 }
 
 function trussRun(x0, y0, x1, y1, s, a){
-  // ★トラスは1本の関数で描く。**横も縦も同じ素材・同じ粒度・同じ太さ。**
-  //   別々に描いていたので、柱だけ別物に見えていた（2026-09-13 本人の指摘）
-  //   s : 縮尺（1 = 手前の吊りトラスと同じ）／a : 濃さ
+  // ★トラスは1本の関数で描く。横も縦も同じ素材・同じ粒度・同じ太さ。
+  //
+  // ★**不透明で描く。** αで描くと、交差したところが二重になって透ける
+  //   （2026-09-13 本人の指摘）。実体は実体として置く。
+  // ★**中は塗らない。** 箱トラスは骨組みで、隙間から背景が見える。
+  // ★素材は暗いまま。**明るさは光だまり（spill）だけから来る。**
+  //   ここで明るくすると、一様に光って安っぽくなる
   const len = Math.hypot(x1-x0, y1-y0);
   if (len < 1) return;
-  const ux = (x1-x0)/len, uy = (y1-y0)/len;     // 進む向き
-  const nx = -uy, ny = ux;                      // 法線（弦材のずれ）
-  const h = M()*0.30*s;                         // 箱トラス 30cm角
-  const pipe = Math.max(1.2, M()*0.05*s);       // パイプ径 5cm
-  const bp = M()*0.55*s;                        // 筋交いの間隔 55cm
+  const ux = (x1-x0)/len, uy = (y1-y0)/len;
+  const nx = -uy, ny = ux;
+  const h = M()*0.30*s;
+  const pipe = Math.max(1.2, M()*0.05*s);
+  const bp = M()*0.55*s;
+  const dim = 0.35 + 0.65*a;                     // 奥のものは沈む
 
-  // ★中は塗らない。**箱トラスは骨組み。隙間から背景が透ける**
-  //   （2026-09-13 本人の指摘：塗り潰していたので板になっていた）
-  //   奥に見えるものが、ほんのり暗くなるだけ
-  g.fillStyle = 'rgba(2,3,6,'+(0.16*a)+')';
-  g.beginPath();
-  g.moveTo(x0+nx*h/2, y0+ny*h/2); g.lineTo(x1+nx*h/2, y1+ny*h/2);
-  g.lineTo(x1-nx*h/2, y1-ny*h/2); g.lineTo(x0-nx*h/2, y0-ny*h/2);
-  g.closePath(); g.fill();
+  const rgb = (v) => 'rgb(' + Math.round(v[0]*dim) + ',' +
+                              Math.round(v[1]*dim) + ',' +
+                              Math.round(v[2]*dim) + ')';
 
-  // ② 筋交い（ジグザグ＋垂直材）。**これは実体なので不透明**
-  g.strokeStyle = 'rgba(30,36,46,'+(0.92*a)+')';
-  g.lineWidth = pipe*0.62;
+  // ① 筋交い（ジグザグ＋垂直材）。**不透明**
+  g.strokeStyle = rgb([26, 31, 40]);
+  g.lineWidth = pipe*0.60;
   g.lineCap = 'round';
   g.beginPath();
   for (let d = 0; d < len; d += bp){
     const p0 = Math.min(d, len), p1 = Math.min(d+bp*0.5, len), p2 = Math.min(d+bp, len);
     const P = (q, side) => [x0+ux*q + nx*h/2*side, y0+uy*q + ny*h/2*side];
-    let [ax,ay] = P(p0,-1), [bx,by] = P(p1, 1), [cx2,cy2] = P(p2,-1);
+    const [ax,ay] = P(p0,-1), [bx,by] = P(p1, 1), [cx2,cy2] = P(p2,-1);
     g.moveTo(ax,ay); g.lineTo(bx,by); g.lineTo(cx2,cy2);
     const [vx,vy] = P(p1,-1);
     g.moveTo(bx,by); g.lineTo(vx,vy);
   }
   g.stroke();
-  // ★丸パイプなので、片側に細い照りが出る
-  g.strokeStyle = 'rgba(130,148,180,'+(0.30*a)+')';
-  g.lineWidth = pipe*0.20;
+  // 丸パイプの照り（細く、控えめに）
+  g.strokeStyle = rgb([58, 68, 86]);
+  g.lineWidth = pipe*0.16;
   g.stroke();
 
-  // ③ 弦材（丸いパイプ）。**片側だけ明るい**
+  // ② 弦材（丸いパイプ）。**不透明。** 断面の陰影で丸みを出す
   for (const side of [-1, 1]){
     const cx0 = x0 + nx*h/2*side, cy0 = y0 + ny*h/2*side;
     const cx1 = x1 + nx*h/2*side, cy1 = y1 + ny*h/2*side;
     const gr = g.createLinearGradient(cx0 - nx*pipe/2, cy0 - ny*pipe/2,
                                       cx0 + nx*pipe/2, cy0 + ny*pipe/2);
-    gr.addColorStop(0,    'rgba(158,174,204,'+(0.85*a)+')');
-    gr.addColorStop(0.32, 'rgba(52,62,80,'+(0.97*a)+')');
-    gr.addColorStop(1,    'rgba(3,4,8,'+(0.99*a)+')');
+    gr.addColorStop(0,    rgb([84, 96, 118]));
+    gr.addColorStop(0.30, rgb([34, 40, 52]));
+    gr.addColorStop(1,    rgb([6, 8, 12]));
     g.strokeStyle = gr;
     g.lineWidth = pipe;
     g.beginPath(); g.moveTo(cx0,cy0); g.lineTo(cx1,cy1); g.stroke();
   }
   g.lineCap = 'butt';
+
+  // ③ ★光だまり。**ここだけが明るさの源。** 当たったところだけ光る
+  spill(() => {
+    g.beginPath();
+    g.moveTo(x0+nx*h/2, y0+ny*h/2); g.lineTo(x1+nx*h/2, y1+ny*h/2);
+    g.lineTo(x1-nx*h/2, y1-ny*h/2); g.lineTo(x0-nx*h/2, y0-ny*h/2);
+    g.closePath();
+  }, (x0+x1)/2, Math.min(y0,y1) - h, Math.max(y0,y1) + h, 1.1);
 }
 
 function trussCorner(x, y, s, a){
   // ★角には継ぎ手が入る。**トラス同士は交差せず、ブロックで繋がる**
   const h = M()*0.30*s;
-  g.fillStyle = 'rgba(16,20,27,'+(0.95*a)+')';
+  const d2 = 0.35 + 0.65*a;
+  g.fillStyle = 'rgb('+Math.round(22*d2)+','+Math.round(27*d2)+','+Math.round(35*d2)+')';
   rrect(x - h*0.58, y - h*0.58, h*1.16, h*1.16, h*0.14); g.fill();
-  g.fillStyle = 'rgba(120,136,166,'+(0.22*a)+')';
+  g.fillStyle = 'rgb('+Math.round(70*d2)+','+Math.round(80*d2)+','+Math.round(98*d2)+')';
   rrect(x - h*0.58, y - h*0.58, h*1.16, h*0.14, h*0.06); g.fill();
 }
 
