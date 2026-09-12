@@ -101,19 +101,23 @@ function beams(t, p, energy, heat){
   g.globalCompositeOperation = 'lighter';
   for (const b of BEAMS){
     b.on = Math.max(0, b.on - 0.055);      // ★すぐ消える。残すと眠くなる
+    // ★こすっている間は点いたまま。手の向きに一斉に振れる
+    if (hold > 0.15) b.on = Math.max(b.on, 0.55 + 0.4*Math.abs(S.jog||0));
     const cx = innerWidth*b.cx;
     // 灯体の首振り。★下向きが基準（トラスから床を照らす）
     //   ★右レコードを触っている間は、演者の手が勝つ（2026-09-12 本人の要望）。
     //     離せば自動に戻る。ずっと持っていないと動かない照明は演奏の邪魔になる
     const auto = Math.sin(t*1.5*b.sw + b.base) * 0.85;
-    const hand = (S.jog || 0) * 0.9;
-    const w = S.jogw || 0;
-    const a = auto*(1-w) + hand*w;
+    const handA = (S.jog || 0) * 1.25;
+    const w = Math.max(S.jogw || 0, hold);
+    const a = auto*(1-w) + handA*w;   // ★溜め中は全部が同じ向きを向く
     const power = b.on*b.on * (0.55 + energy);
     if (power < 0.012) continue;
-    const hue = (p.h + b.hue*200 + t*90) % 360;
+    // ★溜め中は色を揃える。ばらけていると散漫に見える
+    const hue = (p.h + b.hue*200*(1-hold) + t*90*(1-hold*0.8)) % 360;
     // ★細い筋にする。太いと画面全体が白く飛ぶ（2026-09-12 本人の指摘）
-    const spread = 0.030 + 0.016*Math.sin(t*2.2 + b.base);
+    const spread = (0.030 + 0.016*Math.sin(t*2.2 + b.base))
+                 * (1 - hold*0.45) * (1 + release*1.6);
     const far = innerHeight*1.45;
     g.save();
     g.translate(cx, ty + L*0.55);          // ★レンズの位置から出す
@@ -143,8 +147,8 @@ function beams(t, p, energy, heat){
   for (const b of BEAMS){
     const cx = innerWidth*b.cx;
     const auto2 = Math.sin(t*1.5*b.sw + b.base) * 0.85;
-    const w2 = S.jogw || 0;
-    const a = auto2*(1-w2) + (S.jog || 0)*0.9*w2;
+    const w2 = Math.max(S.jogw || 0, hold);
+    const a = auto2*(1-w2) + (S.jog || 0)*1.25*w2;
     g.save();
     g.translate(cx, ty);
     // ヨーク（吊り金具）
@@ -166,6 +170,49 @@ function beams(t, p, energy, heat){
   }
 }
 
+// ── 下からのアップライト ─────────────────────────
+// ★**こすっている間だけ**、床から立ち上がる（2026-09-12 本人の案）。
+//   つまみでは出せない「チュクチュク」に、光がクイックに反応する見せ場。
+const UPS = Array.from({length:7}, (_,i)=>({
+  cx: (i+0.5)/7,
+  hue: i/7,
+  sw:  0.8 + (i%3)*0.35,
+}));
+
+function uplights(t, p, amt, jog){
+  if (amt < 0.02) return;
+  const y = innerHeight + Math.max(10, FS*0.6);
+  const far = innerHeight*1.35;
+  g.globalCompositeOperation = 'lighter';
+  for (const u of UPS){
+    const cx = innerWidth*u.cx;
+    // ★手の向きに合わせて、扇が一斉に倒れる。速さもそのまま出す
+    const a = jog*1.0 + Math.sin(t*3.1*u.sw + u.cx*6)*0.10;
+    const spread = 0.035 + 0.02*Math.abs(jog);
+    const hue = (p.h + 180 + u.hue*160 + t*140) % 360;
+    const pw = amt * (0.45 + 0.75*Math.abs(jog));
+    g.save();
+    g.translate(cx, y);
+    g.rotate(Math.PI + a);            // ★上へ向ける
+    const grd = g.createLinearGradient(0, 0, 0, far);
+    grd.addColorStop(0,    'hsla('+hue+',100%,86%,'+(0.85*pw)+')');
+    grd.addColorStop(0.16, 'hsla('+hue+',100%,66%,'+(0.32*pw)+')');
+    grd.addColorStop(1,    'hsla('+hue+',100%,52%,0)');
+    g.fillStyle = grd;
+    g.beginPath(); g.moveTo(0,0);
+    g.lineTo(-far*spread, far); g.lineTo(far*spread, far);
+    g.closePath(); g.fill();
+    // 足元の玉
+    const gl = g.createRadialGradient(0,0,0, 0,0, FS*2.4*(0.5+pw));
+    gl.addColorStop(0, 'hsla('+hue+',100%,92%,'+(0.9*pw)+')');
+    gl.addColorStop(1, 'hsla('+hue+',100%,60%,0)');
+    g.fillStyle = gl;
+    g.beginPath(); g.arc(0,0, FS*2.4*(0.5+pw), 0, 6.2832); g.fill();
+    g.restore();
+  }
+  g.globalCompositeOperation = 'source-over';
+}
+
 function fireBeams(n){
   // ★拍ごとに違う組が点く。**毎回同じだと機械に見える**
   bar = (bar + 1) % 4;
@@ -182,13 +229,32 @@ let prev = performance.now(), t = 0, freeBeat = 0, freeN = 0;
 // ★動いていないときは静かに、動いた瞬間に爆発する。**差が無いと見せ場が無い**
 //   （2026-09-12 本人の指摘）。急に切り替えず、少しだけ滑らせる
 let heat = 0;
+// ── スクラッチの気持ち（2026-09-12 本人の問い）──────────────
+// **こすっている間は「溜め」。曲を手で掴んで止めている。客の視線が手元に集まる。**
+// **離した瞬間が「放つ」。** ゆらゆらさせるだけでは、この緊張と解放が出ない。
+//   溜め  → 光を数本に絞り、手の向きへ一斉に向ける。コードは止まる。暗く沈む
+//   解放  → 全灯・白フラッシュ・コードが走り出す
+let hold = 0, prevHand = 0, release = 0;
 function draw(now){
   const dt = Math.min(0.05, (now-prev)/1000); prev = now; t += dt;
   if (S.n !== lastN){ lastN = S.n; pulse = 1; fireBeams(S.n); }
   if (S.drop) flash = 1;
-  const live = S.dancing || !!S.talk;
+  // ★レコードを触っている＝演者が動かしている。**それも「動いている」**
+  //   （2026-09-12：静止中はライトを消しているので、こすっても見えなかった）
+  // ★この演出は**演奏中だけ**（2026-09-12 本人の指示）。
+  //   静かなときにこすっても、ライトは出さない
+  const playing = S.dancing || !!S.talk;
+  const hand = playing ? (S.jogw || 0) : 0;
+  // ★離した瞬間を捕まえる。**放つのは、掴んでいた手が開いたとき**
+  if (prevHand > 0.5 && hand <= 0.15 && hold > 0.25){ release = 1; flash = 1; fireBeams(0); }
+  prevHand = hand;
+  // ★こすりは速い。**溜めずに、その場で反応する**（2026-09-12 本人の指摘）
+  hold += ((hand > 0.15 ? 1 : 0) - hold) * dt * (hand > 0.15 ? 30.0 : 7.0);
+  release = Math.max(0, release - dt*1.6);
+  const live = playing || hand > 0.15;
   // ★立ち上がりは速く、落ちるのはゆっくり。**盛り上がりは急に、余韻は残す**
-  heat += ((live ? 1 : 0) - heat) * dt * (live ? 5.0 : 0.9);
+  heat += ((live ? 1 : 0) - heat) * dt * (live ? 6.5 : 0.9);
+  heat = Math.max(heat, hand*0.85);      // ★手の分は即座に効かせる
 
   // 音が来ていないときの自走。**静かなときは叩かない**
   if ((!S.bpm || S.bpm < 1) && heat > 0.25){
@@ -209,6 +275,8 @@ function draw(now){
   // ★静かなときはライトを出さない。**コードがゆっくり流れているだけでちょうどいい**
   //   （2026-09-12 本人の指摘）。動き出したら吊り込まれる
   if (heat > 0.06) beams(t, p, energy, heat);
+  // ★こすっている間だけ、下から立ち上がる
+  uplights(t, p, playing ? hold : 0, S.jog || 0);
 
   // ★30行くらい残す。**すぐ消えると黒ばかりになる**（2026-09-12 本人の指摘）
   const TAIL = 26 + 14*heat;
@@ -216,7 +284,9 @@ function draw(now){
   g.font = '600 '+FS+'px ui-monospace,SFMono-Regular,Menlo,monospace';
   g.globalCompositeOperation = 'lighter';
   for (const c of cols){
-    c.off += dt * c.spd * (0.22 + heat*2.4 + energy*6.0);  // ★静かなときはゆっくり
+    // ★溜めている間は止める。放った瞬間に走る
+    const flow = (0.22 + heat*2.4 + energy*6.0) * (1 - hold*0.45) + release*14.0;
+    c.off += dt * c.spd * flow;
     if (c.off > ROWS) c.off -= ROWS;
     // ★切り取らない。**途中で切れたコードは嘘に見える**（2026-09-12 本人の指摘）。
     //   重なってよい。層になって流れるほうが、ライブの映像らしい
@@ -235,7 +305,8 @@ function draw(now){
       } else {
         // ★止まっている間は暗く沈める（2026-09-12 本人の指摘）
         // ★止まっている間は「なんかあるな」くらいまで沈める（本人の指示）
-        const a = Math.max(0, 1 - d/TAIL) * (0.045 + 0.62*heat + energy*0.45);
+        const a = Math.max(0, 1 - d/TAIL) * (0.045 + 0.62*heat + energy*0.45)
+                * (1 - hold*0.25) * (1 + release*0.9);
         g.shadowColor = 'hsl('+hue+',100%,62%)';
         g.shadowBlur = 0 + 14*heat + 20*energy;
         g.fillStyle = 'hsla('+hue+','+(45 + 55*heat)+'%,'

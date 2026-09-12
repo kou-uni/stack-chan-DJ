@@ -48,6 +48,28 @@ def test_振り切れない():
     assert -1.0 <= j.value(now=0.0) <= 1.0
 
 
+def test_手を止めればすぐ中心へ戻る():
+    """★位置ではなく速度。**止めた瞬間に照明も止まる。**"""
+    j = Jog()
+    for i in range(20):
+        j.feed(66, now=i*0.005)
+    assert abs(j.value(now=0.1)) > 0.2
+    assert abs(j.value(now=0.45)) < 0.05, "止めたのに振れたまま"
+
+
+def test_往復すれば照明も往復する():
+    """★チュクチュクに追従する。**片側に張り付かない。**"""
+    j = Jog()
+    t = 0.0
+    for _ in range(8):
+        j.feed(67, now=t); t += 0.01
+    a = j.value(now=t)
+    for _ in range(8):
+        j.feed(61, now=t); t += 0.01
+    b = j.value(now=t)
+    assert a > 0.1 and b < -0.1, (a, b)
+
+
 def test_触っていなければ自動に返る():
     """★ずっと手で持っていないと動かない照明は、演奏の邪魔になる。"""
     j = Jog()
