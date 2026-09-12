@@ -638,10 +638,38 @@ function draw(now){
   //   （2026-09-12 本人の指摘）。動き出したら吊り込まれる
   stepHeads(dt);
 
-  // ── ① 会場の奥：3面のディスプレイ。**裏で正面から描いて、台形に貼る**
+  const hy = innerHeight*HORIZON;
+
+  // ── 夜空。★**いちばん奥なので最初に描く。**
+  //   後から描いていたので、壁の上を塗り潰して一直線に切っていた（2026-09-13）
+  //   空は画面いっぱいに広がり、その手前に壁が立つ
+  {
+    const skyH = innerHeight;                 // ★画面いっぱい。壁が手前で隠す
+    // 地平近くはうっすら明るい（街明かり）。**真っ黒な空は嘘**
+    const sg = g.createLinearGradient(0, 0, 0, skyH);
+    sg.addColorStop(0,   'rgb(2,3,8)');
+    sg.addColorStop(0.7, 'rgb(5,7,16)');
+    sg.addColorStop(1,   'rgb(10,13,26)');
+    g.fillStyle = sg;
+    g.fillRect(0, 0, innerWidth, skyH);
+
+    // 星。★下ほど少なく見える（空気が厚い）
+    for (const st of stars){
+      const y = st.y * (hy*0.95);   // 星は地平より上だけ
+      const depth = 0.35 + 0.65*(1 - st.y);
+      const tw = 0.75 + 0.25*Math.sin(t*1.6 + st.tw);
+      const a = st.m * depth * tw * (1 - Math.min(0.75, heat*0.75));  // 照明が強いと星は負ける
+      if (a < 0.02) continue;
+      g.fillStyle = 'rgba(214,226,255,'+a+')';
+      const r = Math.max(0.6, st.m*1.7);
+      g.fillRect(st.x*innerWidth, y, r, r);
+    }
+
+  }
+
+  // ── ② 会場の奥：3面のディスプレイ。**裏で正面から描いて、台形に貼る**
   const TAIL = 26 + 14*heat;
   const flow = (0.22 + heat*2.4 + energy*6.0) * (1 - hold*0.45) + release*14.0;
-  const hy = innerHeight*HORIZON;
 
   for (const pn of panels){
     const o = pn.octx;
@@ -865,47 +893,6 @@ function draw(now){
     g.fillRect(innerWidth*0.16, backY - M()*0.12, innerWidth*0.68, M()*0.22);
   }
 
-  // ── ウォールの上は**夜空**。屋外の会場（2026-09-13 本人の案）。
-  //   トラスは空を背にして架かる
-  {
-    const skyH = hy - hy*CENTER_K;           // 奥の壁の上端まで
-    // 地平近くはうっすら明るい（街明かり）。**真っ黒な空は嘘**
-    const sg = g.createLinearGradient(0, 0, 0, skyH);
-    sg.addColorStop(0,   'rgb(2,3,8)');
-    sg.addColorStop(0.7, 'rgb(5,7,16)');
-    sg.addColorStop(1,   'rgb(10,13,26)');
-    g.fillStyle = sg;
-    g.fillRect(0, 0, innerWidth, skyH);
-
-    // 星。★下ほど少なく見える（空気が厚い）
-    for (const st of stars){
-      const y = st.y * skyH;
-      const depth = 0.35 + 0.65*(1 - st.y);
-      const tw = 0.75 + 0.25*Math.sin(t*1.6 + st.tw);
-      const a = st.m * depth * tw * (1 - Math.min(0.75, heat*0.75));  // 照明が強いと星は負ける
-      if (a < 0.02) continue;
-      g.fillStyle = 'rgba(214,226,255,'+a+')';
-      const r = Math.max(0.6, st.m*1.7);
-      g.fillRect(st.x*innerWidth, y, r, r);
-    }
-
-    // 吊り。★トラスは空に浮かない。ワイヤーで上から吊られている
-    g.strokeStyle = 'rgba(70,80,100,0.40)';
-    g.lineWidth = Math.max(1, M()*0.010);
-    g.beginPath();
-    for (const x of [0.12, 0.30, 0.50, 0.70, 0.88]){
-      g.moveTo(innerWidth*x, 0);
-      g.lineTo(innerWidth*x + M()*0.02, trussY()-trussH()*0.5);
-    }
-    g.stroke();
-    // チェーンモーター
-    g.fillStyle = 'rgba(4,5,9,0.95)';
-    for (const x of [0.30, 0.70]){
-      rrect(innerWidth*x - M()*0.09, trussY()-trussH()*1.4,
-            M()*0.18, trussH()*1.0, M()*0.03); g.fill();
-    }
-  }
-
   // ── ② 空気中の光。パネルの手前を通る
   if (heat > 0.06) beams(t, p, energy, heat);
 
@@ -984,6 +971,25 @@ function draw(now){
 
   // ── ④ 実機の居場所を暗く残す（白い顔を沈ませない）
   stageWell();
+
+  // ── トラスの吊り。★空に浮かない
+  {
+    // 吊り。★トラスは空に浮かない。ワイヤーで上から吊られている
+    g.strokeStyle = 'rgba(70,80,100,0.40)';
+    g.lineWidth = Math.max(1, M()*0.010);
+    g.beginPath();
+    for (const x of [0.12, 0.30, 0.50, 0.70, 0.88]){
+      g.moveTo(innerWidth*x, 0);
+      g.lineTo(innerWidth*x + M()*0.02, trussY()-trussH()*0.5);
+    }
+    g.stroke();
+    // チェーンモーター
+    g.fillStyle = 'rgba(4,5,9,0.95)';
+    for (const x of [0.30, 0.70]){
+      rrect(innerWidth*x - M()*0.09, trussY()-trussH()*1.4,
+            M()*0.18, trussH()*1.0, M()*0.03); g.fill();
+    }
+  }
 
   // ── ⑤ トラスと灯体。**光を遮る**
   if (heat > 0.06) rig(heat);
