@@ -237,7 +237,27 @@ class Turn:
 MODEL = "gemma3:4b"
 
 
-async def think(question: str, model: str = MODEL, timeout_s: float = 60.0) -> str:
+# ★PATH を当てにしない。launchd の PATH には homebrew が入っていない
+#   （2026-09-12、パネルからの質問が FileNotFoundError で落ちた）
+OLLAMA_CANDIDATES = ("/opt/homebrew/bin/ollama", "/usr/local/bin/ollama",
+                     "/usr/bin/ollama")
+
+
+def find_ollama() -> str | None:
+    """ollama の実体を探す。**絶対パスで返す。**"""
+    import os
+    import shutil
+    env = os.environ.get("OLLAMA_BIN")
+    if env and os.path.exists(env):
+        return env
+    for c in OLLAMA_CANDIDATES:
+        if os.path.exists(c):
+            return c
+    return shutil.which("ollama")
+
+
+async def think(question: str, model: str = MODEL, timeout_s: float = 60.0,
+                ollama: str | None = None) -> str:
     """Ollama に訊く。**この Mac の中だけで完結する。**
 
     ★端末の制御文字が混ざることがあるので、落としてから返す。
@@ -246,9 +266,17 @@ async def think(question: str, model: str = MODEL, timeout_s: float = 60.0) -> s
     # ★聞き取れなかったのに投げると、知識をそのまま読み上げる（実測）
     if not (question or "").strip():
         return ""
-    proc = await _a.create_subprocess_exec(
-        "ollama", "run", model, f"{system_prompt()}\n\n質問: {question}",
-        stdout=_a.subprocess.PIPE, stderr=_a.subprocess.DEVNULL)
+    exe = ollama or find_ollama()
+    if not exe:
+        print("★ ollama が見つかりません（OLLAMA_BIN で指定できます）")
+        return ""
+    try:
+        proc = await _a.create_subprocess_exec(
+            exe, "run", model, f"{system_prompt()}\n\n質問: {question}",
+            stdout=_a.subprocess.PIPE, stderr=_a.subprocess.DEVNULL)
+    except OSError as exc:
+        print(f"★ ollama を起動できません: {exc}")
+        return ""
     try:
         out, _ = await _a.wait_for(proc.communicate(), timeout=timeout_s)
     except (TimeoutError, _a.TimeoutError):

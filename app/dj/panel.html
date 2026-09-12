@@ -58,6 +58,14 @@ h2{font-size:11px;color:var(--dim);margin:12px 0 6px;letter-spacing:.14em}
 input{width:100%;background:var(--card);border:1px solid var(--line);color:var(--ink);
   border-radius:14px;padding:14px;font-size:16px;margin-bottom:7px;
   -webkit-user-select:text;user-select:text;font-family:inherit}
+#chat{display:flex;flex-direction:column;gap:7px;margin-bottom:8px}
+.bub{border-radius:14px;padding:11px 13px;font-size:14px;line-height:1.5;
+  border:1px solid var(--line);white-space:pre-wrap;word-break:break-word}
+.bub.me{background:#0d2b33;border-color:var(--hot);color:var(--hot);align-self:flex-end;
+  max-width:85%}
+.bub.bot{background:var(--card);align-self:flex-start;max-width:95%}
+.bub .meta{display:block;font-size:11px;color:var(--dim);margin-top:5px}
+.bub.think{color:var(--dim)}
 #log{font-size:12px;color:var(--dim);min-height:1.3em;margin-top:8px;text-align:center}
 #log.err{color:var(--warm)}
 </style></head><body>
@@ -102,13 +110,18 @@ input{width:100%;background:var(--card);border:1px solid var(--line);color:var(-
 <h2>LED</h2>
 <div class="grid g3" id="leds"></div>
 
-<h2>しゃべる</h2>
+<h2>きく</h2>
+<!-- ★外にいる人には声が聞こえない。**答えは文字が本体。** -->
+<div id="chat"></div>
+<input id="q" placeholder="スタックチャンに きく" maxlength="120"
+       enterkeyhint="send" autocomplete="off">
+<div class="grid"><button id="askbtn">▶ きく</button></div>
+
+<h2>しゃべらせる（そのまま読む）</h2>
 <div class="grid g2">
   <button data-a="say" data-v="こんにちは">こんにちは</button>
   <button data-a="say" data-v="いま、るすばんしています">るすばん中</button>
 </div>
-<input id="free" placeholder="じゆうに しゃべらせる" maxlength="60">
-<div class="grid"><button id="sayfree">▶ しゃべらせる</button></div>
 
 <div id="log"></div>
 <script>
@@ -203,7 +216,43 @@ document.body.addEventListener('click', e=>{
   const b = e.target.closest('button[data-a]'); if(!b) return;
   act(b.dataset.a, b.dataset.v, b);
 });
-$('#sayfree').onclick = () => { const t=$('#free').value.trim(); if(t) act('say', t, $('#sayfree')); };
+/* ── きく。★答えは文字が本体（声は聞こえない） ───── */
+let asking = false;
+function bubble(cls, text, meta){
+  const d = document.createElement('div');
+  d.className = 'bub ' + cls;
+  d.textContent = text;
+  if(meta){ const m=document.createElement('span'); m.className='meta'; m.textContent=meta;
+            d.appendChild(m); }
+  $('#chat').appendChild(d);
+  d.scrollIntoView({block:'nearest'});
+  return d;
+}
+async function ask(){
+  const q = $('#q').value.trim();
+  if(!q || asking) return;
+  asking = true; buzz();
+  $('#q').value = '';
+  bubble('me', q);
+  const wait = bubble('bot think', '考えています…');
+  try{
+    const r = await fetch(`api/ask?k=${encodeURIComponent(K)}`,{method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:q})});
+    const d = await r.json();
+    wait.remove();
+    if(!r.ok){ bubble('bot', d.error||'答えられません'); }
+    else {
+      bubble('bot', d.full || '（無言）',
+             d.spoken && d.spoken !== d.full
+               ? `声では「${d.spoken}」／${(d.ms/1000).toFixed(1)}秒`
+               : `${(d.ms/1000).toFixed(1)}秒`);
+      paint(d.state);
+    }
+  }catch(e){ wait.remove(); bubble('bot', 'つながりません'); }
+  finally{ asking = false; }
+}
+$('#askbtn').onclick = ask;
+$('#q').addEventListener('keydown', e => { if(e.key === 'Enter') ask(); });
 
 
 /* ── 状態だけの見張り（軽い） ─────────────────── */

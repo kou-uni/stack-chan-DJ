@@ -219,3 +219,80 @@ class CameraFeed:
             rest = self.interval_s - (time.time() - t0)
             if rest > 0:
                 await asyncio.sleep(rest)
+
+
+class AskDesk:
+    """パネルから投げられた質問に、声と文字で答える。
+
+    ## 誰が使うか
+
+    **外出先の本人。声は聞こえない。** 当日は「もくもくタイム中の質問受け」になる。
+
+    - **答えは声と文字の両方。** 喋らせて終わりは、外では無反応と同じ
+    - **喋るのは短く、画面には全文。** 声と文字で役割が違う
+    - Ollama は数秒かかる。**待っていると分かるようにする**
+
+    ★実機は1台。**連打されても順番に捌く。**
+    """
+
+    NO_ANSWER = "うーん、それはちょっと分からないです"
+
+    def __init__(self, think=None, keep: int = 12):
+        self._think = think
+        self._keep = keep
+        self._log: list[dict] = []
+        self._lock = asyncio.Lock()
+
+    def history(self) -> list[dict]:
+        return list(self._log)
+
+    async def ask(self, con, text: str) -> dict:
+        import time
+        q = (text or "").strip()
+        # ★空を投げると、知識をそのまま読み上げる（実測）
+        if not q:
+            return {"q": q, "full": "", "spoken": "", "ms": 0}
+
+        async with self._lock:                 # ★実機は1台。順番に
+            t0 = time.time()
+            con.presence.talk = "speaking"
+            try:
+                full = await self._answer(q)
+                if not full:
+                    full = self.NO_ANSWER      # ★無言が一番壊れて見える
+                spoken = self._speak_text(full)
+                if spoken:
+                    await con.gw.call("say", text=spoken, speaker_id=14)
+            finally:
+                con.presence.talk = None
+            rec = {"q": q, "full": full, "spoken": spoken,
+                   "ms": int((time.time() - t0) * 1000)}
+            self._log.append(rec)
+            del self._log[:-self._keep]
+            return rec
+
+    async def _answer(self, q: str) -> str:
+        if self._think is not None:
+            return (await self._think(q)) or ""
+        from talk import think                 # ★遅延 import（試験で ollama を要求しない）
+        return await think(q)
+
+    # ★会場の40字は「人が待っている」から。**パネルは読める。**
+    #   同じ制約を持ち込むと、1文目が切れて「続きは…」だけが流れる（2026-09-12 実地）
+    SPEAK_MAX = 90
+
+    @classmethod
+    def _speak_text(cls, full: str) -> str:
+        from talk import _speakable
+        t = _speakable(full)
+        if not t:
+            return ""
+        if len(t) <= cls.SPEAK_MAX:
+            return t
+        # ★文の切れ目でしか切らない。途中で切ると意味が壊れる
+        head = ""
+        for mark in ("。", "！", "？"):
+            i = t.rfind(mark, 0, cls.SPEAK_MAX)
+            if i > len(head):
+                head = t[:i + 1]
+        return head or t[:cls.SPEAK_MAX]

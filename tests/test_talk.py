@@ -252,3 +252,24 @@ def test_喋り終わりを待つ関数が用意されている():
     from talk import say_and_wait, SAY_TAIL_S
     assert SAY_TAIL_S >= 0.9, f"{SAY_TAIL_S}秒では足りない（呼び出しは鳴り終わる0.3秒前に返る）"
     assert callable(say_and_wait)
+
+
+# ── 実行ファイルの居場所（2026-09-12）────────────────
+#
+# パネルから質問したら FileNotFoundError。**launchd の PATH に ollama が無い。**
+# 手で起動すると通るので、開発中は気づけない。
+#
+# ★環境は自分のものではない前提で書く。**PATH を当てにしない。**
+
+def test_ollama_を絶対パスで探す():
+    from talk import find_ollama
+    p = find_ollama()
+    assert p is None or p.startswith("/"), f"相対パスを返している: {p}"
+
+
+def test_見つからないときは黙って落ちない():
+    """★沈黙もクラッシュも同じくらい困る。**理由が分かる形で返す。**"""
+    import asyncio
+    from talk import think
+    out = asyncio.run(think("やあ", ollama="/nonexistent/ollama"))
+    assert out == "", "見つからないのに何か返している"

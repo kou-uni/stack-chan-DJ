@@ -83,8 +83,9 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
 
     # ── 外から操作するパネル（ROADMAP Phase 2）─────────────
     #   ★同じ console の中に置く。別プロセスにすると書き手が2人になる（I2 違反）
-    from panel import (CameraFeed, apply_action, check_token, load_token,
-                       panel_state)
+    from panel import (AskDesk, CameraFeed, apply_action, check_token,
+                       load_token, panel_state)
+    ask_desk = AskDesk()
     token = load_token()
 
     async def _shoot() -> bytes | None:
@@ -157,6 +158,29 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
                 await sock.close()
         return sock
 
+    async def api_ask(req):
+        """スマホから質問。**声と文字の両方で返す。**
+
+        ★外にいる人には声が聞こえない。文字が本体。
+        """
+        if not guard(req):
+            return web.json_response({"error": "鍵がちがいます"}, status=403)
+        try:
+            q = str((await req.json()).get("text", ""))
+        except Exception:
+            return web.json_response({"error": "読めない指示"}, status=400)
+        try:
+            r = await ask_desk.ask(con, q)
+        except Exception as exc:
+            return web.json_response(
+                {"error": f"答えられません（{type(exc).__name__}）"}, status=502)
+        return web.json_response({**r, "state": panel_state(con)})
+
+    async def api_history(req):
+        if not guard(req):
+            return web.json_response({"error": "鍵がちがいます"}, status=403)
+        return web.json_response({"items": ask_desk.history()})
+
     async def api_photo(req):
         """最後に撮った写真を返す。★パスは外に出さない。"""
         if not guard(req):
@@ -173,7 +197,9 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
                     web.get("/api/state", api_state),
                     web.post("/api/act", api_act),
                     web.get("/api/photo", api_photo),
-                    web.get("/api/camws", api_camws)])
+                    web.get("/api/camws", api_camws),
+                    web.post("/api/ask", api_ask),
+                    web.get("/api/history", api_history)])
     runner = web.AppRunner(app, access_log=None)
     await runner.setup()
     site = web.TCPSite(runner, host, port)
