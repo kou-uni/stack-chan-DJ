@@ -85,13 +85,16 @@ const BEAMS = Array.from({length:N_LIGHTS}, (_,i)=>{
 });
 
 // 照明の「キュー」。★実際の仕込みも、こういう型を組んで切り替える
+// ★DJイベントの照明は速くて大振り。**小さく揺らさない**
 const LOOKS = [
-  (b,i,n)=> b.mirror * 0.75,                       // ハの字に開く
-  (b,i,n)=> -b.mirror * 0.75,                      // 内側でクロス
-  (b,i,n)=> 0,                                     // 全部まっすぐ下
-  (b,i,n)=> (i/(n-1) - 0.5) * 1.7,                 // 扇（ファン）
-  (b,i,n)=> -(i/(n-1) - 0.5) * 1.7,                // 逆ファン
-  (b,i,n)=> (i % 2 ? 1 : -1) * 0.6,                // 一つ置きに交互
+  (b,i,n)=> b.mirror * 1.15,                       // ハの字に大きく開く
+  (b,i,n)=> -b.mirror * 1.15,                      // 内側で深くクロス
+  (b,i,n)=> 0,                                     // 全部まっすぐ下（止める）
+  (b,i,n)=> (i/(n-1) - 0.5) * 2.4,                 // 扇（ファン）
+  (b,i,n)=> -(i/(n-1) - 0.5) * 2.4,                // 逆ファン
+  (b,i,n)=> (i % 2 ? 1 : -1) * 1.0,                // 一つ置きに交互
+  (b,i,n)=> b.mirror * 1.45,                       // 目一杯外へ
+  (b,i,n)=> -0.55 + i*0.55,                        // 階段状にずらす
 ];
 let look = 0, lookAt = -1;
 
@@ -119,7 +122,9 @@ function rigLen(){ return M() * 0.55; }               // ムービングヘッ�
 function stepHeads(dt){
   // ★実際の灯体は、キューへ素早く動いて**止まる。** 少し行き過ぎて戻る（慣性）
   for (const b of BEAMS){
-    const k = 26.0, damp = 8.5;
+    // ★実際のムービングヘッドは速い。**0.2秒で振り切って止まる**
+    //   （2026-09-12 本人の指摘：ゆるゆる揺れていた）
+    const k = 190.0, damp = 26.0;
     b.vel += (b.tgt - b.ang) * k * dt;
     b.vel -= b.vel * damp * dt;
     b.ang += b.vel * dt;
@@ -168,8 +173,14 @@ function beams(t, p, energy, heat){
   // ── 光の筋（加算）。★揺らさない。太さも色も、点いている間は動かさない
   g.globalCompositeOperation = 'lighter';
   for (const b of BEAMS){
+    // ★シャッター。**灯体は止まったまま、光だけが刻む。** これが派手さの正体
     b.on = Math.max(0, b.on - 0.055);
-    const power = b.on*b.on * (0.55 + energy);
+    // ★シャッターで刻む。**灯体は止まったまま、光だけがチカチカする。**
+    //   これが DJ の現場の派手さの正体（2026-09-12 本人の指摘）
+    const rate = 12 + 10*heat;                  // 1秒あたりの開閉
+    const ph16 = (t*rate + b.phase*0.5) % 1;
+    const shut = 0.30 + 0.70*Math.pow(1 - ph16, 1.6);
+    const power = b.on*b.on * (0.55 + energy) * (0.35 + 0.65*shut);
     if (power < 0.012) continue;
 
     // ★上の吊り灯体は手に連動しない。**こすりに反応するのは下の2本だけ**
@@ -286,10 +297,11 @@ function fireBeams(n){
   // ★拍ごとに違う組が点く。**毎回同じだと機械に見える**
   bar = (bar + 1) % 4;
   // ★全部を同時に点けない。**面になった瞬間、光ではなく霧になる**
-  if (n % 4 === 0) newLook(n);                      // ★小節の頭で型を替える
+  newLook(n);                                       // ★毎拍、位置を変える
   const heavy = (n % 4 === 0);                      // 4拍に1回は全灯
   const pl = pal();
   for (const b of BEAMS){
+    b.tgt = LOOKS[look](b, BEAMS.indexOf(b), BEAMS.length);
     // ★色は点けるときに決める。**光っている最中に色が回るのは嘘**
     b.hueDeg = (pl.h + b.hue*70 + ((Math.random()*3)|0)*40) % 360;
     if (heavy) { b.on = 1; continue; }
