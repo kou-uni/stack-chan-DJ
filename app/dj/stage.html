@@ -254,8 +254,14 @@ function rig(heat){
     g.translate(0, trussH()*0.42 + L*0.34);
     g.fillRect(-L*0.30, 0, L*0.10, L*0.26);                      // ヨーク左
     g.fillRect( L*0.20, 0, L*0.10, L*0.26);                      // ヨーク右
+    // ★ここが要。**左右はパン（垂直軸まわり）。ヘッドは横へ振れない。**
+    //   正面から見ると、その場で回るので**横幅が縮んで見えるだけ**。
+    //   振り子のように振っていたのが間違い（2026-09-12 本人の指摘）
     g.translate(0, L*0.24);
-    g.rotate(a);
+    const pan = Math.max(-1.4, Math.min(1.4, a));
+    const tilt = 0.22;                        // 客席へ向けた固定のチルト
+    g.rotate(tilt);
+    g.scale(Math.max(0.18, Math.cos(pan)), 1);   // ★回った分だけ細く見える
     g.fillRect(-L*0.20, -L*0.10, L*0.40, L*0.50);                // ヘッド
     g.restore();
   }
