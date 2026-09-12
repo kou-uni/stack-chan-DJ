@@ -91,6 +91,20 @@ ok('トラスは1つの関数で描く', /function trussRun\(/.test(src));
 const calls = (src.match(/trussRun\(/g) || []).length - 1;   // 定義を除く
 ok('横と縦の両方に使っている（3箇所以上）', calls >= 3, calls + '箇所');
 // ★箱トラスは骨組み。**中を塗り潰すと板になる**（2026-09-13 本人の指摘）
+// ★筒の先と光の出口が一致しているか（2026-09-13：ずれていて光が離れていた）
+ok('筒の長さを HEAD_H で描いている', /const HL = L\*HEAD_H/.test(src));
+ok('筒の先にレンズ面がある', /ellipse\(0, HL,/.test(src));
+ok('回転後に横へ潰していない', !/g\.scale\(0\.72 \+ 0\.28\*Math\.cos/.test(src));
+{
+  // 灯体が実際に動くか（キューが変われば角度が変わる）
+  const b = D.BEAMS[0];
+  const before = b.ang;
+  D.BEAMS.forEach((x,i)=> x.tgt = D.LOOKS[3](x, i, D.BEAMS.length));
+  for (let i=0;i<40;i++){ /* stepHeads は draw の中。ここでは目標が変わることだけ見る */ }
+  ok('キューで目標角が変わる', Math.abs(b.tgt - before) > 0.05,
+     'tgt=' + b.tgt.toFixed(2) + ' ang=' + before.toFixed(2));
+}
+
 ok('トラスの中を塗り潰していない（骨組みなので透ける）',
    /中は塗らない/.test(src));
 ok('トラスを不透明で描く（交差部が透けない）',

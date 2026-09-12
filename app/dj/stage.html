@@ -128,6 +128,11 @@ const LOOKS = [
   (b,i,n)=> (i % 2 ? 1 : -1) * 1.0,                // 一つ置きに交互
   (b,i,n)=> b.mirror * 1.45,                       // 目一杯外へ
   (b,i,n)=> -0.55 + i*0.55,                        // 階段状にずらす
+  // ★**全部が同じ方を向く**型。これが無いと、真ん中の1台がずっと動かない
+  //   （左右対称の型だけだと、中央は常に角度0になる。2026-09-13 実測で発覚）
+  (b,i,n)=> 1.05,                                  // 全部が右へ
+  (b,i,n)=> -1.05,                                 // 全部が左へ
+  (b,i,n)=> Math.sin(i*1.5) * 1.1,                 // 波打つ
   // ★演者を狙う。**実際のライブは、まず演者を照らす。**
   //   実機は画面の中央下に立っている。そこへ全部を向ける（2026-09-13）
   (b,i,n)=> Math.atan2(0.5 - b.cx, 0.62) * 1.35,
@@ -135,6 +140,7 @@ const LOOKS = [
 ];
 let look = 0, lookAt = -1;
 
+let swing = 0;
 function newLook(n){
   // ★毎回ばらばらに動かさない。**型ごと切り替える**
   if (n === lookAt) return;
@@ -142,8 +148,11 @@ function newLook(n){
   let k = look;
   while (k === look) k = (Math.random()*LOOKS.length)|0;
   look = k;
-  BEAMS.forEach((b,i)=> b.tgt = LOOKS[look](b, i, BEAMS.length));
+  // ★型の上に**全体の振り**を乗せる。左右対称の型でも中央が動く
+  swing = (Math.random()*2 - 1) * 0.45;
+  BEAMS.forEach((b,i)=> b.tgt = clampPan(LOOKS[look](b, i, BEAMS.length) + swing));
 }
+function clampPan(v){ return Math.max(-1.45, Math.min(1.45, v)); }
 newLook(0);
 let bar = 0;
 
@@ -391,19 +400,23 @@ function rig(heat){
     g.stroke();
 
     // ★ヘッド（円筒）。前が少しすぼまり、先端は丸いレンズ面
+    // ★ヘッドは**ビームと同じ角度に回る。** 固定のチルトのままだったので、
+    //   角度を計算していても見た目は止まっていた（2026-09-13 実測で発覚）
+    // ★筒の長さと lensPos を同じ HEAD_H に揃える。ずれると光が筒から離れる
     g.translate(0, L*YOKE_H);
-    g.rotate(0.22);                                 // 客席へ向けた固定のチルト
+    g.rotate(a);
+    const HL = L*HEAD_H;
     g.beginPath();
     g.moveTo(-L*0.28, -L*0.06);
-    g.quadraticCurveTo(-L*0.30, L*0.20, -L*0.23, L*0.40);
-    g.lineTo( L*0.23, L*0.40);
-    g.quadraticCurveTo( L*0.30, L*0.20,  L*0.28, -L*0.06);
+    g.quadraticCurveTo(-L*0.30, HL*0.5, -L*0.23, HL);
+    g.lineTo( L*0.23, HL);
+    g.quadraticCurveTo( L*0.30, HL*0.5,  L*0.28, -L*0.06);
     g.closePath();
     g.fill();
     // 後ろの丸み（放熱側）
     g.beginPath(); g.ellipse(0, -L*0.06, L*0.28, L*0.12, 0, 0, 6.2832); g.fill();
-    // レンズ面（円）
-    g.beginPath(); g.ellipse(0, L*0.40, L*0.23, L*0.07, 0, 0, 6.2832); g.fill();
+    // レンズ面（円）。★ここが光の出口
+    g.beginPath(); g.ellipse(0, HL, L*0.23, L*0.07, 0, 0, 6.2832); g.fill();
     g.restore();
   }
   // ★ムービングヘッドの間に**ブラインダー**が入る（調査）。横長の箱
@@ -614,7 +627,7 @@ function fireBeams(n){
   const heavy = (n % 4 === 0);                      // 4拍に1回は全灯
   const pl = pal();
   for (const b of BEAMS){
-    b.tgt = LOOKS[look](b, BEAMS.indexOf(b), BEAMS.length);
+    b.tgt = clampPan(LOOKS[look](b, BEAMS.indexOf(b), BEAMS.length) + swing);
     // ★色は点けるときに決める。**光っている最中に色が回るのは嘘**
     b.hueDeg = (pl.h + b.hue*70 + ((Math.random()*3)|0)*40) % 360;
     if (heavy) { b.on = 1; continue; }
