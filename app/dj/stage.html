@@ -1,136 +1,249 @@
-<!doctype html>
-<html lang="ja">
-<head>
+<!doctype html><html lang="ja"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>STAGE</title>
+<title>スタックチャン 背景</title>
 <style>
-  html,body{margin:0;height:100%;background:#000;overflow:hidden;
-            -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-  canvas{display:block;width:100vw;height:100vh}
-  /* 繋がっていないときだけ出す。ライブ中に文字を出さない */
-  #s{position:fixed;left:12px;bottom:10px;color:#2b3a4a;font:12px ui-monospace,monospace;
-     letter-spacing:.08em;pointer-events:none;transition:opacity .4s}
-</style>
-</head>
-<body>
+html,body{margin:0;background:#000;overflow:hidden;height:100%}
+canvas{display:block;width:100vw;height:100vh}
+#s{position:fixed;left:12px;bottom:10px;color:#5a6b86;
+   font:12px/1 -apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
+   opacity:.85;transition:opacity .4s}
+</style></head><body>
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <script>
 // ── スタックチャンが聴いた音が、この画面を動かす ──────────────
-// console から 20Hz で状態が届く。絵の描き方はこちら側の仕事。
+// ★流れているのは、**この子を動かしている本物のソース**（2026-09-12 本人の要望）。
+//   飾りの 0/1 ではなく、いま実機で走っているコードが光る。
+const CODE = ["from __future__ import annotations", "import colorsys", "import json", "import math", "import time", "class LedState:", "\"segments\", \"show\")", "SERIES = {", "SWEEP_BEATS = 0.96", "pattern=\"strobe\", cycle_beats=8):", "self.count = count", "self.target = target", "self.pattern = pattern", "self.bpm = 0.0", "self.enabled = False", "self.manual = False", "self.base_pattern = pattern", "self.hold_until = 0.0", "self.swoon = False", "self.flash_white = False", "self.groove = 1.0", "self.talk: str | None = None", "self.now = time.time", "if bpm and bpm > 0:", "self.bpm = bpm", "if last_beat_age_ms is not None:", "def _phase(self):", "bpm = self.bpm", "if bpm <= 0 and self.manual:", "bpm = self.free_bpm", "if bpm <= 0:", "return 0, 0.0", "period = 60.0 / bpm", "elapsed = time.time() - self.beat0", "n = int(elapsed // period)", "@staticmethod", "def _hsv(h, s=1.0, v=1.0):", "i = int(h * 6) % 6", "f = h * 6 - int(h * 6)", "def _drop_flash(self):", "t = self.now()", "step = beat / 4", "i = int(t / step)", "ph = (t % step) / step", "return [[v, v, v]] * self.count", "def colors(self):", "c = self.TALK_COLOR.get(self.talk)", "if c is not None:", "k = self.max_brightness * f", "return self._drop_flash()", "n, ph = self._phase()", "if self.swoon:", "t = time.time() * 0.9", "return self._show(n, ph, k)", "out = [[0, 0, 0]] * self.count", "out = []", "for i in range(self.count):", "return out", "self_pat = self.pattern", "if self_pat == \"strobe\":", "f = max(0.0, 1.0 - ph / 0.25)", "elif self_pat == \"chase\":", "d = (i - head) % self.count", "elif self_pat == \"rainbow\":", "spin = (n + ph) * 0.12", "else:  # split", "for i in range(self.count)", "def _mul(self, c, f):", "int(max(0, min(255, c[1] * f))),", "int(max(0, min(255, c[2] * f)))]", "def _tone(self, n: int):", "def _pick(self, n: int) -> str:", "m = len(self.SHOW_MIX)", "q = m - 1", "slot = n // self.SHOW_BEATS", "full, rem = divmod(slot, q)", "+ rem * (rem + 1) // 2)", "return self.SHOW_MIX[moved % m]", "span = self.count - 1", "mid = span / 2.0", "white = (255, 255, 255)", "u = max(0.0, min(1.0, u))", "if direction == \"ltr\":", "heads = [u * (self.count + 6) - 3]", "elif direction == \"rtl\":", "for head in heads:", "d = abs(i - head)", "if d >= 3.5:", "continue", "f = (1.0 - d / 3.5) ** 1.8 * k", "c = white if d < 1.2 else cold", "for j in range(3):", "def _show(self, n, ph, k):", "pat = self.pattern", "if pat == \"show\":", "pat = self._pick(n)", "if pat == \"laser\":", "t = (n + ph) * speed", "for head in (a, b):", "if d >= 2.4:", "f = (1.0 - d / 2.4) ** 2 * k", "c = white if d < 0.9 else cold", "out[i][j] = out[i][j] + c[j] * f", "if ph < 0.06:", "if pat == \"sweep\":", "if pat == \"build\":", "if u >= self.BUILD_HOLD:", "return [[0, 0, 0]] * self.count", "f = (blink ** 3) * k", "if pat == \"segments\":", "nb = self.SEG_BLOCKS", "size = self.count / nb", "sub = int(ph * 2)", "key = n * 5 + sub * 11", "for b in range(nb):", "fade = 1.0 - (ph * 2 % 1.0) * 0.22", "v = self._mul(c, fade * k)", "for i in range(lo, hi):", "out[i] = list(v)", "if pat == \"sparks\":", "seed = (n * 7 + sub * 13)", "fade = 1.0 - (ph * 4 % 1.0) * 0.7", "out[i] = self._mul(c, fade * k)", "sub_ph = (ph * 4) % 1.0", "if sub == 3 and (n % 2 == 1):", "HOLD_S = 20.0", "now: float | None = None) -> None:", "self.pattern = name", "self.manual = True", "if self.beat0 <= 0:", "self.beat0 = now", "self.pattern = self.base_pattern", "return self.pattern", "def frame(self) -> str:", "return json.dumps({", "\"source\": \"ddj-flx2\",", "\"kind\": \"continuous\",", "\"ts\": int(time.time() * 1000),", "\"colors\": colors,", "import random"];
+
 const cv = document.getElementById('c'), g = cv.getContext('2d', {alpha:false});
 const tag = document.getElementById('s');
-
 let S = {bpm:0, n:0, beat:0, series:'blue', dancing:false, drop:false,
          groove:1, mode:'off', talk:null};
 let lastN = -1, pulse = 0, flash = 0;
 
-// ── 色。★LED テープと同じシリーズ名で切り替える ────────────
+// ── 色。★ビビッドに。くすませない ─────────────────────
 const SERIES = {
-  blue: {core:'#7fe3ff', glow:'#00a2ff', dim:'#0b3d6b'},
-  red:  {core:'#ffb0a0', glow:'#ff2010', dim:'#5c0d08'},
+  blue: {h:196, h2:272, core:'#dffbff'},
+  red:  {h:352, h2: 28, core:'#fff0e6'},
 };
-const TALK = {listening:{core:'#b6ffcf', glow:'#00e05a', dim:'#0a3d22'},
-              speaking:{core:'#b9d8ff', glow:'#0078ff', dim:'#0a2a5c'}};
+const TALK = {listening:{h:150, h2:196, core:'#e6fff0'},
+              speaking:{h:212, h2:286, core:'#e9f3ff'}};
+function pal(){ return (S.talk && TALK[S.talk]) || SERIES[S.series] || SERIES.blue; }
 
-// ── 縦の列。二進数が降ってくる ─────────────────────────
-let cols = [], CELL = 0, ROWS = 0;
-
+// ── 降ってくるコード ───────────────────────────────
+let cols = [], LH = 0, ROWS = 0, FS = 0, COLW = 0;
 function layout(){
   const dpr = Math.min(devicePixelRatio||1, 2);
   cv.width = innerWidth*dpr; cv.height = innerHeight*dpr;
   g.setTransform(dpr,0,0,dpr,0,0);
-  // 写真の数字は大きい。画面幅で 9〜14 列くらいに収める
-  CELL = Math.max(48, Math.min(120, innerWidth/11));
-  ROWS = Math.ceil(innerHeight/CELL)+2;
-  const n = Math.ceil(innerWidth/CELL)+1;
+  // ★小さめにして、画面をコードで埋める（2026-09-12 本人の指摘）
+  //   黒が多いと寂しい。行間も詰める
+  FS = Math.max(11, Math.min(19, innerWidth/95));
+  LH = FS*1.22;
+  ROWS = Math.ceil(innerHeight/LH)+3;
+  // ★列を増やす。1列あたりの幅を詰めて、横も埋める
+  const n = Math.max(6, Math.floor(innerWidth/(FS*7.2)));
+  const w = innerWidth/n;
+  COLW = w;
   cols = Array.from({length:n}, (_,i)=>({
-    x: i*CELL,
-    off: Math.random()*ROWS,          // 降り始めの位置をばらす
-    spd: 0.35 + Math.random()*0.5,    // 列ごとに速さが違う
-    bits: Array.from({length:ROWS+2}, ()=>Math.random()<0.5?'0':'1'),
-    lit: Math.random(),               // 列ごとの明るさの癖
+    x: i*w + w*0.02,
+    off: Math.random()*ROWS,
+    spd: 0.30 + Math.random()*0.55,
+    hue: Math.random(),
+    rows: Array.from({length:ROWS+3},
+                     ()=>CODE[(Math.random()*CODE.length)|0]),
   }));
 }
 addEventListener('resize', layout); layout();
 
-function pal(){
-  if (S.talk && TALK[S.talk]) return TALK[S.talk];
-  return SERIES[S.series] || SERIES.blue;
+// ── スポットライト ───────────────────────────────
+// ★ライトは**会場のトラスに吊られている。** 光源が宙に浮いていると嘘に見える
+//   （2026-09-12 本人の指摘）。灯体を描いて、その**レンズから**光を出す。
+//   Alan Walker のライブのように、拍で ぱぱぱっ と点く。
+const N_LIGHTS = 9;
+const BEAMS = Array.from({length:N_LIGHTS}, (_,i)=>({
+  base: (i/N_LIGHTS)*Math.PI*2,
+  sw:   0.7 + Math.random()*1.6,
+  hue:  Math.random(),
+  cx:   (i+0.5)/N_LIGHTS,            // トラス上の位置（等間隔に吊る）
+  on:   0,
+  phase: i % 4,
+}));
+let bar = 0;
+
+function trussY(){ return Math.max(26, innerHeight*0.055); }   // バーの高さ
+function rigLen(){ return Math.max(16, FS*1.5); }              // 灯体の長さ
+
+function drawTruss(a){
+  const y = trussY(), h = Math.max(8, FS*0.75);
+  // 横棒2本＋斜めの筋交い。**逆光で黒く見えるので、暗いままでよい**
+  g.strokeStyle = 'rgba(150,170,200,'+(0.30*a)+')';
+  g.lineWidth = Math.max(2, FS*0.16);
+  g.beginPath();
+  g.moveTo(0, y-h/2); g.lineTo(innerWidth, y-h/2);
+  g.moveTo(0, y+h/2); g.lineTo(innerWidth, y+h/2);
+  g.stroke();
+  g.strokeStyle = 'rgba(150,170,200,'+(0.18*a)+')';
+  g.lineWidth = Math.max(1, FS*0.10);
+  g.beginPath();
+  for (let x=0; x<innerWidth; x+=h*1.6){
+    g.moveTo(x, y-h/2); g.lineTo(x+h*0.8, y+h/2);
+    g.moveTo(x+h*0.8, y+h/2); g.lineTo(x+h*1.6, y-h/2);
+  }
+  g.stroke();
 }
 
-let prev = performance.now();
-function draw(now){
-  const dt = Math.min(0.05, (now-prev)/1000); prev = now;
+function beams(t, p, energy, heat){
+  const ty = trussY(), L = rigLen();
+  // ── 光の筋（加算）
+  g.globalCompositeOperation = 'lighter';
+  for (const b of BEAMS){
+    b.on = Math.max(0, b.on - 0.055);      // ★すぐ消える。残すと眠くなる
+    const cx = innerWidth*b.cx;
+    // 灯体の首振り。★下向きが基準（トラスから床を照らす）
+    const a = Math.sin(t*1.5*b.sw + b.base) * 0.85;
+    const power = b.on*b.on * (0.55 + energy);
+    if (power < 0.012) continue;
+    const hue = (p.h + b.hue*200 + t*90) % 360;
+    const spread = 0.055 + 0.03*Math.sin(t*2.2 + b.base);
+    const far = innerHeight*1.7;
+    g.save();
+    g.translate(cx, ty + L*0.55);          // ★レンズの位置から出す
+    g.rotate(a);
+    const grd = g.createLinearGradient(0, 0, 0, far);
+    grd.addColorStop(0,    'hsla('+hue+',100%,88%,'+(0.95*power)+')');
+    grd.addColorStop(0.22, 'hsla('+hue+',100%,68%,'+(0.40*power)+')');
+    grd.addColorStop(1,    'hsla('+hue+',100%,52%,0)');
+    g.fillStyle = grd;
+    g.beginPath(); g.moveTo(0,0);
+    g.lineTo(-far*spread, far); g.lineTo(far*spread, far);
+    g.closePath(); g.fill();
+    // レンズの輝き
+    const gl = g.createRadialGradient(0,0,0, 0,0, L*1.5*(0.5+power));
+    gl.addColorStop(0, 'hsla('+hue+',100%,95%,'+(0.95*power)+')');
+    gl.addColorStop(1, 'hsla('+hue+',100%,60%,0)');
+    g.fillStyle = gl;
+    g.beginPath(); g.arc(0,0, L*1.5*(0.5+power), 0, 6.2832); g.fill();
+    g.restore();
+  }
+  g.globalCompositeOperation = 'source-over';
 
-  // 拍が変わった瞬間に叩く
-  if (S.n !== lastN){ lastN = S.n; pulse = 1; }
-  pulse = Math.max(0, pulse - dt*3.2);
-  flash = S.drop ? 1 : Math.max(0, flash - dt*2.6);
+  // ── 灯体そのもの（実体。逆光の黒いシルエット）
+  drawTruss(Math.min(1, heat*1.6));
+  for (const b of BEAMS){
+    const cx = innerWidth*b.cx;
+    const a = Math.sin(t*1.5*b.sw + b.base) * 0.85;
+    g.save();
+    g.translate(cx, ty);
+    // ヨーク（吊り金具）
+    const fade = Math.min(1, heat*1.6);
+    g.strokeStyle = 'rgba(120,140,170,'+(0.45*fade)+')';
+    g.lineWidth = Math.max(1.5, FS*0.12);
+    g.beginPath(); g.moveTo(0, -FS*0.3); g.lineTo(0, FS*0.15); g.stroke();
+    g.rotate(a);
+    // 本体
+    g.fillStyle = 'rgba(18,22,30,'+(0.95*fade)+')';
+    g.strokeStyle = 'rgba(140,160,190,'+(0.35*fade)+')';
+    g.lineWidth = Math.max(1, FS*0.08);
+    const w = L*0.62;
+    g.beginPath();
+    g.moveTo(-w*0.42, 0); g.lineTo(w*0.42, 0);
+    g.lineTo(w*0.55, L*0.55); g.lineTo(-w*0.55, L*0.55);
+    g.closePath(); g.fill(); g.stroke();
+    g.restore();
+  }
+}
+
+function fireBeams(n){
+  // ★拍ごとに違う組が点く。**毎回同じだと機械に見える**
+  bar = (bar + 1) % 4;
+  const heavy = (n % 4 === 0);
+  for (const b of BEAMS){
+    if (heavy) { b.on = 1; continue; }              // 1拍目は全部
+    if (b.phase === bar || Math.random() < 0.35) b.on = Math.max(b.on, 0.85);
+  }
+}
+
+let prev = performance.now(), t = 0, freeBeat = 0, freeN = 0;
+// ★動いていないときは静かに、動いた瞬間に爆発する。**差が無いと見せ場が無い**
+//   （2026-09-12 本人の指摘）。急に切り替えず、少しだけ滑らせる
+let heat = 0;
+function draw(now){
+  const dt = Math.min(0.05, (now-prev)/1000); prev = now; t += dt;
+  if (S.n !== lastN){ lastN = S.n; pulse = 1; fireBeams(S.n); }
+  if (S.drop) flash = 1;
+  const live = S.dancing || !!S.talk;
+  // ★立ち上がりは速く、落ちるのはゆっくり。**盛り上がりは急に、余韻は残す**
+  heat += ((live ? 1 : 0) - heat) * dt * (live ? 5.0 : 0.9);
+
+  // 音が来ていないときの自走。**静かなときは叩かない**
+  if ((!S.bpm || S.bpm < 1) && heat > 0.25){
+    freeBeat += dt;
+    if (freeBeat >= 0.5){ freeBeat -= 0.5; pulse = 1; fireBeams(++freeN); }
+  }
+  pulse = Math.max(0, pulse - dt*3.4);
+  flash = Math.max(0, flash - dt*2.0);
 
   const p = pal();
-  const live = S.dancing || S.talk;
-  const speed = S.bpm>0 ? (S.bpm/128) : 0.55;
+  // ★静かなとき 0.10 前後、盛り上がると 1.6 くらいまで振れる
+  const energy = 0.10 + heat*0.75 + pulse*0.70*heat + flash*0.6;
 
-  // 背景。拍でわずかに持ち上げる（真っ黒のままだと画面が死んで見える）
-  g.fillStyle = '#000'; g.fillRect(0,0,innerWidth,innerHeight);
-  const bg = (live? 0.05:0.02) + pulse*0.05;
-  g.fillStyle = p.dim; g.globalAlpha = bg;
-  g.fillRect(0,0,innerWidth,innerHeight); g.globalAlpha = 1;
+  // 背景。★静かなときは色を回さない。回ると落ち着かない
+  g.fillStyle = 'hsl('+((p.h + t*26*heat) % 360)+','
+              + (40 + 45*heat)+'%,'+(2 + energy*5)+'%)';
+  g.fillRect(0,0,innerWidth,innerHeight);
+  // ★静かなときはライトを出さない。**コードがゆっくり流れているだけでちょうどいい**
+  //   （2026-09-12 本人の指摘）。動き出したら吊り込まれる
+  if (heat > 0.06) beams(t, p, energy, heat);
 
-  g.font = `700 ${Math.round(CELL*0.78)}px ui-monospace, "SF Mono", Menlo, monospace`;
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-
+  // ★30行くらい残す。**すぐ消えると黒ばかりになる**（2026-09-12 本人の指摘）
+  const TAIL = 26 + 14*heat;
+  g.textBaseline = 'top';
+  g.font = '600 '+FS+'px ui-monospace,SFMono-Regular,Menlo,monospace';
+  g.globalCompositeOperation = 'lighter';
   for (const c of cols){
-    // 降る。踊っていないときは、ほぼ止まって静かに漂う
-    c.off += dt * c.spd * speed * (live ? 2.6 : 0.35);
-    if (c.off > ROWS) { c.off -= ROWS; }
-    // 拍の頭で、たまに桁を書き換える
-    if (pulse > 0.9 && Math.random() < 0.5){
-      const k = (Math.random()*c.bits.length)|0;
-      c.bits[k] = c.bits[k]==='0'?'1':'0';
-    }
+    c.off += dt * c.spd * (0.55 + heat*2.0 + energy*6.0);  // ★静かなときはゆっくり
+    if (c.off > ROWS) c.off -= ROWS;
+    // ★切り取らない。**途中で切れたコードは嘘に見える**（2026-09-12 本人の指摘）。
+    //   重なってよい。層になって流れるほうが、ライブの映像らしい
     for (let r=0; r<ROWS; r++){
-      const y = ((r - c.off + ROWS) % ROWS) * CELL + CELL*0.5;
-      // 上ほど暗く、下ほど明るい＝降ってきた感じ
-      const depth = 1 - (r/ROWS);
-      let a = 0.10 + depth*0.55*c.lit;
-      if (live) a += pulse*0.30*depth;
-      const head = (r===0);                     // 先頭は白く光らせる
-      g.shadowColor = p.glow;
-      g.shadowBlur = (head? 26:14) * (0.4 + a);
-      g.fillStyle = head ? '#ffffff' : p.core;
-      g.globalAlpha = Math.min(1, head ? 0.95 : a);
-      g.fillText(c.bits[r], c.x + CELL*0.5, y);
+      const d = (c.off - r + ROWS) % ROWS;
+      if (d > TAIL) continue;
+      const txt = c.rows[r];
+      if (!txt) continue;
+      const hue = (p.h + c.hue*(40+130*heat) + (p.h2-p.h)*(d/TAIL) + t*(6+52*heat)) % 360;
+      if (d < 0.9){
+        g.shadowColor = 'hsl('+hue+',100%,72%)';
+        g.shadowBlur = 8 + 24*heat + 34*energy;
+        g.fillStyle = p.core;
+      } else {
+        const a = Math.max(0, 1 - d/TAIL) * (0.30 + 0.36*heat + energy*0.5);
+        g.shadowColor = 'hsl('+hue+',100%,62%)';
+        g.shadowBlur = 12 + 22*energy;
+        g.fillStyle = 'hsla('+hue+',100%,'+(58 + 20*(1-d/TAIL))+'%,'+a+')';
+      }
+      g.fillText(txt, c.x, r*LH);
+      if (Math.random() < 0.0012 + 0.005*heat + pulse*0.06*heat){
+        c.rows[r] = CODE[(Math.random()*CODE.length)|0];
+      }
     }
   }
-  g.globalAlpha = 1; g.shadowBlur = 0;
+  g.shadowBlur = 0;
+  g.globalCompositeOperation = 'source-over';
 
-  // サビ。画面全体を白く焼く
   if (flash > 0.01){
-    g.fillStyle = '#fff'; g.globalAlpha = flash*0.85;
-    g.fillRect(0,0,innerWidth,innerHeight); g.globalAlpha = 1;
+    g.fillStyle = 'rgba(255,255,255,'+(flash*0.45)+')';
+    g.fillRect(0,0,innerWidth,innerHeight);
   }
-
-  // 下の帯。★実物の LED テープと同じ役割（写真のDJブースの光）
-  const bh = Math.max(6, innerHeight*0.012);
-  const grd = g.createLinearGradient(0, innerHeight-bh*3, 0, innerHeight);
-  grd.addColorStop(0, 'rgba(0,0,0,0)');
-  grd.addColorStop(1, p.glow);
-  g.globalAlpha = 0.35 + pulse*0.5;
-  g.fillStyle = grd; g.fillRect(0, innerHeight-bh*3, innerWidth, bh*3);
-  g.globalAlpha = 1;
-
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
 
-// ── console と繋ぐ。切れても勝手に繋ぎ直す ─────────────────
 function connect(){
-  const ws = new WebSocket(`ws://${location.host}/ws`);
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(proto+'://'+location.host+'/ws');
   ws.onopen = ()=>{ tag.style.opacity = 0; };
   ws.onmessage = e => { try { S = JSON.parse(e.data); } catch(_){} };
   ws.onclose = ()=>{ tag.style.opacity = 1; tag.textContent='reconnecting…';
@@ -138,13 +251,4 @@ function connect(){
   ws.onerror = ()=> ws.close();
 }
 connect();
-
-// iPad で画面が消えないように（対応していれば）
-if ('wakeLock' in navigator){
-  const keep = ()=> navigator.wakeLock.request('screen').catch(()=>{});
-  keep(); document.addEventListener('visibilitychange', ()=>{
-    if (document.visibilityState === 'visible') keep(); });
-}
-</script>
-</body>
-</html>
+</script></body></html>

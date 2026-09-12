@@ -161,3 +161,10 @@ def test_はしゃぐ動きがある():
     from panel import MOVES
     for m in ("bounce", "shake", "swing"):
         assert m in MOVES, m
+
+
+def test_ばいばいは速く大きく振る():
+    """★ゆっくり振ると眠く見える。締めは速く。"""
+    from panel import MOVES, FAST_MOVES
+    assert "waveby" in MOVES and "waveby" in FAST_MOVES
+    assert max(abs(y) for y, _ in MOVES["waveby"]) >= 45, "振り幅が小さい"

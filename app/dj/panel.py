@@ -331,10 +331,15 @@ MOVES: dict[str, tuple[tuple[float, float], ...]] = {
     "bounce": ((0, 18), (0, -12), (0, 16), (0, -8), (0, 14), (0, -6)),  # 跳ねる
     "shake":  ((-20, 4), (20, 4), (-16, 6), (16, 6), (-11, 3), (11, 3)),  # ぶんぶん
     "swing":  ((-34, 10), (0, -6), (34, 10), (0, -6)),                 # 大きく振る
+    # ★手を振るように、速く大きく。締めの「ばいばーい」用
+    "waveby": ((-52, 12), (52, 12), (-48, 6), (48, 6), (-52, 14), (52, 14),
+               (-44, 8), (44, 8)),
     # 無指定の行。**止まっている行を作らない**
     "idle":   ((5, 3), (-4, 1), (3, 4), (-5, 2), (2, 3), (-3, 1)),
 }
 MOVE_STEP_S = 0.30
+MOVE_STEP_FAST_S = 0.16        # ★はしゃぐ動きは速く。ゆっくり振ると眠く見える
+FAST_MOVES = ("waveby", "shake", "bounce")
 
 
 @dataclass
@@ -437,12 +442,13 @@ async def _play_move(con, name: str) -> None:
     steps = MOVES.get(name)
     if not steps:
         return
+    step_s = MOVE_STEP_FAST_S if name in FAST_MOVES else MOVE_STEP_S
     try:
         i = 0
         while True:                       # ★呼び出し側が止めるまで回り続ける
             yaw, pitch = steps[i % len(steps)]
             con.pose.hold = (yaw, pitch)
-            await asyncio.sleep(MOVE_STEP_S)
+            await asyncio.sleep(step_s)
             i += 1
     except asyncio.CancelledError:
         raise

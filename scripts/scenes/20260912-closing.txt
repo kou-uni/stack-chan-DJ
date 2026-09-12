@@ -31,3 +31,7 @@
 [pause=0.6]
 [look_r]にじゅうくにちも、ここで まってます。
 [happy][bounce]また、あそびに きてください。
+[pause=0.5]
+[led=sparks][happy][waveby]ばいばーい。
+[waveby]ばいばーい。
+[waveby]また ねー。
