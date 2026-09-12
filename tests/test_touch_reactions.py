@@ -30,6 +30,15 @@ class FakePresence:
         self.overlays.append((kind, face, seconds))
 
 
+class FakeGw:
+    def __init__(self): self.said = []
+    async def call(self, tool, **kw):
+        if tool == "say":
+            self.said.append(kw["text"])
+        class R: content = [type("T", (), {"text": '{"ok":true}'})()]
+        return R()
+
+
 class FakePose:
     def __init__(self):
         self.hold = None
@@ -146,3 +155,30 @@ def test_数分は置きっぱなし():
     r = make()
     asyncio.run(r.handle(ev(duration_ms=250899), now=100.0))
     assert r.presence.overlays == []
+
+
+# ── 声を出す（2026-09-12 本人の指摘）────────────────
+# > **「違いがあまり出ないなー、声を出してくれたらいいかも」**
+
+def test_撫でられたら喋る():
+    r = make()
+    con = type("C", (), {"gw": FakeGw()})()
+    asyncio.run(r.handle(ev(), now=100.0, gw=con.gw))
+    assert con.gw.said, "喋っていない"
+    assert len(con.gw.said[0]) <= 14
+
+
+def test_喋っている最中は割り込まない():
+    """★会話を潰さない。**顔と首だけは出す。**"""
+    r = make()
+    gw = FakeGw()
+    asyncio.run(r.handle(ev(), now=100.0, gw=gw, busy=True))
+    assert gw.said == [], "会話に割り込んだ"
+    assert r.presence.overlays, "顔まで止めている"
+
+
+def test_声を渡さなくても動く():
+    """★実機が無くても反応は成立する（試験できる）。"""
+    r = make()
+    asyncio.run(r.handle(ev(), now=100.0))
+    assert r.presence.overlays

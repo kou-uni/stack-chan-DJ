@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import asyncio
 
-from petting import Petting
+from petting import Petting, pick_voice
 
 # ★どこまでを「撫で」とみなすか。**実際の使われ方から決める。想像で決めない。**
 #
@@ -49,22 +49,42 @@ class TouchReactor:
         self.face_s, self.max_stroke_ms, self.quiet = face_s, max_stroke_ms, quiet
         self.petting = Petting()
         self._task: asyncio.Task | None = None
+        self._last_line: str | None = None
 
-    async def handle(self, ev: dict, now: float) -> None:
+    async def handle(self, ev: dict, now: float, gw=None,
+                     busy: bool = False) -> None:
+        """撫でられた。**顔・首・声で返す。**
+
+        gw   : 実機。無ければ声を出さない（実機なしで試験できる）
+        busy : 会話中。**割り込まない。顔と首だけ出す**
+        """
         dur = int(ev.get("duration_ms") or 0)
         if dur > self.max_stroke_ms:
             return                                  # ★置きっぱなし
 
         r = self.petting.react(dur, now)
+        # ★声が一番わかりやすい差。顔と首だけでは6つの違いが伝わらなかった
+        line = pick_voice(r.name, self._last_line)
         if not self.quiet:
-            print(f"    ♡ {r.name}（{dur}ms）")
+            print(f"    ♡ {r.name}（{dur}ms）"
+                  + (f" 「{line}」" if line and gw and not busy else ""))
         self.presence.overlay("touch", r.face, self.face_s)
+        if gw is not None and not busy and line:
+            self._last_line = line
+            # ★待たない。**返事より先に体が動くほうが自然**
+            asyncio.ensure_future(self._say(gw, line))
 
         # ★前の反応が残っていたら止める。待たせると反応の遅い機械に見える
         if self._task and not self._task.done():
             self._task.cancel()
         self._task = asyncio.ensure_future(self._play(r))
         await self._task
+
+    async def _say(self, gw, line: str) -> None:
+        try:
+            await gw.call("say", text=line, speaker_id=14)
+        except Exception:
+            pass                        # ★喋れなくても動きは止めない
 
     async def _play(self, r) -> None:
         """首の動きを順に出して、**必ず戻す。**
@@ -102,4 +122,5 @@ class TouchMixin:
             if ev is None:
                 await asyncio.sleep(0.12)
                 continue
-            await reactor.handle(ev, now=loop.time())
+            await reactor.handle(ev, now=loop.time(), gw=self.gw,
+                                 busy=bool(self.presence.talk))

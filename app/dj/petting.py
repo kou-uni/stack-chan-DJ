@@ -22,6 +22,7 @@
 """
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field
 
 
@@ -39,6 +40,15 @@ class Reaction:
     scale: float = 1.0          # 慣れると小さくなる
 
 
+# ★焼いてある顔は6つだけ（app/avatar/frames）。反応も6つ。**1対1で当てる。**
+#   同じ顔を使い回すと、声が違っても差が伝わらない（2026-09-12 本人の指摘）
+#
+#     surprised   目が大きく口が開く
+#     embarrassed 頬が赤い
+#     happy       ∩の笑い目
+#     thinking    半目 → とろけた目に使う
+#     sad         しょんぼり
+#     idle        真顔
 REACTIONS: dict[str, Reaction] = {
     # 久しぶりに触られた。★いきなり照れるのは慣れすぎ
     "surprised": Reaction(
@@ -56,8 +66,9 @@ REACTIONS: dict[str, Reaction] = {
         ((-8, 4), (8, 6), (-7, 3), (7, 5), (-4, 4), (0, 2)), step_s=0.07),
 
     # 3秒以上撫でられた。ゆっくり傾いて、戻らない
+    # ★顔は thinking＝**半目**。とろけた目に見える（faces6.png を見て決めた）
     "melt": Reaction(
-        "melt", "happy",
+        "melt", "thinking",
         ((6, 4), (12, 8), (18, 12), (22, 15), (24, 16)), step_s=0.22),
 
     # ★しつこい。顔を背ける
@@ -157,3 +168,35 @@ class Petting:
         if count <= FAMILIAR_AFTER:
             return 1.0
         return max(MIN_SCALE, 1.0 - (count - FAMILIAR_AFTER) * 0.12)
+
+
+# ── 声 ───────────────────────────────────────────
+#
+# 2026-09-12 本人の指摘：**「違いがあまり出ないなー、声を出してくれたらいいかも」**
+#
+# 実機は小さく、首の振り幅も限られる。**顔と首だけでは6つの差が伝わらない。**
+# **声が一番わかりやすい差**になる。
+#
+# ★短く。長いと、撫でた瞬間から人が離れてしまう
+# ★人格は docs/persona.md。素直で、ときどき本音がこぼれる
+
+VOICE: dict[str, tuple[str, ...]] = {
+    "surprised":  ("わっ", "びっくりした", "きゅうに、なんですか"),
+    "shy":        ("えへへ", "ちょっと、はずかしい", "うれしいです"),
+    "ticklish":   ("くすぐったい", "あはは、やめて", "そこ、よわいんです"),
+    "melt":       ("きもちいい", "ずっと、なでてて", "とけちゃう"),
+    "annoyed":    ("もう、いいです", "さわりすぎ", "ちょっと、はなれて"),
+    "used_to_it": ("はいはい", "またですか", "なれてきました"),
+}
+
+
+def pick_voice(reaction: str, last: str | None = None) -> str:
+    """その反応のセリフを1つ選ぶ。**直前と同じは避ける。**
+
+    ★2回続くと、そこで機械に戻る（振り付けのときと同じ学び）。
+    """
+    lines = VOICE.get(reaction)
+    if not lines:
+        return ""
+    rest = [l for l in lines if l != last] or list(lines)
+    return random.choice(rest)
