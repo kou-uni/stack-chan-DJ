@@ -29,24 +29,46 @@ import re
 import time
 from pathlib import Path
 
-# ★ffmpeg が書いている途中のファイルを掴まない。**落ち着くまで待つ**
+# ★ffmpeg が書いている途中のファイルを掴まない。
+#
+#   2026-09-12 実地：更新時刻だけで判定したら**空のヘッダだけを掴んだ。**
+#   ffmpeg は wav のヘッダを先に書いて、中身を後から流し込む。だから
+#   作った直後のファイルが「3秒なにも書かれていない」ように見える。
+#
+#   **確実なのは「次の塊が出来ているか」。** 出来ていれば ffmpeg は先へ進んでいる。
+#   最後の1つだけは次が来ないので、録音が閉じたと分かってから拾う。
 QUIET_S = 3.0
+MIN_BYTES = 4096          # ★止めた瞬間にできる殻。失敗として数えない
 
 # whisper が無音で吐く定型。★素材に混ざると邪魔
 NOISE = ("ご視聴ありがとうございました", "ありがとうございました",
          "おやすみなさい", "チャンネル登録", "字幕", "Thank you", "you")
 
 
-def finished_chunks(d: Path, quiet_s: float = QUIET_S) -> list[Path]:
-    """書き終わった塊を、順番に返す。"""
+def finished_chunks(d: Path, quiet_s: float = QUIET_S,
+                    closed: bool = False) -> list[Path]:
+    """書き終わった塊を、順番に返す。
+
+    closed : 録音が終わっているか。**最後の1つは次が来ないので、これで拾う。**
+    """
     now = time.time()
-    out = []
+    files = []
     for p in sorted(d.glob("*.wav")):
         try:
-            if now - p.stat().st_mtime >= quiet_s:
-                out.append(p)
+            st = p.stat()
         except OSError:
             continue
+        if st.st_size < MIN_BYTES:
+            continue                      # ★殻は拾わない
+        files.append((p, st))
+
+    out = []
+    for i, (p, st) in enumerate(files):
+        is_last = i == len(files) - 1
+        if not is_last:
+            out.append(p)                 # ★次がある＝ffmpeg は先へ進んだ
+        elif closed and now - st.st_mtime >= quiet_s:
+            out.append(p)
     return out
 
 

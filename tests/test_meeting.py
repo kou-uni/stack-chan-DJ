@@ -27,9 +27,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app" / "dj"))
 from meeting import (Transcript, finished_chunks, highlights)   # noqa: E402
 
 
-def touch(d: Path, name: str, mtime_ago: float = 10.0) -> Path:
+def touch(d: Path, name: str, mtime_ago: float = 10.0, size: int = 8192) -> Path:
     p = d / name
-    p.write_bytes(b"x" * 100)
+    p.write_bytes(b"x" * size)
     t = time.time() - mtime_ago
     import os
     os.utime(p, (t, t))
@@ -37,7 +37,7 @@ def touch(d: Path, name: str, mtime_ago: float = 10.0) -> Path:
 
 
 def test_書きかけは掴まない():
-    """★ffmpeg が書いている途中のを読むと壊れる。**落ち着くまで待つ。**"""
+    """★いま書かれている最後の1つは拾わない。"""
     d = Path(tempfile.mkdtemp())
     touch(d, "c000.wav", mtime_ago=30)
     touch(d, "c001.wav", mtime_ago=0.1)      # いま書かれている
@@ -49,7 +49,8 @@ def test_順番どおりに返す():
     d = Path(tempfile.mkdtemp())
     for n in ("c002.wav", "c000.wav", "c001.wav"):
         touch(d, n, mtime_ago=30)
-    assert [p.name for p in finished_chunks(d)] == ["c000.wav", "c001.wav", "c002.wav"]
+    assert [p.name for p in finished_chunks(d, closed=True)] == [
+        "c000.wav", "c001.wav", "c002.wav"]
 
 
 def test_同じ塊を二度処理しない():
@@ -99,3 +100,37 @@ def test_同じ言葉の繰り返しは畳む():
     h = highlights(t.lines())
     assert h.count("ご視聴") <= 1, h
     assert "うごいた" in h
+
+
+# ── 「書き終わり」の判定（2026-09-12 実地で判明）──────────
+#
+# 更新時刻だけで判定したら、**空のヘッダだけを掴んだ。**
+# ffmpeg は wav のヘッダを先に書いて、中身を後から流し込む。
+# だから作った直後のファイルは「3秒間なにも書かれていない」ように見える。
+#
+# ★確実なのは「**次の塊が出来ているか**」。出来ていれば ffmpeg は先へ進んでいる。
+
+def test_次の塊があるものだけ完了とみなす():
+    d = Path(tempfile.mkdtemp())
+    touch(d, "c00000.wav", mtime_ago=0.1)    # ★時刻は新しくても
+    touch(d, "c00001.wav", mtime_ago=0.1)
+    got = [p.name for p in finished_chunks(d)]
+    assert got == ["c00000.wav"], got
+
+
+def test_最後の塊は録音が終わってから拾う():
+    """★録り終わりの1つは、次が来ない。**閉じたと分かってから拾う。**"""
+    d = Path(tempfile.mkdtemp())
+    touch(d, "c00000.wav", mtime_ago=30)
+    assert finished_chunks(d) == []
+    got = [p.name for p in finished_chunks(d, closed=True)]
+    assert got == ["c00000.wav"]
+
+
+def test_中身の無いファイルは拾わない():
+    """★止めた瞬間にできる0バイトの塊。**失敗として数えない。**"""
+    d = Path(tempfile.mkdtemp())
+    (d / "c00000.wav").write_bytes(b"")   # 0バイトの殻
+    touch(d, "c00001.wav", mtime_ago=30)
+    got = [p.name for p in finished_chunks(d, closed=True)]
+    assert "c00000.wav" not in got

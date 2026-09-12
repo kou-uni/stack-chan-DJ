@@ -62,7 +62,7 @@ async def transcribe_loop(d: Path, tr: Transcript, stop: asyncio.Event) -> None:
     print("  準備できました。録りながら起こします\n")
     while True:
         did = False
-        for p in finished_chunks(d):
+        for p in finished_chunks(d, closed=stop.is_set()):
             if tr.done(p.name):
                 continue
             idx = int(re.sub(r"\D", "", p.stem) or 0)
