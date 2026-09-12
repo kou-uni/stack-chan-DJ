@@ -392,17 +392,17 @@ function rig(heat){
 
     // ① 灯体まわりの散り。**レンズの近くがいちばん明るい**
     const sp = g.createRadialGradient(cx, ly, 0, cx, ly, L*1.1);
-    sp.addColorStop(0,   'hsla('+hue+',85%,70%,'+(0.30*pw)+')');
-    sp.addColorStop(0.4, 'hsla('+hue+',90%,58%,'+(0.10*pw)+')');
+    sp.addColorStop(0,   'hsla('+hue+',85%,74%,'+(0.52*pw)+')');
+    sp.addColorStop(0.4, 'hsla('+hue+',90%,60%,'+(0.18*pw)+')');
     sp.addColorStop(1,   'hsla('+hue+',90%,50%,0)');
     g.fillStyle = sp;
     g.beginPath(); g.arc(cx, ly, L*1.1, 0, 6.2832); g.fill();
 
-    // ② トラスに当たる。**弦材の丸みに沿って、上側だけ強く光る**
+    // ② トラスに当たる。★**手前にあるので強く出る**（2026-09-13 本人の指摘）
     const h = trussH(), pipe = M()*0.05, top = ty - h/2, bot = ty + h/2;
     // ★光が当たったところだけ。そこから**ぼんやり暗くなる**
     const w = L*1.1;
-    for (const [cy, k] of [[top, 0.55], [bot, 1.0]]){   // 下弦のほうが近い
+    for (const [cy, k] of [[top, 0.85], [bot, 1.6]]){   // 下弦のほうが近い
       const gr = g.createLinearGradient(cx-w, 0, cx+w, 0);
       gr.addColorStop(0,    'hsla('+hue+',90%,60%,0)');
       gr.addColorStop(0.30, 'hsla('+hue+',90%,64%,'+(0.05*pw*k)+')');
@@ -693,6 +693,50 @@ function draw(now){
     gr.addColorStop(1, 'hsla('+p.h+',80%,62%,0)');
     g.fillStyle = gr;
     g.fillRect(innerWidth*0.16, backY - M()*0.12, innerWidth*0.68, M()*0.22);
+  }
+
+  // ── ウォールの上。★実際の会場は**暗幕と鉄骨、チェーンモーター、ケーブル**
+  //   ここが空だと、書き割りに見える（2026-09-13 本人の指摘）
+  {
+    const kc = CENTER_K;
+    const topY = hy - hy*kc;                 // 奥の壁の上端
+    // 天井の梁。奥へ向かって消失点に収束する
+    g.strokeStyle = 'rgba(80,94,116,'+(0.10 + 0.10*heat)+')';
+    g.lineWidth = Math.max(1, M()*0.02);
+    g.beginPath();
+    for (let i=1; i<=5; i++){
+      const u = i/6;
+      const yy = topY * (1 - u*u*0.92);       // 手前ほど間隔が広い
+      const s = 1 - yy/topY;
+      const xl = innerWidth*0.175*(1-s);
+      const xr = innerWidth*0.825 + (innerWidth-innerWidth*0.825)*s;
+      g.moveTo(xl, yy); g.lineTo(xr, yy);
+    }
+    g.stroke();
+    // 吊り用のチェーンとケーブル。★トラスは宙に浮かない
+    g.strokeStyle = 'rgba(60,70,88,'+(0.45 + 0.2*heat)+')';
+    g.lineWidth = Math.max(1, M()*0.012);
+    g.beginPath();
+    for (const x of [0.10, 0.28, 0.5, 0.72, 0.90]){
+      g.moveTo(innerWidth*x, 0); g.lineTo(innerWidth*x + M()*0.03, trussY()-trussH()*0.5);
+    }
+    g.stroke();
+    // チェーンモーター（黒い箱）
+    g.fillStyle = 'rgba(4,5,9,0.95)';
+    for (const x of [0.28, 0.72]){
+      rrect(innerWidth*x - M()*0.09, trussY()-trussH()*1.5,
+            M()*0.18, trussH()*1.05, M()*0.03); g.fill();
+    }
+    // だらんと垂れたケーブル
+    g.strokeStyle = 'rgba(8,10,15,0.9)';
+    g.lineWidth = Math.max(1, M()*0.016);
+    g.beginPath();
+    for (const [x0, x1, sag] of [[0.14, 0.30, 0.09], [0.66, 0.86, 0.11]]){
+      g.moveTo(innerWidth*x0, trussY()+trussH()*0.4);
+      g.quadraticCurveTo(innerWidth*(x0+x1)/2, trussY()+trussH()*0.4 + innerHeight*sag,
+                         innerWidth*x1, trussY()+trussH()*0.4);
+    }
+    g.stroke();
   }
 
   // ── ② 空気中の光。パネルの手前を通る
