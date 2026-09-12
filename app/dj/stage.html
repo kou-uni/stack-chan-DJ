@@ -420,14 +420,6 @@ function rig(heat){
     g.fill();
     // 後ろの丸み（放熱側）
     g.beginPath(); g.ellipse(0, HB, L*0.24, L*0.10, 0, 0, 6.2832); g.fill();
-    // ★軸受け。腕とヘッドが噛み合っているのが分かる
-    g.fillStyle = 'rgb('+Math.round(46*fade+4)+','+Math.round(54*fade+5)+','
-                + Math.round(68*fade+7)+')';
-    for (const sx2 of [-1, 1]){
-      g.beginPath(); g.arc(sx2*L*0.24, 0, L*0.065, 0, 6.2832); g.fill();
-    }
-    g.fillStyle = 'rgb('+Math.round(16*fade+2)+','+Math.round(20*fade+3)+','
-                + Math.round(28*fade+4)+')';
     // レンズ面（円）。★ここが光の出口
     g.beginPath(); g.ellipse(0, HL, L*0.20, L*0.06, 0, 0, 6.2832); g.fill();
     g.restore();
@@ -456,9 +448,10 @@ function rig(heat){
     if (pw < 0.02) continue;
     const LP = lensPos(innerWidth*b.cx, b.ang);
     const cx = LP.x, ly = LP.y, hue = b.hueDeg, half = M()*0.115;
-    for (const [r, a2, s2, l2] of [[4.2, 0.10, 90, 55],
-                                   [2.0, 0.34, 70, 80],
-                                   [0.85,0.90, 20, 98]]){
+    // ★大きな白玉にしない。**芯は小さく、周りは色**（2026-09-13 本人の指摘）
+    for (const [r, a2, s2, l2] of [[2.6, 0.075, 92, 52],
+                                   [1.2, 0.24,  84, 66],
+                                   [0.42,0.62,  55, 88]]){
       const gl = g.createRadialGradient(cx, ly, 0, cx, ly, half*r);
       gl.addColorStop(0,   'hsla('+hue+','+s2+'%,'+l2+'%,'+(a2*pw)+')');
       gl.addColorStop(0.5, 'hsla('+hue+','+(s2+8)+'%,'+(l2-16)+'%,'+(a2*0.28*pw)+')');
@@ -849,13 +842,31 @@ function draw(now){
     }
   }
 
-  // ── ★ウォールの上端にも横トラス。**枠として一周させる**（本人の指摘）
+  // ── ★ウォールの上端の横トラス。**袖の上にも通す。枠として一周させる**
+  //   （2026-09-13 本人の指摘：横のディスプレイの上に支柱が無かった）
   {
     const hh = M()*0.30*kc*0.85;
+    // 中央（正面）
     trussRun(innerWidth*0.172 + hh*0.6, cy,
              innerWidth*0.828 - hh*0.6, cy, kc*0.85, 0.85);
     trussCorner(innerWidth*0.172, cy, kc*0.85, 0.85);
     trussCorner(innerWidth*0.828, cy, kc*0.85, 0.85);
+
+    // 袖。★上端は傾いている（外が手前で高い）。段に分けて縮尺を変える
+    const K = CENTER_K, N = 3;
+    for (const side of ['left', 'right']){
+      const pn = side === 'left' ? PANELS[0] : PANELS[2];
+      for (let i=0; i<N; i++){
+        const u0 = i/N, u1 = (i+1)/N;               // 0=外（手前）, 1=中央寄り（奥）
+        const s0 = K/(K + u0*(1-K)), s1 = K/(K + u1*(1-K));
+        const y0 = hy - hy*s0, y1 = hy - hy*s1;
+        const xa = side === 'left'
+          ? innerWidth*(pn.x0 + pn.w*u0) : innerWidth*(pn.x0 + pn.w*(1-u0));
+        const xb = side === 'left'
+          ? innerWidth*(pn.x0 + pn.w*u1) : innerWidth*(pn.x0 + pn.w*(1-u1));
+        trussRun(xa, y0, xb, y1, ((s0+s1)/2)*0.85, 0.85);
+      }
+    }
   }
 
   // ── 床。★奥行きの手がかりで**いちばん強いのは床の収束線**（2026-09-13）。
@@ -1016,6 +1027,32 @@ function draw(now){
     }
   }
 
+  // ── ★ビームの根元。**灯体より手前に描く。**
+  //   先に描いていたので、黒い筐体に隠れて「光と灯体が会っていない」
+  if (heat > 0.06){
+    g.globalCompositeOperation = 'lighter';
+    for (const b of BEAMS){
+      const pw = b.pw || 0;
+      if (pw < 0.03) continue;
+      const LP = lensPos(innerWidth*b.cx, b.ang);
+      const half = M()*0.115, near = M()*2.2;
+      g.save();
+      g.translate(LP.x, LP.y);
+      g.rotate(b.ang);
+      const gg = g.createLinearGradient(0, 0, 0, near);
+      gg.addColorStop(0,   'hsla('+b.hueDeg+',60%,92%,'+(0.34*pw)+')');
+      gg.addColorStop(0.35,'hsla('+b.hueDeg+',85%,70%,'+(0.12*pw)+')');
+      gg.addColorStop(1,   'hsla('+b.hueDeg+',90%,58%,0)');
+      g.fillStyle = gg;
+      g.beginPath();
+      g.moveTo(-half*0.75, 0); g.lineTo(half*0.75, 0);
+      g.lineTo(near*0.10, near); g.lineTo(-near*0.10, near);
+      g.closePath(); g.fill();
+      g.restore();
+    }
+    g.globalCompositeOperation = 'source-over';
+  }
+
   // ── 下からの光。★機材より**手前**（ステージ前縁に置く）
   uplights(t, p, playing ? hold : 0, S.jog || 0);
 
@@ -1072,7 +1109,7 @@ window.__debug = {
   // 元画像の位置（射影）
   tex:   (k, u) => k*u / (1 - u*(1-k)),
   litColor: () => litColor(pal()),
-  lensPos, pivotY, lensY,
+  lensPos, pivotY, lensY, stepHeads,
   state: () => ({heat, hold, release, panels: panels.length}),
 };
 </script></body></html>

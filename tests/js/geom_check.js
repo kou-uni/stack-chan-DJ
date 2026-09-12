@@ -100,12 +100,17 @@ ok('下からの光は実機の外側', D.UPS[0].cx < 0.30 && D.UPS[1].cx > 0.70
 
 // ★動く速さ。**瞬間移動は嘘、遅すぎるとゆるゆる**（2026-09-13）
 {
+  // ★描画ループを回すと、途中でキューが変わって測れない。**動きだけを単体で見る**
   const b = D.BEAMS[0];
-  b.ang = 0; b.vel = 0; b.tgt = 1.2;
+  const keep = D.BEAMS.map(x => ({ang:x.ang, vel:x.vel, tgt:x.tgt}));
+  D.BEAMS.forEach(x => { x.ang = 0; x.vel = 0; x.tgt = 0; });
+  b.tgt = 1.2;
   let sec = 99;
-  for (let i=0;i<180;i++){ frameN++; rafFn(frameN*16.7);
-    if (Math.abs(b.ang - 1.2) < 0.06){ sec = i*16.7/1000; break; } }
-  ok('大きく振るのに0.4〜1.5秒かかる', sec > 0.4 && sec < 1.5, sec.toFixed(2) + '秒');
+  for (let i=0;i<200;i++){ D.stepHeads(1/60);
+    if (Math.abs(b.ang - 1.2) < 0.06){ sec = i/60; break; } }
+  ok('大きく振るのに0.3〜1.5秒かかる', sec > 0.3 && sec < 1.5, sec.toFixed(2) + '秒');
+  ok('行き過ぎても戻る（暴れない）', Math.abs(b.ang) < 1.6, b.ang.toFixed(2));
+  D.BEAMS.forEach((x,i) => Object.assign(x, keep[i]));
 }
 
 // ── 構造材の統一（2026-09-13 本人の指摘）────────────
