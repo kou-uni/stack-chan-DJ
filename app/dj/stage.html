@@ -424,8 +424,15 @@ function rig(heat){
     g.beginPath(); g.ellipse(0, HL, L*0.20, L*0.06, 0, 0, 6.2832); g.fill();
     g.restore();
   }
-  // ★ムービングヘッドの間に**ブラインダー**が入る（調査）。横長の箱
-  for (const bx of [0.30, 0.50, 0.70]){
+  // ★ムービングヘッドの**間**に入れる。位置を決め打ちしていたので、
+  //   中央のヘッドと完全に重なっていた（2026-09-13 本人の指摘）
+  const blinderX = [];
+  for (let i=0; i<BEAMS.length-1; i++){
+    blinderX.push((BEAMS[i].cx + BEAMS[i+1].cx)/2);
+  }
+  blinderX.push(BEAMS[0].cx - 0.14, BEAMS[BEAMS.length-1].cx + 0.14);
+  for (const bx of blinderX){
+    if (bx < 0.02 || bx > 0.98) continue;
     const x = innerWidth*bx, w = L*0.9, h = L*0.30;
     g.fillStyle = 'rgba(4,5,9,'+(0.92*fade+0.06)+')';
     rrect(x - w/2, ty + trussH()*0.42, w, h, L*0.05); g.fill();
@@ -1110,6 +1117,10 @@ window.__debug = {
   tex:   (k, u) => k*u / (1 - u*(1-k)),
   litColor: () => litColor(pal()),
   lensPos, pivotY, lensY, stepHeads,
+  blinderX: () => { const a=[]; for(let i=0;i<BEAMS.length-1;i++)
+      a.push((BEAMS[i].cx+BEAMS[i+1].cx)/2);
+    a.push(BEAMS[0].cx-0.14, BEAMS[BEAMS.length-1].cx+0.14);
+    return a.filter(x=>x>0.02&&x<0.98); },
   state: () => ({heat, hold, release, panels: panels.length}),
 };
 </script></body></html>

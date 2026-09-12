@@ -113,6 +113,17 @@ ok('下からの光は実機の外側', D.UPS[0].cx < 0.30 && D.UPS[1].cx > 0.70
   D.BEAMS.forEach((x,i) => Object.assign(x, keep[i]));
 }
 
+// ★機材同士がぶつからないこと（2026-09-13：ブラインダーが中央のヘッドに重なっていた）
+{
+  const bs = D.blinderX();
+  const heads = D.BEAMS.map(b => b.cx);
+  let clash = null;
+  for (const x of bs) for (const h of heads)
+    if (Math.abs(x - h) < 0.06) clash = x.toFixed(2) + ' と ' + h.toFixed(2);
+  ok('ブラインダーがムービングヘッドと重ならない', !clash, clash || '');
+  ok('ブラインダーは灯体の間にある', bs.length >= D.BEAMS.length - 1);
+}
+
 // ── 構造材の統一（2026-09-13 本人の指摘）────────────
 // ★横も縦も**同じ素材・同じ粒度・同じ太さ**で描く。別々に描くと柱だけ浮く
 const src = fs.readFileSync(process.argv[2], 'utf8');
