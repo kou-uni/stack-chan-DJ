@@ -416,17 +416,14 @@ function rig(heat){
     const h = trussH(), pipe = M()*0.05, top = ty - h/2, bot = ty + h/2;
     // ★光が当たったところだけ。そこから**ぼんやり暗くなる**
     const w = L*1.1;
-    for (const [cy, k] of [[top, 0.85], [bot, 1.6]]){   // 下弦のほうが近い
-      const gr = g.createLinearGradient(cx-w, 0, cx+w, 0);
-      gr.addColorStop(0,    'hsla('+hue+',90%,60%,0)');
-      gr.addColorStop(0.30, 'hsla('+hue+',90%,64%,'+(0.05*pw*k)+')');
-      gr.addColorStop(0.44, 'hsla('+hue+',88%,70%,'+(0.18*pw*k)+')');
-      gr.addColorStop(0.5,  'hsla('+hue+',80%,78%,'+(0.42*pw*k)+')');
-      gr.addColorStop(0.56, 'hsla('+hue+',88%,70%,'+(0.18*pw*k)+')');
-      gr.addColorStop(0.70, 'hsla('+hue+',90%,64%,'+(0.05*pw*k)+')');
-      gr.addColorStop(1,    'hsla('+hue+',90%,60%,0)');
+    // ★自分の真上のパイプがいちばん明るい。**帯で一様に光らせない**
+    for (const [cy, kk] of [[top, 0.8], [bot, 1.5]]){
+      const gr = g.createRadialGradient(cx, cy, 0, cx, cy, w*0.9);
+      gr.addColorStop(0,   'hsla('+hue+',80%,84%,'+(0.40*pw*kk)+')');
+      gr.addColorStop(0.4, 'hsla('+hue+',88%,66%,'+(0.13*pw*kk)+')');
+      gr.addColorStop(1,   'hsla('+hue+',90%,58%,0)');
       g.fillStyle = gr;
-      g.fillRect(cx-w, cy-pipe*0.42, w*2, pipe*0.55);
+      g.fillRect(cx-w, cy-pipe*0.5, w*2, pipe);
     }
   }
   g.globalCompositeOperation = 'source-over';
@@ -483,6 +480,39 @@ function stageWell(){
   gr.addColorStop(1,   'rgba(0,0,0,0)');
   g.fillStyle = gr;
   g.fillRect(0, innerHeight*0.35, innerWidth, innerHeight*0.65);
+}
+
+function spill(clip, objX, yTop, yBot, gain){
+  // ★物に当たる光。**線ではなく、まだら。**
+  //   光は上の1点から来るので、当たるのは面の一部だけ。そこから四方に落ちる
+  //   （2026-09-13 本人の指摘：一様に光る／線的でダサい）
+  let any = false;
+  g.save();
+  clip();
+  g.globalCompositeOperation = 'lighter';
+  const ly = lensY();
+  for (const b of BEAMS){
+    const pw = b.pw || 0;
+    if (pw < 0.03) continue;
+    // その灯体の光が落ちる横位置
+    const hx = innerWidth*b.cx + Math.tan(b.ang) * (innerHeight - ly) * 0.55;
+    const d = Math.abs(hx - objX) / (M()*2.0);
+    const k = (gain||1) * pw / (1 + d*d*2.2);       // ★逆二乗で落ちる
+    if (k < 0.02) continue;
+    any = true;
+    // 当たるのは上寄り（光は上から来る）
+    const py = yTop + (yBot - yTop) * (0.10 + 0.18*Math.random()*0);
+    const r  = M()*1.5*(0.55 + pw);
+    const gp = g.createRadialGradient(hx, py, 0, hx, py, r);
+    gp.addColorStop(0,   'hsla('+b.hueDeg+',80%,84%,'+(0.38*k)+')');
+    gp.addColorStop(0.35,'hsla('+b.hueDeg+',85%,66%,'+(0.14*k)+')');
+    gp.addColorStop(1,   'hsla('+b.hueDeg+',85%,55%,0)');
+    g.fillStyle = gp;
+    g.fillRect(objX - r*1.6, yTop, r*3.2, yBot - yTop);
+  }
+  g.globalCompositeOperation = 'source-over';
+  g.restore();
+  return any;
 }
 
 function litColor(p){
@@ -713,27 +743,9 @@ function draw(now){
         g.fillRect(x, yy, pw2, Math.max(1, M()*0.012));
       }
 
-      // ③ ハイライト。★**細い筋**。光の強さで太さと明るさが変わる
-      if (PC.pow > 0.02){
-        const hw = pw2 * (0.10 + 0.16*Math.min(1, PC.pow));
-        const hx = x + pw2 * (inward > 0 ? 0.22 : 0.78) - hw/2;
-        const hg = g.createLinearGradient(hx, 0, hx + hw, 0);
-        hg.addColorStop(0,   'hsla('+PC.hue+',80%,70%,0)');
-        hg.addColorStop(0.5, 'hsla('+PC.hue+',75%,86%,'+(0.30 + 0.45*Math.min(1,PC.pow))+')');
-        hg.addColorStop(1,   'hsla('+PC.hue+',80%,70%,0)');
-        g.globalCompositeOperation = 'lighter';
-        // ★上ほど強い。灯体が上にあるので、下へ行くほど届かない
-        const fall = g.createLinearGradient(0, cy, 0, cy + ch);
-        fall.addColorStop(0, 'rgba(255,255,255,1)');
-        fall.addColorStop(1, 'rgba(255,255,255,0)');
-        g.save();
-        g.fillStyle = hg;
-        g.fillRect(hx, cy, hw, ch*0.85);
-        g.globalCompositeOperation = 'destination-out';
-        g.fillStyle = 'rgba(0,0,0,0.0)';
-        g.restore();
-        g.globalCompositeOperation = 'source-over';
-      }
+      // ③ ★光だまり。**縦一本の筋ではない。** 当たった高さから四方へ落ちる
+      spill(() => { g.beginPath(); g.rect(x, cy, pw2, ch); },
+            x + pw2/2, cy, cy + ch, 1.25);
 
       // ④ 足元。**床との際は暗い**（回り込む光が無い）
       const ao = g.createLinearGradient(0, cy + ch*0.80, 0, cy + ch);
@@ -945,17 +957,12 @@ function draw(now){
       g.lineWidth = Math.max(1, M()*0.010);
       g.beginPath(); g.arc(x, wy, wr*0.98, 0, 6.2832); g.stroke();
 
-      // ── ★光を受ける側の**角だけ**細く光る。面全体を光らせない
-      if (LC2.pow > 0.02){
-        g.globalCompositeOperation = 'lighter';
-        const ex = x + dir*w*0.5, w2 = w*0.16;
-        const eg = g.createLinearGradient(ex, 0, ex - dir*w2, 0);
-        eg.addColorStop(0, 'hsla('+LC2.hue+',75%,80%,'+(0.14 + 0.40*LC2.pow)+')');
-        eg.addColorStop(1, 'hsla('+LC2.hue+',75%,60%,0)');
-        g.fillStyle = eg;
-        g.fillRect(Math.min(ex, ex - dir*w2), yTop, w2, hgt);
-        g.globalCompositeOperation = 'source-over';
-      }
+      // ── ★光は面の一部にしか当たらない。**線で光らせない**
+      spill(() => {
+        g.beginPath();
+        rrect(x - w/2, yTop, w, topH, M()*0.025);
+        rrect(x - sw/2, subY, sw, subH, M()*0.025);
+      }, x, yTop, yTop + hgt, 1.0);
     }
   }
 
