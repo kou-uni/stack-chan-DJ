@@ -62,19 +62,52 @@ addEventListener('resize', layout); layout();
 // ★ライトは**会場のトラスに吊られている。** 光源が宙に浮いていると嘘に見える
 //   （2026-09-12 本人の指摘）。灯体を描いて、その**レンズから**光を出す。
 //   Alan Walker のライブのように、拍で ぱぱぱっ と点く。
-const N_LIGHTS = 9;
-const BEAMS = Array.from({length:N_LIGHTS}, (_,i)=>({
-  base: (i/N_LIGHTS)*Math.PI*2,
-  sw:   0.7 + Math.random()*1.6,
-  hue:  Math.random(),
-  cx:   (i+0.5)/N_LIGHTS,            // トラス上の位置（等間隔に吊る）
-  on:   0,
-  phase: i % 4,
-}));
+// ★実際のクラブ規模だと、1本のトラスにムービングヘッドは**4〜8台**。
+//   9台は多すぎた（2026-09-12 本人の指摘）。6台にして、**左右対称に振る**
+//   —— 実際の照明も対で組む。バラバラに振ると素人の仕込みに見える
+const N_LIGHTS = 6;
+const BEAMS = Array.from({length:N_LIGHTS}, (_,i)=>{
+  const pair = i < N_LIGHTS/2 ? i : (N_LIGHTS-1-i);   // 対になる相手と同じ癖
+  return {
+    base: (pair/(N_LIGHTS/2))*Math.PI*0.7,
+    sw:   0.85 + pair*0.28,
+    hue:  pair/(N_LIGHTS/2),
+    cx:   0.10 + (i/(N_LIGHTS-1))*0.80,   // 端は少し内側に吊る
+    mirror: i < N_LIGHTS/2 ? -1 : 1,      // ★左右で逆に振る
+    on:   0,
+    phase: pair % 2,
+    // ★実際のムービングヘッドは**ゆらゆらしない。**
+    //   キューの位置へ素早く動いて、次のキューまで止まっている。
+    //   光の「ぱぱぱ」はシャッターで、灯体は静止したまま（2026-09-12 本人の問い）
+    ang: 0, tgt: 0, vel: 0,
+  };
+});
+
+// 照明の「キュー」。★実際の仕込みも、こういう型を組んで切り替える
+const LOOKS = [
+  (b,i,n)=> b.mirror * 0.75,                       // ハの字に開く
+  (b,i,n)=> -b.mirror * 0.75,                      // 内側でクロス
+  (b,i,n)=> 0,                                     // 全部まっすぐ下
+  (b,i,n)=> (i/(n-1) - 0.5) * 1.7,                 // 扇（ファン）
+  (b,i,n)=> -(i/(n-1) - 0.5) * 1.7,                // 逆ファン
+  (b,i,n)=> (i % 2 ? 1 : -1) * 0.6,                // 一つ置きに交互
+];
+let look = 0, lookAt = -1;
+
+function newLook(n){
+  // ★毎回ばらばらに動かさない。**型ごと切り替える**
+  if (n === lookAt) return;
+  lookAt = n;
+  let k = look;
+  while (k === look) k = (Math.random()*LOOKS.length)|0;
+  look = k;
+  BEAMS.forEach((b,i)=> b.tgt = LOOKS[look](b, i, BEAMS.length));
+}
+newLook(0);
 let bar = 0;
 
 function trussY(){ return Math.max(26, innerHeight*0.055); }   // バーの高さ
-function rigLen(){ return Math.max(16, FS*1.5); }              // 灯体の長さ
+function rigLen(){ return Math.max(20, FS*1.9); }              // 灯体の長さ
 
 function drawTruss(a){
   const y = trussY(), h = Math.max(8, FS*0.75);
@@ -95,6 +128,16 @@ function drawTruss(a){
   g.stroke();
 }
 
+function stepHeads(dt){
+  // ★実際の灯体は、素早く動いて**止まる。** 行き過ぎて少し戻る（慣性）
+  for (const b of BEAMS){
+    const k = 26.0, damp = 8.5;                 // 硬めのバネ＋強い減衰
+    b.vel += (b.tgt - b.ang) * k * dt;
+    b.vel -= b.vel * damp * dt;
+    b.ang += b.vel * dt;
+  }
+}
+
 function beams(t, p, energy, heat){
   const ty = trussY(), L = rigLen();
   // ── 光の筋（加算）
@@ -107,7 +150,7 @@ function beams(t, p, energy, heat){
     // 灯体の首振り。★下向きが基準（トラスから床を照らす）
     //   ★右レコードを触っている間は、演者の手が勝つ（2026-09-12 本人の要望）。
     //     離せば自動に戻る。ずっと持っていないと動かない照明は演奏の邪魔になる
-    const auto = Math.sin(t*1.5*b.sw + b.base) * 0.85;
+    const auto = Math.sin(t*1.5*b.sw + b.base) * 0.85 * b.mirror;
     const handA = (S.jog || 0) * 1.25;
     const w = Math.max(S.jogw || 0, hold);
     const a = auto*(1-w) + handA*w;   // ★溜め中は全部が同じ向きを向く
@@ -120,7 +163,8 @@ function beams(t, p, energy, heat){
                  * (1 - hold*0.45) * (1 + release*1.6);
     const far = innerHeight*1.45;
     g.save();
-    g.translate(cx, ty + L*0.55);          // ★レンズの位置から出す
+    // ★レンズの位置（ヘッドの先）から出す
+    g.translate(cx, ty + FS*0.18 + L*0.34 + L*0.22);
     g.rotate(a);
     const grd = g.createLinearGradient(0, 0, 0, far);
     // ★根元だけ明るく、すぐ落とす。**長く引くと霧になって全部が白む**
@@ -146,7 +190,7 @@ function beams(t, p, energy, heat){
   drawTruss(Math.min(1, heat*1.6));
   for (const b of BEAMS){
     const cx = innerWidth*b.cx;
-    const auto2 = Math.sin(t*1.5*b.sw + b.base) * 0.85;
+    const auto2 = b.ang;
     const w2 = Math.max(S.jogw || 0, hold);
     const a = auto2*(1-w2) + (S.jog || 0)*1.25*w2;
     g.save();
@@ -173,11 +217,12 @@ function beams(t, p, energy, heat){
 // ── 下からのアップライト ─────────────────────────
 // ★**こすっている間だけ**、床から立ち上がる（2026-09-12 本人の案）。
 //   つまみでは出せない「チュクチュク」に、光がクイックに反応する見せ場。
-const UPS = Array.from({length:7}, (_,i)=>({
-  cx: (i+0.5)/7,
-  hue: i/7,
-  sw:  0.8 + (i%3)*0.35,
-}));
+// ★左右の端に1本ずつ。**2本で十分**（2026-09-12 本人の指示）。
+//   本数を減らして、その分だけ太く。散らすと迫力が出ない
+const UPS = [
+  {cx: 0.07, hue: 0.00, sw: 0.9, side: -1},
+  {cx: 0.93, hue: 0.55, sw: 1.2, side:  1},
+];
 
 function uplights(t, p, amt, jog){
   if (amt < 0.02) return;
@@ -187,8 +232,9 @@ function uplights(t, p, amt, jog){
   for (const u of UPS){
     const cx = innerWidth*u.cx;
     // ★手の向きに合わせて、扇が一斉に倒れる。速さもそのまま出す
-    const a = jog*1.0 + Math.sin(t*3.1*u.sw + u.cx*6)*0.10;
-    const spread = 0.035 + 0.02*Math.abs(jog);
+    // ★端から内側へ向けて立てる。手の動きでその角度が振れる
+    const a = u.side*0.30 + jog*1.05 + Math.sin(t*3.1*u.sw + u.cx*6)*0.08;
+    const spread = 0.085 + 0.045*Math.abs(jog);   // ★太く
     const hue = (p.h + 180 + u.hue*160 + t*140) % 360;
     const pw = amt * (0.45 + 0.75*Math.abs(jog));
     g.save();
@@ -203,11 +249,11 @@ function uplights(t, p, amt, jog){
     g.lineTo(-far*spread, far); g.lineTo(far*spread, far);
     g.closePath(); g.fill();
     // 足元の玉
-    const gl = g.createRadialGradient(0,0,0, 0,0, FS*2.4*(0.5+pw));
+    const gl = g.createRadialGradient(0,0,0, 0,0, FS*3.6*(0.5+pw));
     gl.addColorStop(0, 'hsla('+hue+',100%,92%,'+(0.9*pw)+')');
     gl.addColorStop(1, 'hsla('+hue+',100%,60%,0)');
     g.fillStyle = gl;
-    g.beginPath(); g.arc(0,0, FS*2.4*(0.5+pw), 0, 6.2832); g.fill();
+    g.beginPath(); g.arc(0,0, FS*3.6*(0.5+pw), 0, 6.2832); g.fill();
     g.restore();
   }
   g.globalCompositeOperation = 'source-over';
@@ -217,6 +263,7 @@ function fireBeams(n){
   // ★拍ごとに違う組が点く。**毎回同じだと機械に見える**
   bar = (bar + 1) % 4;
   // ★全部を同時に点けない。**面になった瞬間、光ではなく霧になる**
+  if (n % 4 === 0) newLook(n);                      // ★小節の頭で型を替える
   const heavy = (n % 4 === 0);                      // 4拍に1回は全灯
   for (const b of BEAMS){
     if (heavy) { b.on = 1; continue; }
@@ -275,6 +322,7 @@ function draw(now){
   g.fillRect(0,0,innerWidth,innerHeight);
   // ★静かなときはライトを出さない。**コードがゆっくり流れているだけでちょうどいい**
   //   （2026-09-12 本人の指摘）。動き出したら吊り込まれる
+  stepHeads(dt);
   if (heat > 0.06) beams(t, p, energy, heat);
   // ★こすっている間だけ、下から立ち上がる
   uplights(t, p, playing ? hold : 0, S.jog || 0);
