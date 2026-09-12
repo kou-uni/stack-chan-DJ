@@ -120,19 +120,19 @@ const BEAMS = Array.from({length:N_LIGHTS}, (_,i)=>{
 // 照明の「キュー」。★実際の仕込みも、こういう型を組んで切り替える
 // ★DJイベントの照明は速くて大振り。**小さく揺らさない**
 const LOOKS = [
-  (b,i,n)=> b.mirror * 1.15,                       // ハの字に大きく開く
-  (b,i,n)=> -b.mirror * 1.15,                      // 内側で深くクロス
+  (b,i,n)=> b.mirror * 0.62,                       // ハの字に開く
+  (b,i,n)=> -b.mirror * 0.62,                      // 内側でクロス
   (b,i,n)=> 0,                                     // 全部まっすぐ下（止める）
-  (b,i,n)=> (i/(n-1) - 0.5) * 2.4,                 // 扇（ファン）
-  (b,i,n)=> -(i/(n-1) - 0.5) * 2.4,                // 逆ファン
-  (b,i,n)=> (i % 2 ? 1 : -1) * 1.0,                // 一つ置きに交互
-  (b,i,n)=> b.mirror * 1.45,                       // 目一杯外へ
-  (b,i,n)=> -0.55 + i*0.55,                        // 階段状にずらす
+  (b,i,n)=> (i/(n-1) - 0.5) * 1.30,                // 扇（ファン）
+  (b,i,n)=> -(i/(n-1) - 0.5) * 1.30,               // 逆ファン
+  (b,i,n)=> (i % 2 ? 1 : -1) * 0.55,               // 一つ置きに交互
+  (b,i,n)=> b.mirror * 0.78,                       // 目一杯外へ
+  (b,i,n)=> -0.30 + i*0.30,                        // 階段状にずらす
   // ★**全部が同じ方を向く**型。これが無いと、真ん中の1台がずっと動かない
   //   （左右対称の型だけだと、中央は常に角度0になる。2026-09-13 実測で発覚）
-  (b,i,n)=> 1.05,                                  // 全部が右へ
-  (b,i,n)=> -1.05,                                 // 全部が左へ
-  (b,i,n)=> Math.sin(i*1.5) * 1.1,                 // 波打つ
+  (b,i,n)=> 0.58,                                  // 全部が右へ
+  (b,i,n)=> -0.58,                                 // 全部が左へ
+  (b,i,n)=> Math.sin(i*1.5) * 0.62,                // 波打つ
   // ★演者を狙う。**実際のライブは、まず演者を照らす。**
   //   実機は画面の中央下に立っている。そこへ全部を向ける（2026-09-13）
   (b,i,n)=> Math.atan2(0.5 - b.cx, 0.62) * 1.35,
@@ -149,10 +149,14 @@ function newLook(n){
   while (k === look) k = (Math.random()*LOOKS.length)|0;
   look = k;
   // ★型の上に**全体の振り**を乗せる。左右対称の型でも中央が動く
-  swing = (Math.random()*2 - 1) * 0.45;
+  swing = (Math.random()*2 - 1) * 0.26;
   BEAMS.forEach((b,i)=> b.tgt = clampPan(LOOKS[look](b, i, BEAMS.length) + swing));
 }
-function clampPan(v){ return Math.max(-1.45, Math.min(1.45, v)); }
+// ★垂直から±45度まで。**83度はほぼ水平で、ヘッドがヨークから横へ突き出る。**
+//   光が根元から離れて見えていた原因（2026-09-13 本人の指摘）。
+//   実際も、客席を照らすときはこのくらいの範囲で使う
+const PAN_MAX = 0.80;
+function clampPan(v){ return Math.max(-PAN_MAX, Math.min(PAN_MAX, v)); }
 newLook(0);
 let bar = 0;
 
@@ -217,7 +221,7 @@ function trussRun(x0, y0, x1, y1, s, a){
                               Math.round(v[2]*dim) + ')';
 
   // ① 筋交い（ジグザグ＋垂直材）。**不透明**
-  g.strokeStyle = rgb([26, 31, 40]);
+  g.strokeStyle = rgb([11, 13, 17]);
   g.lineWidth = pipe*0.60;
   g.lineCap = 'round';
   g.beginPath();
@@ -231,7 +235,7 @@ function trussRun(x0, y0, x1, y1, s, a){
   }
   g.stroke();
   // 丸パイプの照り（細く、控えめに）
-  g.strokeStyle = rgb([58, 68, 86]);
+  g.strokeStyle = rgb([26, 31, 39]);
   g.lineWidth = pipe*0.16;
   g.stroke();
 
@@ -241,9 +245,9 @@ function trussRun(x0, y0, x1, y1, s, a){
     const cx1 = x1 + nx*h/2*side, cy1 = y1 + ny*h/2*side;
     const gr = g.createLinearGradient(cx0 - nx*pipe/2, cy0 - ny*pipe/2,
                                       cx0 + nx*pipe/2, cy0 + ny*pipe/2);
-    gr.addColorStop(0,    rgb([84, 96, 118]));
-    gr.addColorStop(0.30, rgb([34, 40, 52]));
-    gr.addColorStop(1,    rgb([6, 8, 12]));
+    gr.addColorStop(0,    rgb([34, 40, 50]));
+    gr.addColorStop(0.30, rgb([14, 17, 22]));
+    gr.addColorStop(1,    rgb([3, 4, 6]));
     g.strokeStyle = gr;
     g.lineWidth = pipe;
     g.beginPath(); g.moveTo(cx0,cy0); g.lineTo(cx1,cy1); g.stroke();
@@ -263,9 +267,9 @@ function trussCorner(x, y, s, a){
   // ★角には継ぎ手が入る。**トラス同士は交差せず、ブロックで繋がる**
   const h = M()*0.30*s;
   const d2 = 0.35 + 0.65*a;
-  g.fillStyle = 'rgb('+Math.round(22*d2)+','+Math.round(27*d2)+','+Math.round(35*d2)+')';
+  g.fillStyle = 'rgb('+Math.round(12*d2)+','+Math.round(15*d2)+','+Math.round(20*d2)+')';
   rrect(x - h*0.58, y - h*0.58, h*1.16, h*1.16, h*0.14); g.fill();
-  g.fillStyle = 'rgb('+Math.round(70*d2)+','+Math.round(80*d2)+','+Math.round(98*d2)+')';
+  g.fillStyle = 'rgb('+Math.round(28*d2)+','+Math.round(33*d2)+','+Math.round(42*d2)+')';
   rrect(x - h*0.58, y - h*0.58, h*1.16, h*0.14, h*0.06); g.fill();
 }
 
@@ -371,7 +375,7 @@ function rig(heat){
 
   for (const b of BEAMS){
     const a = b.ang;                       // ★ビームと同じ角度
-    const pan = Math.max(-1.4, Math.min(1.4, a));
+    const pan = clampPan(a);
     g.save();
     g.translate(innerWidth*b.cx, ty);
     g.fillStyle = ink;
@@ -1110,7 +1114,7 @@ connect();
 
 // ★試験から中身を確かめられるようにする。**画面を目で見るだけでは幾何は守れない**
 window.__debug = {
-  PANELS, CENTER_K, HORIZON, TRUSS_NEAR, LOOKS, BEAMS, UPS,
+  PANELS, CENTER_K, HORIZON, TRUSS_NEAR, LOOKS, BEAMS, UPS, PAN_MAX,
   // 遠近の倍率。u=0 が手前、u=1 が奥
   persp: (k, u) => k / (k + u*(1-k)),
   // 元画像の位置（射影）

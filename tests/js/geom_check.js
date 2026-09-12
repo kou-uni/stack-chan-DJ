@@ -124,6 +124,13 @@ ok('下からの光は実機の外側', D.UPS[0].cx < 0.30 && D.UPS[1].cx > 0.70
   ok('ブラインダーは灯体の間にある', bs.length >= D.BEAMS.length - 1);
 }
 
+// ★振り幅。**水平近くまで振ると、ヘッドがヨークから横へ突き出て光が離れる**
+ok('振り幅は垂直から50度以内', D.PAN_MAX <= 0.9,
+   (D.PAN_MAX*180/Math.PI).toFixed(0) + '度');
+ok('どの型も振り幅を超えない',
+   D.LOOKS.every((f,_)=> D.BEAMS.every((b,i)=>
+     Math.abs(f(b,i,D.BEAMS.length)) <= D.PAN_MAX + 0.35)));
+
 // ── 構造材の統一（2026-09-13 本人の指摘）────────────
 // ★横も縦も**同じ素材・同じ粒度・同じ太さ**で描く。別々に描くと柱だけ浮く
 const src = fs.readFileSync(process.argv[2], 'utf8');
