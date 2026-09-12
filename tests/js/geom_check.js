@@ -109,15 +109,7 @@ ok('横と縦の両方に使っている（3箇所以上）', calls >= 3, calls 
 ok('筒の長さを HEAD_H で描いている', /const HL = L\*HEAD_H/.test(src));
 ok('筒の先にレンズ面がある', /ellipse\(0, HL,/.test(src));
 ok('回転後に横へ潰していない', !/g\.scale\(0\.72 \+ 0\.28\*Math\.cos/.test(src));
-{
-  // 灯体が実際に動くか（キューが変われば角度が変わる）
-  const b = D.BEAMS[0];
-  const before = b.ang;
-  D.BEAMS.forEach((x,i)=> x.tgt = D.LOOKS[3](x, i, D.BEAMS.length));
-  for (let i=0;i<40;i++){ /* stepHeads は draw の中。ここでは目標が変わることだけ見る */ }
-  ok('キューで目標角が変わる', Math.abs(b.tgt - before) > 0.05,
-     'tgt=' + b.tgt.toFixed(2) + ' ang=' + before.toFixed(2));
-}
+// ★「キューで目標角が変わる」の判定は、実際に動かして見る方式へ置き換えた
 
 ok('トラスの中を塗り潰していない（骨組みなので透ける）',
    /中は塗らない/.test(src));
