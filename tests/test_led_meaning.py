@@ -96,3 +96,37 @@ def test_配布物と実装の対応が文書に残っている():
     doc = (ROOT / "event" / "handson-guide.md").read_text(encoding="utf-8")
     for word in ("緑", "青", "消灯"):
         assert word in doc
+
+
+# ── 光るのに音は要らない（2026-09-12 本人の指摘）───────────
+#
+# > **「光るのは、Playモードか否かは関係ないように動くべき。音声関係ないから」**
+#
+# 模様を割り当てたパッドを押しても、DJモードでないと光らなかった。
+# **模様は「見せるもの」で、拍に合わせるのは味付け。** 前提が逆だった。
+
+def test_模様を選んだら音がなくても光る():
+    s = LedState(count=8)
+    s.enabled = False              # 踊っていない（OFFモード）
+    s.show_pattern("laser")
+    assert any(any(c) for c in s.colors()), "選んだのに消えている"
+
+
+def test_拍が無くても模様が進む():
+    """★bpm=0 でも止まって見えないこと。**自走する。**"""
+    import time as _t
+    s = LedState(count=8)
+    s.show_pattern("chase")
+    a = s.colors()
+    _t.sleep(0.25)
+    b = s.colors()
+    assert a != b, "止まって見える"
+
+
+def test_踊りはじめたら拍に乗る():
+    """★自走はあくまで音が無いときだけ。音があればそちらが勝つ。"""
+    s = LedState(count=8)
+    s.show_pattern("laser")
+    s.enabled = True
+    s.bpm = 128.0
+    assert s.bpm == 128.0

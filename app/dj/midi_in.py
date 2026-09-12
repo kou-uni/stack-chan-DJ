@@ -103,7 +103,7 @@ class MidiMixin:
                 if name not in LedState.PATTERNS:
                     print(f"  ? 知らない模様: {name}（mapping.json を確認）")
                     return
-                self.led.pattern = name
+                self.led.show_pattern(name)     # ★音と関係なく光る
                 print(f"  ▶ LED → {name}")
                 return
             if slot:

@@ -123,7 +123,7 @@ async def apply_action(con, action: str, value: str) -> dict:
     if action == "led":
         if value not in LedState.PATTERNS:
             raise ValueError(f"知らない模様: {value}")
-        con.led.pattern = value
+        con.led.show_pattern(value)             # ★音と関係なく光る
         return _ok(con, led=value)
 
     if action == "say":

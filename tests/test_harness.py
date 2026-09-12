@@ -85,3 +85,48 @@ def test_throwaway_ws_binds_and_releases():
         raise AssertionError("ポートが解放されていない")
 
     asyncio.run(asyncio.wait_for(go(), timeout=10))
+
+
+# ── 戻し方が間違っていた（2026-09-12 実地）──────────────
+#
+# `bootout` で止めたあと `kickstart` で戻していた。
+# **bootout すると読み込み自体が消えるので、kickstart は何もしない。**
+#
+# 結果、console が落ちたまま放置され、**実機が全部無反応になった。**
+# 本人の言葉：**「何も反応しない。というか今までのも反応しなくなった」**
+#
+# ★止める手段と戻す手段は、**対になっていないといけない。**
+
+class RecordCtl:
+    """launchctl の代わり。**読み込み状態まで真似る。**"""
+
+    def __init__(self, loaded=True, running=True):
+        self.loaded, self.running, self.calls = loaded, running, []
+
+    def is_running(self, label):
+        return self.loaded and self.running
+
+    def stop(self, label):
+        self.calls.append("stop")
+        self.loaded = self.running = False      # ★bootout は読み込みごと消す
+
+    def start(self, label):
+        self.calls.append("start")
+        self.loaded = self.running = True
+
+
+def test_止めたあと本当に動いている状態に戻る():
+    ctl = RecordCtl()
+    with ConsolePause("x", ctl):
+        assert not ctl.is_running("x")
+    assert ctl.is_running("x"), "止めたまま戻っていない"
+
+
+def test_落ちても戻る():
+    ctl = RecordCtl()
+    try:
+        with ConsolePause("x", ctl):
+            raise RuntimeError("試験が落ちた")
+    except RuntimeError:
+        pass
+    assert ctl.is_running("x")

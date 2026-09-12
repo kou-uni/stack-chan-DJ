@@ -24,7 +24,10 @@ class Msg:
 
 
 class FakeLed:
-    def __init__(self): self.pattern = "show"
+    def __init__(self): self.pattern, self.manual = "show", False
+
+    def show_pattern(self, name):
+        self.pattern, self.manual = name, True
 
 
 class Fake(MidiMixin):
@@ -60,6 +63,14 @@ def test_割り当てたキーで模様が変わる():
     f = Fake(CTL)
     run(f._handle(Msg(9, 5)))
     assert f.led.pattern == "laser"
+
+
+def test_モードに関係なく光る():
+    """★本人「光るのは Playモードか否かは関係ないように動くべき」。"""
+    f = Fake(CTL)
+    f.mode = "off"
+    run(f._handle(Msg(9, 5)))
+    assert f.led.manual, "OFFモードだと光らない作りのまま"
 
 
 def test_模様のキーで顔を変えない():

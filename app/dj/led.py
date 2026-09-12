@@ -88,6 +88,10 @@ class LedState:
         self.bpm = 0.0
         self.beat0 = 0.0          # 直近の拍の時刻
         self.enabled = False
+        # ★人が模様を選んだ。**音とは関係なく光る**（2026-09-12 本人の指摘）
+        #   「模様は見せるもの。拍に合わせるのは味付け」。前提が逆だった
+        self.manual = False
+        self.free_bpm = 120.0        # 音が無いときの自走テンポ
         # 「耳を澄ます」間の見え方。強い点滅をやめて、ゆっくり息をする
         self.swoon = False
         self.flash_white = False
@@ -108,10 +112,17 @@ class LedState:
             self.beat0 = time.time() - last_beat_age_ms / 1000.0
 
     def _phase(self):
-        """(拍の通し番号, 拍の中の位置0..1) を返す。"""
-        if self.bpm <= 0:
+        """(拍の通し番号, 拍の中の位置0..1) を返す。
+
+        ★音が無くても、人が模様を選んでいるなら自走する。
+          止まって見える模様は、選んだ意味がない。
+        """
+        bpm = self.bpm
+        if bpm <= 0 and self.manual:
+            bpm = self.free_bpm
+        if bpm <= 0:
             return 0, 0.0
-        period = 60.0 / self.bpm
+        period = 60.0 / bpm
         elapsed = time.time() - self.beat0
         n = int(elapsed // period)
         return n, (elapsed % period) / period
@@ -416,6 +427,13 @@ class LedState:
         c = white if (sub == 0 and n % 4 == 0) else cold
         return [self._mul(c, f * k)] * self.count
 
+    def show_pattern(self, name: str) -> None:
+        """人が模様を選んだ。**音とは関係なく光らせる。**"""
+        self.pattern = name
+        self.manual = True
+        if self.beat0 <= 0:
+            self.beat0 = time.time()
+
     def frame(self) -> str:
         """★LEDストリームと poseストリームで、フレームの形が違う。
 
@@ -429,7 +447,7 @@ class LedState:
         # ★会話中は踊っていない（enabled=False）。それでも光らせる。
         #   ここを enabled だけで閉じていたので、緑も青も一度も出ない作りだった
         #   （テストを先に書いたので、実装前に分かった）
-        lit = self.enabled or self.talk in self.TALK_COLOR
+        lit = self.enabled or self.manual or self.talk in self.TALK_COLOR
         colors = self.colors() if lit else [[0, 0, 0]] * self.count
         return json.dumps({
             "source": "ddj-flx2",

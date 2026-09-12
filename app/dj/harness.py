@@ -20,6 +20,7 @@ from __future__ import annotations
 import contextlib
 import socket
 import subprocess
+from pathlib import Path
 
 
 def port_busy(port: int, host: str = "127.0.0.1") -> bool:
@@ -53,6 +54,16 @@ class LaunchCtl:
                        capture_output=True)
 
     def start(self, label: str) -> None:
+        """止めたものを戻す。
+
+        ★`bootout` は**読み込みごと消す**ので、`kickstart` では戻らない。
+          2026-09-12、これで console が落ちたまま放置され、実機が全部無反応になった。
+          **止める手段と戻す手段は、対になっていないといけない。**
+        """
+        plist = Path.home() / "Library" / "LaunchAgents" / f"{label}.plist"
+        if plist.exists():
+            subprocess.run(["launchctl", "bootstrap", f"gui/{self.uid}",
+                            str(plist)], capture_output=True)
         subprocess.run(["launchctl", "kickstart", self._domain(label)],
                        capture_output=True)
 

@@ -29,7 +29,11 @@ class FakePose:
 
 
 class FakeLed:
-    def __init__(self): self.pattern, self.enabled, self.bpm = "show", False, 0.0
+    def __init__(self):
+        self.pattern, self.enabled, self.bpm, self.manual = "show", False, 0.0, False
+
+    def show_pattern(self, name):
+        self.pattern, self.manual = name, True
 
 
 class FakeGw:
