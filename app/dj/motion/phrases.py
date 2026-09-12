@@ -62,7 +62,8 @@ def angles(phrase: str, beat_t: float, in_phrase: float,
     if dip is None:
         dip = nod
     w = beat_t * math.tau                       # 1拍で1周
-    bob = -abs(math.sin(w)) * nod * 0.5         # 縦は控えめ。少し上を向く
+    bob = -abs(math.sin(w)) * nod * 0.5         # 縦は控えめ。少し下を向く
+    # ★pitch は大きいほど上（2026-09-12 実写で確認）。この式は下向き
 
     if phrase == "scan":                        # フロアを端から端へ見渡す
         base = math.sin(in_phrase * math.tau - math.pi / 2)

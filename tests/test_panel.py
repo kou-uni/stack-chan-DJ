@@ -181,3 +181,35 @@ def test_every_action_reports_the_new_state():
         r = run(apply_action(con, a, v))
         assert "state" in r, f"{a} が状態を返していない"
         assert r["state"]["mode"] in ("off", "dj")
+
+
+# ── 首の上下の向き（2026-09-12、本人の指摘と写真で確定）──────
+#
+# 本人：**「上にしたら下向くんだけど？」**
+#
+# 実機で撮って確かめた（yaw を窓の方へ向けて縦の手がかりを入れた）:
+#
+#     pitch 10 → 観葉植物・窓・床のあたり   ＝ **下**
+#     pitch 80 → 天井の見切り               ＝ **上**
+#
+# **pitch が大きいほど上。** コード内のコメント（「45 を送ると真下になる」）を
+# 測らずに信じて、逆に割り当てていた。
+#
+# ★書かれていることではなく、**撮って確かめたこと**を仕様にする。
+
+def test_up_looks_up_and_down_looks_down():
+    """★▲を押したら上を向く。実測: pitch が大きいほど上。"""
+    from panel import HEAD
+    assert HEAD["up"][1] > 0, "▲が上を向いていない（pitch は大きいほど上）"
+    assert HEAD["down"][1] < 0, "▼が下を向いていない"
+
+
+def test_up_and_down_are_symmetric():
+    """★上下で効きが違うと、操作していて気持ち悪い。"""
+    from panel import HEAD
+    assert HEAD["up"][1] == -HEAD["down"][1]
+
+
+def test_left_and_right_are_symmetric():
+    from panel import HEAD
+    assert HEAD["left"][0] == -HEAD["right"][0]

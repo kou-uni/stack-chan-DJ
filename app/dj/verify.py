@@ -18,7 +18,16 @@ import time
 from constants import YAW_MIN, YAW_MAX, PITCH_REL_MIN, PITCH_REL_MAX
 
 PITCH_CENTER = 45.0                 # gateway が足す中心角
-STRAIGHT_DOWN = 80.0                # これ以上は「真下を向いている」
+# ★向きを決め打ちしない。**両端を守る。**
+#
+#   2026-09-12 に実写で測ると pitch 80 は天井（＝上）だった。
+#   ところが 2026-09-08 の事故記録は「45 を送って 90 になり真下に張り付いた」。
+#   **記録と実測が食い違っている。**
+#
+#   どちらが正しいかを決めなくても、守りたいことは同じ:
+#   **端に張り付いたまま戻らない状態を捕まえる。** だから両端を見る。
+PITCH_EXTREME_LOW = 10.0            # これ以下は端に張り付いている
+PITCH_EXTREME_HIGH = 80.0           # これ以上も同じ
 
 
 def judge(ys: list[float], ps: list[float]) -> list[str]:
@@ -33,8 +42,10 @@ def judge(ys: list[float], ps: list[float]) -> list[str]:
     for p in ps:
         if not (PITCH_REL_MIN <= p <= PITCH_REL_MAX):
             bad.append(f"pitch差 {p:.1f} が可動範囲外（gateway が黙って丸める）")
-        if PITCH_CENTER + p >= STRAIGHT_DOWN:
-            bad.append(f"pitch {PITCH_CENTER + p:.0f}° = ほぼ真下を向いている")
+        a = PITCH_CENTER + p
+        if a <= PITCH_EXTREME_LOW or a >= PITCH_EXTREME_HIGH:
+            bad.append(f"pitch {a:.0f}° = 端に張り付いている（安全域 "
+                       f"{PITCH_EXTREME_LOW:.0f}〜{PITCH_EXTREME_HIGH:.0f}）")
     return bad
 
 
@@ -72,7 +83,7 @@ async def watch(host: str, port: int, seconds: float = 10.0) -> int:
     print(f"  {len(ys)}フレーム")
     print(f"  yaw     {min(ys):+6.1f} 〜 {max(ys):+6.1f}   （幅 {max(ys)-min(ys):.0f}°／上限 ±{YAW_MAX:.0f}）")
     print(f"  pitch   {PITCH_CENTER+min(ps):6.1f} 〜 {PITCH_CENTER+max(ps):6.1f}   "
-          f"（中心 {PITCH_CENTER:.0f}°。80以上は真下）")
+          f"（中心 {PITCH_CENTER:.0f}°。安全域 {PITCH_EXTREME_LOW:.0f}〜{PITCH_EXTREME_HIGH:.0f}）")
     up = sum(1 for p in ps if p < -2)
     print(f"  上向き  {up*100//len(ps)}%   頷き(下向き7°以上) {sum(1 for p in ps if p > 7)}回")
 
@@ -83,5 +94,5 @@ async def watch(host: str, port: int, seconds: float = 10.0) -> int:
             print(f"    {b}")
         return 1
 
-    print("\n問題なし。可動範囲に収まっていて、真下も向いていません")
+    print("\n問題なし。可動範囲に収まっていて、端にも張り付いていません")
     return 0
