@@ -131,3 +131,51 @@ def test_seconds_still_smaller_is_better():
     before = {"tts": Result("tts", True, "", 1.0)}
     after = {"tts": Result("tts", True, "", 3.0)}
     assert [d.kind for d in compare(before, after)] == ["劣化"]
+
+
+# ── 程度の改善を見落とす（2026-09-12 の焼き替えで発覚） ─────────
+#
+# 焼いて 頭なで 1回 → 15回、聞き取りも正しくなったのに、
+# compare() は **「変化なし」** と報告した。
+# ×→○ の反転しか見ておらず、**程度の変化を言葉にできていなかった。**
+#
+# ★「直った」と言えない試験は、直ったことを確認できない。
+
+
+def test_big_numeric_improvement_is_reported():
+    """★大きく良くなったら「改善」と言う。黙ってはいけない。"""
+    before = {"touch": Result("touch", True, "20秒で 1回", 1.0)}
+    after = {"touch": Result("touch", True, "20秒で 15回", 15.0)}
+    d = compare(before, after)
+    assert [x.kind for x in d] == ["改善"], f"改善と言えていない: {d}"
+
+
+def test_seconds_getting_much_faster_is_improvement():
+    """★秒数が縮んでも改善。向きが逆なだけで、扱いは同じ。"""
+    before = {"tts": Result("tts", True, "", 3.0)}
+    after = {"tts": Result("tts", True, "", 1.0)}
+    assert [x.kind for x in compare(before, after)] == ["改善"]
+
+
+def test_small_wobble_is_not_reported():
+    """★測るたびに揺れる程度で騒がない。鳴りっぱなしの警報は無いのと同じ。"""
+    before = {"tts": Result("tts", True, "", 1.00)}
+    after = {"tts": Result("tts", True, "", 1.10)}
+    assert compare(before, after) == []
+
+
+def test_counts_are_not_labelled_as_seconds():
+    """★回数に「秒」を付けない。読む人が数字の意味を取り違える。"""
+    txt = summarize(compare(
+        {"touch": Result("touch", True, "20秒で 1回", 1.0)},
+        {"touch": Result("touch", True, "20秒で 15回", 15.0)}))
+    assert "15.00s" not in txt, txt
+    assert "1.00s" not in txt, txt
+
+
+def test_seconds_still_say_seconds():
+    """★秒は秒のまま。"""
+    txt = summarize(compare(
+        {"tts": Result("tts", True, "", 3.0)},
+        {"tts": Result("tts", True, "", 1.0)}))
+    assert "1.00s" in txt, txt

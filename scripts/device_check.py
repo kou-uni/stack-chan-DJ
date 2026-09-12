@@ -204,7 +204,7 @@ async def run(gw, manual: bool) -> dict[str, Result]:
                 peak = max(peak, d.get("level") or 0.0)
                 await asyncio.sleep(1.0)
             await gw.call("beat_mode_stop")
-            return peak >= 0.004, f"最大音量 {peak:.5f}", None
+            return peak >= 0.004, f"最大音量 {peak:.5f}", peak
         await check("mic", _mic)
 
         async def _speaker():
@@ -226,7 +226,7 @@ async def run(gw, manual: bool) -> dict[str, Result]:
             await task
             await gw.call("beat_mode_stop")
             # ★自分の声は人の声の10倍で入る（実測 0.45 対 0.05）
-            return peak > max(0.02, quiet * 4), f"回り込み {peak:.4f}（静音時 {quiet:.4f}）", None
+            return peak > max(0.02, quiet * 4), f"回り込み {peak:.4f}（静音時 {quiet:.4f}）", peak
         await check("speaker", _speaker)
 
         async def _stt():

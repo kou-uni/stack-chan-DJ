@@ -64,8 +64,10 @@ CHECKS: dict[str, dict] = {
     # ★回数は「多いほど良い」。秒数と向きが逆（2026-09-12 の実測で気づいた）
     "touch":       {"label": "頭なで",          "manual": True,
                     "higher_is_better": True},
-    "mic":         {"label": "マイクが音を拾う", "manual": True},
-    "speaker":     {"label": "スピーカーが鳴る", "manual": True},
+    "mic":         {"label": "マイクが音を拾う", "manual": True,
+                    "higher_is_better": True},
+    "speaker":     {"label": "スピーカーが鳴る", "manual": True,
+                    "higher_is_better": True},
     "camera":      {"label": "カメラで撮れる",   "manual": False},
     "pose_stream": {"label": "首のストリーム",   "manual": False},
     "led_stream":  {"label": "LEDのストリーム",  "manual": False},
@@ -105,13 +107,20 @@ def compare(before: dict[str, Result], after: dict[str, Result],
         # 両方動いている。数字が悪化していないか。
         # ★向きは項目ごとに違う。秒数は小さいほど良く、検出回数は多いほど良い。
         #   ここを取り違えると、**直ったことをデグレと報告する**
+        # ★良くなったほうも言う。**「直った」と言えない試験は、
+        #   直ったことを確認できない**（2026-09-12、頭なび 1回→15回を
+        #   「変化なし」と報告して気づいた）
         if (b.ok and a.ok and b.value is not None and a.value is not None
                 and b.value > 0):
             hib = CHECKS.get(name, {}).get("higher_is_better", False)
             worse = (a.value * worse_ratio < b.value) if hib \
                 else (a.value > b.value * worse_ratio)
+            better = (a.value > b.value * worse_ratio) if hib \
+                else (a.value * worse_ratio < b.value)
             if worse:
                 out.append(Diff(name, "劣化", _txt(b), _txt(a)))
+            elif better:
+                out.append(Diff(name, "改善", _txt(b), _txt(a)))
 
     # ★重い順に。デグレを先頭に置く
     order = {"デグレ": 0, "劣化": 1, "未確認": 2, "改善": 3}
@@ -119,8 +128,14 @@ def compare(before: dict[str, Result], after: dict[str, Result],
 
 
 def _txt(r: Result) -> str:
+    """★単位を取り違えさせない。回数に「秒」を付けると数字の意味が変わる。"""
     mark = "○" if r.ok else ("×" if r.ok is False else "—")
-    v = f" {r.value:.2f}s" if r.value is not None else ""
+    if r.value is None:
+        v = ""
+    elif CHECKS.get(r.name, {}).get("higher_is_better"):
+        v = f" {r.value:g}"          # 回数・音量。単位は detail 側にある
+    else:
+        v = f" {r.value:.2f}s"
     return f"{mark}{v} {r.detail}".strip()
 
 

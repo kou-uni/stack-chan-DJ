@@ -26,3 +26,6 @@ server/data/
 app/avatar/frames/
 app/avatar/*.png
 app/avatar/*.raw
+
+# ファームのビルド作業場（数GB・生成物）
+build/
