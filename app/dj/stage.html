@@ -118,6 +118,12 @@ function trussY(){ return Math.max(30, innerHeight*0.06); }
 function trussH(){ return M() * 0.30; }               // 箱トラス 30cm角
 function braceP(){ return M() * 0.55; }               // 筋交いの間隔 55cm
 function rigLen(){ return M() * 0.55; }               // ムービングヘッド 約55cm
+// ★レンズ（光が出る口）の位置。**描く側と光る側で必ず同じ値を使う**
+//   ばらばらに計算していたので、光が出る場所がずれていた（2026-09-12）
+const BASE_Y = 0.42, BASE_H = 0.36, YOKE_H = 0.28, HEAD_H = 0.40;
+function lensY(){
+  return trussY() + trussH()*BASE_Y + rigLen()*(BASE_H + YOKE_H + HEAD_H);
+}
 
 function stepHeads(dt){
   // ★実際の灯体は、キューへ素早く動いて**止まる。** 少し行き過ぎて戻る（慣性）
@@ -175,7 +181,7 @@ function drawTruss(a){
 
 function beams(t, p, energy, heat){
   const ty = trussY(), L = rigLen();
-  const lensY = ty + trussH()*0.42 + L*0.34 + L*0.22;
+  const ly = lensY();
 
   // ── 光の筋（加算）。★揺らさない。太さも色も、点いている間は動かさない
   g.globalCompositeOperation = 'lighter';
@@ -201,7 +207,7 @@ function beams(t, p, energy, heat){
     const far = innerHeight*1.5;
 
     g.save();
-    g.translate(innerWidth*b.cx, lensY);
+    g.translate(innerWidth*b.cx, ly);
     g.rotate(a);
 
     // ★光学に合わせる（2026-09-12 本人の指摘）
@@ -277,14 +283,14 @@ function rig(heat){
     rrect(-L*0.13, -trussH()*0.62, L*0.26, trussH()*0.95, L*0.05); g.fill();
 
     // ★ベース（本体）。角の丸い箱。ここにパンのモーターが入っている
-    const by = trussH()*0.42;
-    rrect(-L*0.30, by, L*0.60, L*0.36, L*0.10); g.fill();
+    const by = trussH()*BASE_Y;
+    rrect(-L*0.30, by, L*0.60, L*BASE_H, L*0.10); g.fill();
     // 上面のわずかな照り返し
     g.fillStyle = lit;
     rrect(-L*0.30, by, L*0.60, L*0.07, L*0.035); g.fill();
     g.fillStyle = ink;
 
-    g.translate(0, by + L*0.36);
+    g.translate(0, by + L*BASE_H);
     g.scale(sx, 1);                                 // ★ここから先がパンで回る
 
     // ★ヨーク（Uの字の腕）。**曲がった腕**。直線の棒ではない
@@ -299,7 +305,7 @@ function rig(heat){
     g.stroke();
 
     // ★ヘッド（円筒）。前が少しすぼまり、先端は丸いレンズ面
-    g.translate(0, L*0.28);
+    g.translate(0, L*YOKE_H);
     g.rotate(0.22);                                 // 客席へ向けた固定のチルト
     g.beginPath();
     g.moveTo(-L*0.21, -L*0.06);
@@ -316,31 +322,55 @@ function rig(heat){
   }
   g.lineCap = 'butt';
 
+  // ── ★レンズの発光。**筐体を描いたあとに乗せる。**
+  //   先に描いていたので、黒い筐体に塗り潰されて「光源が黒いまま」だった
+  g.globalCompositeOperation = 'lighter';
+  for (const b of BEAMS){
+    const pw = b.pw || 0;
+    if (pw < 0.02) continue;
+    const cx = innerWidth*b.cx, ly = lensY(), hue = b.hueDeg, half = M()*0.085;
+    for (const [r, a2, s2, l2] of [[4.2, 0.10, 90, 55],
+                                   [2.0, 0.34, 70, 80],
+                                   [0.85,0.90, 20, 98]]){
+      const gl = g.createRadialGradient(cx, ly, 0, cx, ly, half*r);
+      gl.addColorStop(0,   'hsla('+hue+','+s2+'%,'+l2+'%,'+(a2*pw)+')');
+      gl.addColorStop(0.5, 'hsla('+hue+','+(s2+8)+'%,'+(l2-16)+'%,'+(a2*0.28*pw)+')');
+      gl.addColorStop(1,   'hsla('+hue+',95%,55%,0)');
+      g.fillStyle = gl;
+      g.beginPath(); g.arc(cx, ly, half*r, 0, 6.2832); g.fill();
+    }
+  }
+  g.globalCompositeOperation = 'source-over';
+
   // ── 反射。★光ると、自分の筐体とトラスがその色を拾う
   //   （2026-09-12 本人の指摘：真っ黒のままだった）
   g.globalCompositeOperation = 'lighter';
   for (const b of BEAMS){
     const pw = b.pw || 0;
     if (pw < 0.02) continue;
-    const hue = b.hueDeg, cx = innerWidth*b.cx;
-    const lensY = ty + trussH()*0.42 + L*0.34 + L*0.22;
+    const hue = b.hueDeg, cx = innerWidth*b.cx, ly = lensY();
 
     // ① 灯体まわりの散り。**レンズの近くがいちばん明るい**
-    const sp = g.createRadialGradient(cx, lensY, 0, cx, lensY, L*1.5);
+    const sp = g.createRadialGradient(cx, ly, 0, cx, ly, L*1.1);
     sp.addColorStop(0,   'hsla('+hue+',85%,70%,'+(0.30*pw)+')');
     sp.addColorStop(0.4, 'hsla('+hue+',90%,58%,'+(0.10*pw)+')');
     sp.addColorStop(1,   'hsla('+hue+',90%,50%,0)');
     g.fillStyle = sp;
-    g.beginPath(); g.arc(cx, lensY, L*1.5, 0, 6.2832); g.fill();
+    g.beginPath(); g.arc(cx, ly, L*1.1, 0, 6.2832); g.fill();
 
     // ② トラスに当たる。**弦材の丸みに沿って、上側だけ強く光る**
     const h = trussH(), pipe = M()*0.05, top = ty - h/2, bot = ty + h/2;
-    const w = L*2.6;
+    // ★光が当たったところだけ。そこから**ぼんやり暗くなる**
+    const w = L*1.1;
     for (const [cy, k] of [[top, 0.55], [bot, 1.0]]){   // 下弦のほうが近い
       const gr = g.createLinearGradient(cx-w, 0, cx+w, 0);
-      gr.addColorStop(0,   'hsla('+hue+',90%,60%,0)');
-      gr.addColorStop(0.5, 'hsla('+hue+',85%,72%,'+(0.34*pw*k)+')');
-      gr.addColorStop(1,   'hsla('+hue+',90%,60%,0)');
+      gr.addColorStop(0,    'hsla('+hue+',90%,60%,0)');
+      gr.addColorStop(0.30, 'hsla('+hue+',90%,64%,'+(0.05*pw*k)+')');
+      gr.addColorStop(0.44, 'hsla('+hue+',88%,70%,'+(0.18*pw*k)+')');
+      gr.addColorStop(0.5,  'hsla('+hue+',80%,78%,'+(0.42*pw*k)+')');
+      gr.addColorStop(0.56, 'hsla('+hue+',88%,70%,'+(0.18*pw*k)+')');
+      gr.addColorStop(0.70, 'hsla('+hue+',90%,64%,'+(0.05*pw*k)+')');
+      gr.addColorStop(1,    'hsla('+hue+',90%,60%,0)');
       g.fillStyle = gr;
       g.fillRect(cx-w, cy-pipe*0.42, w*2, pipe*0.55);
     }
