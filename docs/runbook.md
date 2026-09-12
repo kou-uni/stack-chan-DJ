@@ -191,3 +191,41 @@ gateway は購読したまま残る。
 
 全部 × なら片付いている。× のまま残っていたら、console を立ち上げ直して
 もう一度 `stop.sh` で落とせば戻る。
+
+## 当日の録音（締めの挨拶の素材にする）
+
+**録るのは Mac のマイク。** スタックチャンのマイクは会話に専念させる。
+**音声も文字起こしも、この Mac の中だけで終わる。** 部屋の外に出さない。
+
+```bash
+./.venv/bin/python scripts/record_meeting.py --list        # マイクを見る
+./.venv/bin/python scripts/record_meeting.py --device 0    # 録りながら起こす
+#   Ctrl-C で止める。★途中で落ちても、もう一度動かせば続きから
+
+./.venv/bin/python scripts/highlights.py                   # 締めの素材を出す
+```
+
+### ★先に済ませること：マイクの許可
+
+**macOS の許可が無いと、エラーではなく「無音」が録れる。**
+2026-09-12、これで20分ぶん無音を録った（-91dB）。**気づけない失敗の形。**
+
+```
+システム設定 → プライバシーとセキュリティ → マイク → 使う端末をオン
+```
+
+確かめ方（`max_volume` が -91dB なら許可が下りていない）:
+
+```bash
+ffmpeg -f avfoundation -i ":0" -t 5 -ac 1 -ar 16000 -y /tmp/m.wav
+ffmpeg -i /tmp/m.wav -af volumedetect -f null - 2>&1 | grep max_volume
+```
+
+### 締めの挨拶に織り込む
+
+`highlights.py` は**要約しない**。時刻つきで並べるだけ。
+**何を織り込むかは書く側が決める**（人格は `docs/persona.md`）。
+
+```bash
+./.venv/bin/python scripts/speak.py --file scripts/scenes/closing.txt
+```
