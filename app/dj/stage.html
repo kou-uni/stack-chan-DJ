@@ -186,7 +186,9 @@ function stepHeads(dt){
   for (const b of BEAMS){
     // ★実際のムービングヘッドは速い。**0.2秒で振り切って止まる**
     //   （2026-09-12 本人の指摘：ゆるゆる揺れていた）
-    const k = 190.0, damp = 26.0;
+    // ★実機は大きく振ると0.5秒前後かかる。硬すぎると瞬間移動に見える
+    //   （2026-09-13 本人の指摘：そんな高速に動かないだろ）
+    const k = 46.0, damp = 12.5;
     b.vel += (b.tgt - b.ang) * k * dt;
     b.vel -= b.vel * damp * dt;
     b.ang += b.vel * dt;
@@ -388,35 +390,46 @@ function rig(heat){
     g.translate(0, by + L*BASE_H);
     // ★ヨークは横に潰さない。回るのはヘッド（次の rotate(a)）
 
-    // ★ヨーク（Uの字の腕）。**曲がった腕**。直線の棒ではない
+    // ★ヨーク（Uの字の腕）。**支点まで下りて、そこでヘッドを抱える。**
+    //   腕が途中で終わっていたので、ヘッドが外れて浮いて見えた（2026-09-13）
     g.lineCap = 'round';
     g.strokeStyle = ink;
-    g.lineWidth = L*0.14;
+    g.lineWidth = L*0.13;
     g.beginPath();
     g.moveTo(-L*0.38, -L*0.02);
-    g.quadraticCurveTo(-L*0.43, L*0.16, -L*0.34, L*0.28);
+    g.quadraticCurveTo(-L*0.42, L*YOKE_H*0.55, -L*0.30, L*YOKE_H);
     g.moveTo( L*0.38, -L*0.02);
-    g.quadraticCurveTo( L*0.43, L*0.16,  L*0.34, L*0.28);
+    g.quadraticCurveTo( L*0.42, L*YOKE_H*0.55,  L*0.30, L*YOKE_H);
     g.stroke();
 
     // ★ヘッド（円筒）。前が少しすぼまり、先端は丸いレンズ面
     // ★ヘッドは**ビームと同じ角度に回る。** 固定のチルトのままだったので、
     //   角度を計算していても見た目は止まっていた（2026-09-13 実測で発覚）
     // ★筒の長さと lensPos を同じ HEAD_H に揃える。ずれると光が筒から離れる
+    // ★ヘッドは**支点を中心に、腕の間で回る。** 胴の後ろ側も支点より上にある
+    //   （下にぶら下げていたので、腕から外れて浮いて見えた）
     g.translate(0, L*YOKE_H);
     g.rotate(a);
-    const HL = L*HEAD_H;
+    const HL = L*HEAD_H, HB = -L*0.17;     // HB: 胴の後端（支点より上）
     g.beginPath();
-    g.moveTo(-L*0.28, -L*0.06);
-    g.quadraticCurveTo(-L*0.30, HL*0.5, -L*0.23, HL);
-    g.lineTo( L*0.23, HL);
-    g.quadraticCurveTo( L*0.30, HL*0.5,  L*0.28, -L*0.06);
+    g.moveTo(-L*0.24, HB);
+    g.quadraticCurveTo(-L*0.26, HL*0.5, -L*0.20, HL);
+    g.lineTo( L*0.20, HL);
+    g.quadraticCurveTo( L*0.26, HL*0.5,  L*0.24, HB);
     g.closePath();
     g.fill();
     // 後ろの丸み（放熱側）
-    g.beginPath(); g.ellipse(0, -L*0.06, L*0.28, L*0.12, 0, 0, 6.2832); g.fill();
+    g.beginPath(); g.ellipse(0, HB, L*0.24, L*0.10, 0, 0, 6.2832); g.fill();
+    // ★軸受け。腕とヘッドが噛み合っているのが分かる
+    g.fillStyle = 'rgb('+Math.round(46*fade+4)+','+Math.round(54*fade+5)+','
+                + Math.round(68*fade+7)+')';
+    for (const sx2 of [-1, 1]){
+      g.beginPath(); g.arc(sx2*L*0.24, 0, L*0.065, 0, 6.2832); g.fill();
+    }
+    g.fillStyle = 'rgb('+Math.round(16*fade+2)+','+Math.round(20*fade+3)+','
+                + Math.round(28*fade+4)+')';
     // レンズ面（円）。★ここが光の出口
-    g.beginPath(); g.ellipse(0, HL, L*0.23, L*0.07, 0, 0, 6.2832); g.fill();
+    g.beginPath(); g.ellipse(0, HL, L*0.20, L*0.06, 0, 0, 6.2832); g.fill();
     g.restore();
   }
   // ★ムービングヘッドの間に**ブラインダー**が入る（調査）。横長の箱

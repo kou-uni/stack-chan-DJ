@@ -98,6 +98,16 @@ ok('下からの光は実機の外側', D.UPS[0].cx < 0.30 && D.UPS[1].cx > 0.70
   });
 }
 
+// ★動く速さ。**瞬間移動は嘘、遅すぎるとゆるゆる**（2026-09-13）
+{
+  const b = D.BEAMS[0];
+  b.ang = 0; b.vel = 0; b.tgt = 1.2;
+  let sec = 99;
+  for (let i=0;i<180;i++){ frameN++; rafFn(frameN*16.7);
+    if (Math.abs(b.ang - 1.2) < 0.06){ sec = i*16.7/1000; break; } }
+  ok('大きく振るのに0.4〜1.5秒かかる', sec > 0.4 && sec < 1.5, sec.toFixed(2) + '秒');
+}
+
 // ── 構造材の統一（2026-09-13 本人の指摘）────────────
 // ★横も縦も**同じ素材・同じ粒度・同じ太さ**で描く。別々に描くと柱だけ浮く
 const src = fs.readFileSync(process.argv[2], 'utf8');
