@@ -360,6 +360,20 @@ function rig(heat){
     g.beginPath(); g.ellipse(0, L*0.40, L*0.23, L*0.07, 0, 0, 6.2832); g.fill();
     g.restore();
   }
+  // ★ムービングヘッドの間に**ブラインダー**が入る（調査）。横長の箱
+  for (const bx of [0.30, 0.50, 0.70]){
+    const x = innerWidth*bx, w = L*0.9, h = L*0.30;
+    g.fillStyle = 'rgba(4,5,9,'+(0.92*fade+0.06)+')';
+    rrect(x - w/2, ty + trussH()*0.42, w, h, L*0.05); g.fill();
+    // 4灯のレンズ
+    g.fillStyle = 'rgba(20,24,32,'+(0.8*fade)+')';
+    for (let i=0; i<4; i++){
+      g.beginPath();
+      g.ellipse(x - w*0.33 + i*w*0.22, ty + trussH()*0.42 + h*0.5,
+                w*0.075, h*0.28, 0, 0, 6.2832);
+      g.fill();
+    }
+  }
   g.lineCap = 'butt';
 
   // ── ★レンズの発光。**筐体を描いたあとに乗せる。**
@@ -613,6 +627,30 @@ function draw(now){
     }
     o.shadowBlur = 0;
 
+    // ★LEDウォールは**500×500mm のキャビネットの集合**（レンタルの業界標準）。
+    //   継ぎ目のグリッドが薄く見えるのが本物。一枚板だと嘘になる（2026-09-13 調査）
+    o.globalCompositeOperation = 'source-over';
+    const cab = M()*0.5;                       // キャビネット 500mm
+    o.strokeStyle = 'rgba(0,0,0,0.55)';
+    o.lineWidth = Math.max(1, M()*0.012);      // 継ぎ目 約12mm
+    o.beginPath();
+    for (let x=cab; x<pn.bw; x+=cab){ o.moveTo(x, 0); o.lineTo(x, innerHeight); }
+    for (let y=cab; y<innerHeight; y+=cab){ o.moveTo(0, y); o.lineTo(pn.bw, y); }
+    o.stroke();
+    // ★キャビネットごとの輝度差。実物は必ず少しばらつく
+    o.globalCompositeOperation = 'lighter';
+    const nx = Math.ceil(pn.bw/cab), ny = Math.ceil(innerHeight/cab);
+    for (let iy=0; iy<ny; iy++){
+      for (let ix=0; ix<nx; ix++){
+        const v = ((ix*7 + iy*13) % 11) / 11;   // 決め打ちの散らばり（毎フレーム変えない）
+        if (v > 0.72){
+          o.fillStyle = 'hsla('+p.h+',60%,60%,'+(0.010 + 0.016*heat)+')';
+          o.fillRect(ix*cab, iy*cab, cab, cab);
+        }
+      }
+    }
+    o.globalCompositeOperation = 'source-over';
+
     // ★**射影変換**で貼る。等間隔に切って高さだけ縮めるのはアフィンで、遠近ではない
     //   （2026-09-13：垂れ幕に見えていた原因）。
     //   奥へ行くほど**横方向も詰まる**。それが遠近のいちばん強い手がかり。
@@ -840,6 +878,41 @@ function draw(now){
                          innerWidth*x1, trussY()+trussH()*0.4);
     }
     g.stroke();
+  }
+
+  // ── 機材。★ライブ会場には**必ず物がある**。空っぽだと書き割りに見える（調査）
+  {
+    const backY2 = hy + (innerHeight - hy) * CENTER_K;
+    const LC2 = litColor(p);
+    for (const [cx, dir] of [[0.115, 1], [0.885, -1]]){
+      const x = innerWidth*cx, w = M()*0.62, hgt = M()*2.05;
+      const yTop = innerHeight*0.99 - hgt;
+      // スピーカースタック（トップ）
+      g.fillStyle = 'rgb(6,7,11)';
+      rrect(x - w/2, yTop, w, hgt*0.62, M()*0.03); g.fill();
+      // グリル。**横のスリットが入る**
+      g.fillStyle = 'rgba(24,28,36,0.75)';
+      for (let yy = yTop + M()*0.06; yy < yTop + hgt*0.58; yy += M()*0.055){
+        g.fillRect(x - w/2 + M()*0.05, yy, w - M()*0.10, M()*0.022);
+      }
+      // サブウーファー（床置き。ひと回り大きい）
+      const sw = w*1.35;
+      g.fillStyle = 'rgb(4,5,8)';
+      rrect(x - sw/2, yTop + hgt*0.62, sw, hgt*0.38, M()*0.03); g.fill();
+      g.fillStyle = 'rgba(20,24,32,0.7)';
+      g.beginPath();
+      g.arc(x, yTop + hgt*0.81, M()*0.20, 0, 6.2832); g.fill();
+      // ★光を受ける側の面だけ、細く光る
+      if (LC2.pow > 0.02){
+        g.globalCompositeOperation = 'lighter';
+        const eg = g.createLinearGradient(x + dir*w*0.5, 0, x + dir*w*0.2, 0);
+        eg.addColorStop(0, 'hsla('+LC2.hue+',80%,78%,'+(0.16 + 0.34*LC2.pow)+')');
+        eg.addColorStop(1, 'hsla('+LC2.hue+',80%,60%,0)');
+        g.fillStyle = eg;
+        g.fillRect(Math.min(x + dir*w*0.2, x + dir*w*0.5), yTop, w*0.3, hgt);
+        g.globalCompositeOperation = 'source-over';
+      }
+    }
   }
 
   // ── ② 空気中の光。パネルの手前を通る
