@@ -123,6 +123,9 @@ input{width:100%;background:var(--card);border:1px solid var(--line);color:var(-
   <button data-a="say" data-v="いま、るすばんしています">るすばん中</button>
 </div>
 
+<h2>あそびかた</h2>
+<div class="grid"><button id="guide">🖐 なでかた を みる</button></div>
+
 <div id="log"></div>
 <script>
 const K = new URLSearchParams(location.search).get('k') || '';
@@ -251,6 +254,7 @@ async function ask(){
   }catch(e){ wait.remove(); bubble('bot', 'つながりません'); }
   finally{ asking = false; }
 }
+$('#guide').onclick = () => { buzz(); window.open('guide', '_blank'); };
 $('#askbtn').onclick = ask;
 $('#q').addEventListener('keydown', e => { if(e.key === 'Enter') ask(); });
 

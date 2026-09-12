@@ -1,0 +1,105 @@
+<!doctype html><html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>スタックチャンの なでかた</title>
+<style>
+/* ★読むのは会場にいる人。**手にはスマホ、目の前には実機。**
+   だから画面は短く、目線はすぐ実機に戻る。説明を読ませない */
+:root{
+  --bg:#0a0c11; --card:#161b26; --line:#252c3b; --ink:#eaeef6; --dim:#8792a6;
+  --hot:#00e5ff; --warm:#ff6b8a; --ok:#3ddc97;
+}
+@media (prefers-color-scheme: light){
+  :root{ --bg:#f7f8fb; --card:#fff; --line:#e2e6ef; --ink:#1a1f2b; --dim:#697386;
+         --hot:#0090a8; --warm:#d4365c; --ok:#12996b; }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.6 -apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
+  padding:max(18px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));
+  max-width:620px;margin-inline:auto}
+h1{font-size:22px;margin:0 0 4px;letter-spacing:.02em}
+.lead{color:var(--dim);font-size:14px;margin:0 0 22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+  padding:14px 16px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start}
+.emo{font-size:30px;line-height:1.1;flex:0 0 auto;width:38px;text-align:center}
+.how{font-size:13px;color:var(--hot);font-weight:700;letter-spacing:.04em;
+  margin-bottom:2px}
+.what{font-weight:700;margin-bottom:4px}
+.says{font-size:13px;color:var(--dim);line-height:1.7}
+.says b{color:var(--ink);font-weight:600}
+.warm .how{color:var(--warm)}
+.note{background:var(--card);border:1px dashed var(--line);border-radius:16px;
+  padding:14px 16px;font-size:14px;color:var(--dim);margin:18px 0 10px}
+.note b{color:var(--ink)}
+h2{font-size:13px;color:var(--dim);letter-spacing:.14em;margin:26px 0 8px}
+footer{margin-top:26px;font-size:12px;color:var(--dim);text-align:center}
+</style></head><body>
+
+<h1>スタックチャンの なでかた</h1>
+<p class="lead">あたまを さわると、いろいろ かえってきます。<br>
+おなじ さわりかたでも、<b>まいかい ちがう</b>ことを 言います。</p>
+
+<div class="card">
+  <div class="emo">😲</div><div>
+    <div class="how">ひさしぶりに さわる</div>
+    <div class="what">びっくりする</div>
+    <div class="says">「わっ」「びっくりした」…</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="emo">😳</div><div>
+    <div class="how">かるく なでる</div>
+    <div class="what">てれる</div>
+    <div class="says">「えへへ」「ちょっと、はずかしい」…</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="emo">😆</div><div>
+    <div class="how">とんとん、と つづけて さわる</div>
+    <div class="what">くすぐったがる</div>
+    <div class="says">「くすぐったい」「あはは、やめて」…</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="emo">😌</div><div>
+    <div class="how">３びょう いじょう なでつづける</div>
+    <div class="what">とろける（めが はんぶん とじます）</div>
+    <div class="says">「きもちいい」「とけちゃう」…</div>
+  </div>
+</div>
+
+<div class="card warm">
+  <div class="emo">😒</div><div>
+    <div class="how">しつこく さわる ／ ながく おさえる</div>
+    <div class="what">いやがる。しばらく すねます</div>
+    <div class="says">「もう、いいです」「ちょっと、はなれて」…</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="emo">😐</div><div>
+    <div class="how">なんども なでる</div>
+    <div class="what">なれてくる。はんのうが 小さくなります</div>
+    <div class="says">「はいはい」「またですか」…</div>
+  </div>
+</div>
+
+<div class="note">
+  <b>おなじ かえしを、２かい つづけません。</b><br>
+  おなじように さわっても、ちがう ことばが かえります。
+  <b>ぜんぶで 18とおり</b>。ぜんぶ 聞けたら すごい。
+</div>
+
+<h2>ちょっとした こつ</h2>
+<div class="note">
+  ・はんのうは <b>ゆびを はなした しゅんかん</b> に かえってきます<br>
+  ・すねたら <b>すこし まって</b> ください。きげんは なおります<br>
+  ・なにか <b>のせっぱなし</b>にすると、さわられたと 思いません
+</div>
+
+<footer>スタックチャン ／ Crypto Cafe and Bar</footer>
+</body></html>

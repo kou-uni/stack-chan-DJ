@@ -100,6 +100,11 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
     def guard(req):
         return check_token(req.query.get("k"), token)
 
+    async def guide(_req):
+        """なでかたの案内。★鍵なしで開ける。**操作ではないので誰が見てもよい**
+        （会場でQRから開いてもらう）。"""
+        return web.FileResponse(HERE / "guide.html")
+
     async def panel(req):
         # ★鍵が違っても画面は返す。中で「鍵がちがいます」と出る方が、
         #   真っ白より原因が分かる（api 側は必ず弾く）
@@ -220,6 +225,7 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
     app = web.Application()
     app.add_routes([web.get("/", index), web.get("/ws", ws),
                     web.get("/panel", panel),
+                    web.get("/guide", guide),
                     web.get("/api/state", api_state),
                     web.post("/api/act", api_act),
                     web.get("/api/photo", api_photo),
