@@ -130,3 +130,40 @@ def test_踊りはじめたら拍に乗る():
     s.enabled = True
     s.bpm = 128.0
     assert s.bpm == 128.0
+
+
+# ── 選んだ模様は20秒で戻る（2026-09-12 本人の要望）──────────
+#
+# 押しっぱなしの状態にすると、**次に押すまでずっとその模様**になる。
+# 演奏中は手が離せないので、**勝手に戻ってほしい。**
+
+def test_二十秒たったら元に戻る():
+    s = LedState(count=8, pattern="show")
+    s.show_pattern("laser", hold_s=20.0, now=100.0)
+    assert s.current_pattern(now=110.0) == "laser"
+    assert s.current_pattern(now=121.0) == "show", "戻っていない"
+
+
+def test_戻ったら自走もやめる():
+    """★戻ったのに光りっぱなしだと、戻った気がしない。"""
+    s = LedState(count=8)
+    s.show_pattern("laser", hold_s=20.0, now=100.0)
+    s.current_pattern(now=121.0)
+    assert not s.manual
+
+
+def test_押し直したら数え直す():
+    s = LedState(count=8, pattern="show")
+    s.show_pattern("laser", hold_s=20.0, now=100.0)
+    s.show_pattern("sparks", hold_s=20.0, now=115.0)
+    assert s.current_pattern(now=130.0) == "sparks", "前の期限で消えている"
+
+
+def test_踊っている間は消えない():
+    """★DJモードで踊っているなら、基本の模様に戻るだけ。真っ暗にしない。"""
+    s = LedState(count=8, pattern="show")
+    s.enabled = True
+    s.bpm = 120.0
+    s.show_pattern("laser", hold_s=20.0, now=100.0)
+    s.current_pattern(now=121.0)
+    assert any(any(c) for c in s.colors()), "踊っているのに消えた"

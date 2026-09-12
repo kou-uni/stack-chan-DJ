@@ -92,6 +92,10 @@ class LedState:
         #   「模様は見せるもの。拍に合わせるのは味付け」。前提が逆だった
         self.manual = False
         self.free_bpm = 120.0        # 音が無いときの自走テンポ
+        # ★選んだ模様は、しばらくしたら元に戻る（2026-09-12 本人の要望）
+        #   演奏中は手が離せない。**戻すために押し直させない**
+        self.base_pattern = pattern
+        self.hold_until = 0.0
         # 「耳を澄ます」間の見え方。強い点滅をやめて、ゆっくり息をする
         self.swoon = False
         self.flash_white = False
@@ -427,12 +431,29 @@ class LedState:
         c = white if (sub == 0 and n % 4 == 0) else cold
         return [self._mul(c, f * k)] * self.count
 
-    def show_pattern(self, name: str) -> None:
-        """人が模様を選んだ。**音とは関係なく光らせる。**"""
+    HOLD_S = 20.0
+
+    def show_pattern(self, name: str, hold_s: float | None = None,
+                     now: float | None = None) -> None:
+        """人が模様を選んだ。**音とは関係なく光り、しばらくして元に戻る。**"""
+        now = time.time() if now is None else now
         self.pattern = name
         self.manual = True
+        self.hold_until = now + (self.HOLD_S if hold_s is None else hold_s)
         if self.beat0 <= 0:
-            self.beat0 = time.time()
+            self.beat0 = now
+
+    def current_pattern(self, now: float | None = None) -> str:
+        """いまの模様。**期限が切れていたら基本に戻す。**
+
+        ★毎フレーム呼ばれる。ここで戻すので、時計を別に回さなくてよい。
+        """
+        now = time.time() if now is None else now
+        if self.manual and self.hold_until and now >= self.hold_until:
+            self.pattern = self.base_pattern
+            self.manual = False
+            self.hold_until = 0.0
+        return self.pattern
 
     def frame(self) -> str:
         """★LEDストリームと poseストリームで、フレームの形が違う。
@@ -447,6 +468,7 @@ class LedState:
         # ★会話中は踊っていない（enabled=False）。それでも光らせる。
         #   ここを enabled だけで閉じていたので、緑も青も一度も出ない作りだった
         #   （テストを先に書いたので、実装前に分かった）
+        self.current_pattern()          # ★期限切れならここで基本に戻る
         lit = self.enabled or self.manual or self.talk in self.TALK_COLOR
         colors = self.colors() if lit else [[0, 0, 0]] * self.count
         return json.dumps({
