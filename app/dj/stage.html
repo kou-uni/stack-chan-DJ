@@ -436,31 +436,8 @@ function wash(p, amt){
   g.globalCompositeOperation = 'source-over';
 }
 
-function crowd(p, amt){
-  // ★手前の客。**逆光の黒い塊**。これで奥行きが出る（参考画像）
-  const base = innerHeight*1.02, h = innerHeight*0.17;
-  g.fillStyle = 'rgba(2,3,6,0.93)';
-  g.beginPath();
-  g.moveTo(0, innerHeight);
-  const n = 26;
-  for (let i=0; i<=n; i++){
-    const x = (i/n)*innerWidth;
-    const s = Math.sin(i*2.7)*0.5 + Math.sin(i*1.3+1.7)*0.5;   // 頭の高さの散らばり
-    g.lineTo(x, base - h*(0.55 + 0.45*s));
-  }
-  g.lineTo(innerWidth, innerHeight);
-  g.closePath(); g.fill();
-  // 頭の輪郭が、わずかに舞台の光を拾う
-  if (amt > 0.05){
-    g.globalCompositeOperation = 'lighter';
-    const gr = g.createLinearGradient(0, base - h, 0, base - h*0.3);
-    gr.addColorStop(0, 'hsla('+p.h+',90%,62%,'+(0.10*amt)+')');
-    gr.addColorStop(1, 'hsla('+p.h+',90%,55%,0)');
-    g.fillStyle = gr;
-    g.fillRect(0, base - h, innerWidth, h*0.7);
-    g.globalCompositeOperation = 'source-over';
-  }
-}
+// ★客のシルエットは描かない。**手前にスタックチャンの実機がいる**（本人の指摘）。
+//   画面にも客を描くと、二重になって嘘になる
 
 function fireBeams(n){
   // ★拍ごとに違う組が点く。**毎回同じだと機械に見える**
@@ -585,8 +562,6 @@ function draw(now){
   // ── ④ トラスと灯体。**光を遮る**
   if (heat > 0.06) rig(heat);
 
-  // ── ⑤ 一番手前：客のシルエット
-  crowd(p, heat);
 
   if (flash > 0.01){
     g.fillStyle = 'rgba(255,255,255,'+(flash*0.16)+')';
