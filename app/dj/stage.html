@@ -140,10 +140,13 @@ let bar = 0;
 //   30cm角のトラスが画面幅の0.7%しかなく、針金のように細かった
 const VENUE_W = 9.0;                     // 画面の横幅が何メートルか
 function M(){ return innerWidth / VENUE_W; }          // 1メートルの画素数
-function trussY(){ return Math.max(30, innerHeight*0.06); }
-function trussH(){ return M() * 0.30; }               // 箱トラス 30cm角
-function braceP(){ return M() * 0.55; }               // 筋交いの間隔 55cm
-function rigLen(){ return M() * 0.55; }               // ムービングヘッド 約55cm
+// ★トラスは**壁より手前**にある。壁と同じ縮尺で描くと小さすぎて浮く。
+//   手前のものは枠からはみ出すのが自然（2026-09-13 本人の指摘）
+const TRUSS_NEAR = 1.7;                               // 壁に対する手前ぶんの倍率
+function trussY(){ return Math.max(30, innerHeight*0.055); }
+function trussH(){ return M() * 0.30 * TRUSS_NEAR; }  // 箱トラス 30cm角
+function braceP(){ return M() * 0.55 * TRUSS_NEAR; }
+function rigLen(){ return M() * 0.55 * TRUSS_NEAR; }  // ムービングヘッド 約55cm
 // ★レンズ（光が出る口）の位置。**描く側と光る側で必ず同じ値を使う**
 //   ばらばらに計算していたので、光が出る場所がずれていた（2026-09-12）
 const BASE_Y = 0.42, BASE_H = 0.36, YOKE_H = 0.28, HEAD_H = 0.40;
@@ -172,6 +175,15 @@ function drawTruss(a){
   const top = y - h/2, bot = y + h/2;
   const ink = 'rgba(3,4,7,'+(0.90*a + 0.08)+')';
 
+  // ★消失点は画面の72%。トラスは遥か上なので、**見上げている＝底面が見える**。
+  //   手前弦と奥弦の間に、底面の帯が出る
+  const OVER = innerWidth*0.06;            // 枠からはみ出す分
+  const under = g.createLinearGradient(0, top, 0, bot);
+  under.addColorStop(0,   'rgba(10,13,18,'+(0.92*a+0.06)+')');
+  under.addColorStop(1,   'rgba(2,3,6,'+(0.95*a+0.06)+')');
+  g.fillStyle = under;
+  g.fillRect(-OVER, top, innerWidth+OVER*2, bot-top);
+
   // ★弦材は**丸いパイプ**。平らな帯ではない。断面の陰影で丸みを出す
   for (const cy of [top, bot]){
     const gr = g.createLinearGradient(0, cy-pipe/2, 0, cy+pipe/2);
@@ -179,12 +191,12 @@ function drawTruss(a){
     gr.addColorStop(0.28, 'rgba(22,27,36,'+(0.85*a+0.07)+')');
     gr.addColorStop(1,    'rgba(2,3,6,'+(0.93*a+0.07)+')');
     g.fillStyle = gr;
-    g.fillRect(0, cy-pipe/2, innerWidth, pipe);
+    g.fillRect(-OVER, cy-pipe/2, innerWidth+OVER*2, pipe);
   }
   g.fillStyle = ink;
   // 筋交い（塗りで表す。線を引かない）
   g.beginPath();
-  for (let x=-bp; x<innerWidth+bp; x+=bp){
+  for (let x=-OVER-bp; x<innerWidth+OVER+bp; x+=bp){
     for (const [x0,y0,x1,y1] of [[x,top,x+bp*0.5,bot],[x+bp*0.5,bot,x+bp,top]]){
       const dx = x1-x0, dy = y1-y0, len = Math.hypot(dx,dy);
       const nx = -dy/len*pipe*0.32, ny = dx/len*pipe*0.32;
@@ -202,7 +214,7 @@ function drawTruss(a){
   rim.addColorStop(0, 'rgba(150,170,205,'+(0.16*a)+')');
   rim.addColorStop(1, 'rgba(150,170,205,0)');
   g.fillStyle = rim;
-  g.fillRect(0, top-pipe/2, innerWidth, pipe*0.7);
+  g.fillRect(-OVER, top-pipe/2, innerWidth+OVER*2, pipe*0.7);
 }
 
 function beams(t, p, energy, heat){
