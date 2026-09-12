@@ -234,7 +234,13 @@ function beams(t, p, energy, heat){
   }
   g.globalCompositeOperation = 'source-over';
 
-  // ── 灯体の実体。★線は引かない。**黒い塊として置く**
+}
+
+function rig(heat){
+  // ── 灯体とトラスの実体。★線は引かない。**黒い塊として置く**
+  //   ★これは**一番手前**に描く。奥から順に：
+  //     有機ELパネル（コード） → 空気中の光 → トラスと灯体
+  const ty = trussY(), L = rigLen();
   const fade = Math.min(1, heat*1.6);
   drawTruss(fade);
   const ink = 'rgba(3,4,7,'+(0.92*fade + 0.06)+')';
@@ -361,10 +367,8 @@ function draw(now){
   // ★静かなときはライトを出さない。**コードがゆっくり流れているだけでちょうどいい**
   //   （2026-09-12 本人の指摘）。動き出したら吊り込まれる
   stepHeads(dt);
-  if (heat > 0.06) beams(t, p, energy, heat);
-  // ★こすっている間だけ、下から立ち上がる
-  uplights(t, p, playing ? hold : 0, S.jog || 0);
 
+  // ── ① 会場の奥：有機ELパネル。**ここにコードが映っている**
   // ★30行くらい残す。**すぐ消えると黒ばかりになる**（2026-09-12 本人の指摘）
   const TAIL = 26 + 14*heat;
   g.textBaseline = 'top';
@@ -407,6 +411,13 @@ function draw(now){
   }
   g.shadowBlur = 0;
   g.globalCompositeOperation = 'source-over';
+
+  // ── ② 空気中の光。パネルの手前を通る
+  if (heat > 0.06) beams(t, p, energy, heat);
+  uplights(t, p, playing ? hold : 0, S.jog || 0);
+
+  // ── ③ 一番手前：トラスと灯体。**光を遮る**
+  if (heat > 0.06) rig(heat);
 
   if (flash > 0.01){
     g.fillStyle = 'rgba(255,255,255,'+(flash*0.16)+')';
