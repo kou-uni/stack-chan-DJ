@@ -80,6 +80,94 @@
       "action": "dj_mode_off",
       "confirmed": "2026-09-08",
       "note": "OFF専用。トグルにしない（押しっぱなしで使う人がいるため）"
+    },
+    "led_wave": {
+      "kind": "note",
+      "ch": 9,
+      "num": 0,
+      "label": "LED wave",
+      "led_pattern": "wave",
+      "confirmed": "2026-09-12"
+    },
+    "led_strobe": {
+      "kind": "note",
+      "ch": 9,
+      "num": 1,
+      "label": "LED strobe",
+      "led_pattern": "strobe",
+      "confirmed": "2026-09-12"
+    },
+    "led_rainbow": {
+      "kind": "note",
+      "ch": 9,
+      "num": 2,
+      "label": "LED rainbow",
+      "led_pattern": "rainbow",
+      "confirmed": "2026-09-12"
+    },
+    "led_split": {
+      "kind": "note",
+      "ch": 9,
+      "num": 3,
+      "label": "LED split",
+      "led_pattern": "split",
+      "confirmed": "2026-09-12"
+    },
+    "led_mix": {
+      "kind": "note",
+      "ch": 9,
+      "num": 4,
+      "label": "LED mix",
+      "led_pattern": "mix",
+      "confirmed": "2026-09-12"
+    },
+    "led_laser": {
+      "kind": "note",
+      "ch": 9,
+      "num": 5,
+      "label": "LED laser",
+      "led_pattern": "laser",
+      "confirmed": "2026-09-12"
+    },
+    "led_build": {
+      "kind": "note",
+      "ch": 9,
+      "num": 6,
+      "label": "LED build",
+      "led_pattern": "build",
+      "confirmed": "2026-09-12"
+    },
+    "led_sparks": {
+      "kind": "note",
+      "ch": 9,
+      "num": 7,
+      "label": "LED sparks",
+      "led_pattern": "sparks",
+      "confirmed": "2026-09-12"
+    },
+    "led_strobe_hard": {
+      "kind": "note",
+      "ch": 1,
+      "num": 88,
+      "label": "LED strobe_hard",
+      "led_pattern": "strobe_hard",
+      "confirmed": "2026-09-12"
+    },
+    "led_segments": {
+      "kind": "note",
+      "ch": 1,
+      "num": 12,
+      "label": "LED segments",
+      "led_pattern": "segments",
+      "confirmed": "2026-09-12"
+    },
+    "led_show": {
+      "kind": "note",
+      "ch": 1,
+      "num": 11,
+      "label": "LED show",
+      "led_pattern": "show",
+      "confirmed": "2026-09-12"
     }
   },
   "ready_command": "./.venv/bin/python app/dj/console.py --beat --sensitivity 0.3 --led-pattern strobe --led-brightness 0.8 --sway-deg 24 --play-ch 0 --play-note 11",

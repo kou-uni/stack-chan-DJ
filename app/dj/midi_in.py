@@ -95,6 +95,17 @@ class MidiMixin:
                 self._silent_since = None
                 return
             slot = self.note.get((msg.channel, msg.note))
+            # ★LEDの模様は「続く状態」。顔の一時的な上書きとは別の経路にする。
+            #   混ぜると、模様を変えたら顔まで戻る、のような事故になる
+            if slot and self.ctl[slot].get("led_pattern"):
+                name = self.ctl[slot]["led_pattern"]
+                from led import LedState
+                if name not in LedState.PATTERNS:
+                    print(f"  ? 知らない模様: {name}（mapping.json を確認）")
+                    return
+                self.led.pattern = name
+                print(f"  ▶ LED → {name}")
+                return
             if slot:
                 face = self.ctl[slot].get("avatar", "idle")
                 print(f"  ▶ {self.ctl[slot]['label']} → {face}")
