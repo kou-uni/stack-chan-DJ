@@ -21,7 +21,9 @@ import asyncio
 import contextlib
 import hmac
 import json
+import re
 import secrets
+from dataclasses import dataclass
 from pathlib import Path
 
 from led import LedState
@@ -304,3 +306,107 @@ class AskDesk:
             if i > len(head):
                 head = t[:i + 1]
         return head or t[:cls.SPEAK_MAX]
+
+
+# ── 長いセリフを読ませる ────────────────────────────
+#
+# Claude Code が書いた文章を、スタックチャンに読ませる（2026-09-12 本人の要望）。
+# **Ollama の短い返答とは役割が違う。こちらは長くてよく、質が要る。**
+
+SPEECH_LIMIT = 80        # 1回に読ませる長さ。★長すぎると読み上げが崩れる
+FACES_OK = ("happy", "surprised", "embarrassed", "sad", "thinking",
+            "idle", "sleepy", "angry", "doubt")
+
+
+@dataclass
+class Line:
+    """読ませる1かたまり。"""
+
+    text: str
+    face: str | None = None
+    pause_before: float = 0.0
+
+
+def split_speech(script: str, limit: int = SPEECH_LIMIT) -> list[Line]:
+    """台本を、読ませる単位に割る。
+
+    ★**文の途中で切らない。** 切れ目で区切る
+    ★**短ければまとめる。** 1文ずつ細切れだと間が空いて不自然
+    ★`[happy]` で表情、`[pause=1.5]` で間。**知らない指示は捨てて、言葉は残す**
+      （表情は飾り、本体は言葉。セリフが読まれないほうが困る）
+    """
+    out: list[Line] = []
+    buf = ""
+    face: str | None = None
+    pause = 0.0
+
+    def emit():
+        nonlocal buf, face, pause
+        s = buf.strip()
+        buf = ""
+        if not s:
+            return
+        out.append(Line(s, face, pause))
+        face, pause = None, 0.0        # ★指定は次の1かたまりにだけ効く
+
+    for tok in re.split(r"(\[[^\]]{0,40}\])", script):
+        if not tok:
+            continue
+        m = re.fullmatch(r"\[([^\]]{0,40})\]", tok)
+        if m:
+            tag = m.group(1).strip()
+            if tag in FACES_OK:
+                emit()
+                face = tag
+            elif tag.startswith("pause"):
+                emit()
+                try:
+                    pause = float(tag.split("=", 1)[1])
+                except (IndexError, ValueError):
+                    pause = 1.0
+            # ★知らないタグは黙って捨てる。言葉は残す
+            continue
+
+        # ★改行は書き手が置いた区切り。**必ずそこで割る**（間の取り方は作者のもの）
+        for i, chunk in enumerate(tok.split("\n")):
+            if i:
+                emit()
+            for piece in _sentences(chunk, limit):
+                if buf.strip() and len(buf) + len(piece) > limit:
+                    emit()
+                buf += piece
+    emit()
+    return out
+
+
+def _sentences(text: str, limit: int = SPEECH_LIMIT) -> list[str]:
+    """文に割る。★切れ目が無い長文は、そこで初めて機械的に切る。"""
+    out: list[str] = []
+    for p in [x for x in re.split(r"(?<=[。！？\n])", text) if x]:
+        while len(p) > limit:
+            out.append(p[:limit])
+            p = p[limit:]
+        if p:
+            out.append(p)
+    return out
+
+
+async def perform(con, script: str, limit: int = SPEECH_LIMIT) -> dict:
+    """台本を、順番に読ませる。**読み終わるまで次を出さない。**
+
+    ★かぶると聞き取れない。`say` は鳴り終わる少し前に返るので、少し待つ。
+    """
+    lines = split_speech(script, limit)
+    for ln in lines:
+        if ln.pause_before:
+            await asyncio.sleep(min(ln.pause_before, 10.0))
+        if ln.face:
+            con.presence.overlay("knob", ln.face, 8.0)
+        con.presence.talk = "speaking"
+        try:
+            await con.gw.call("say", text=ln.text, speaker_id=14)
+            await asyncio.sleep(0.35)      # ★鳴り終わる前に返る分
+        finally:
+            con.presence.talk = None
+    return {"ok": True, "lines": len(lines),
+            "chars": sum(len(l.text) for l in lines)}

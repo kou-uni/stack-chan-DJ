@@ -84,7 +84,7 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
     # ── 外から操作するパネル（ROADMAP Phase 2）─────────────
     #   ★同じ console の中に置く。別プロセスにすると書き手が2人になる（I2 違反）
     from panel import (AskDesk, CameraFeed, apply_action, check_token,
-                       load_token, panel_state)
+                       load_token, panel_state, perform, split_speech)
     ask_desk = AskDesk()
     token = load_token()
 
@@ -176,6 +176,32 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
                 {"error": f"答えられません（{type(exc).__name__}）"}, status=502)
         return web.json_response({**r, "state": panel_state(con)})
 
+    async def api_speak(req):
+        """書いた台本を、そのまま読ませる。**一方通行でよい長話用。**
+
+        `[happy]` で表情、`[pause=1.5]` で間、改行で区切り。
+        """
+        if not guard(req):
+            return web.json_response({"error": "鍵がちがいます"}, status=403)
+        try:
+            body = await req.json()
+        except Exception:
+            return web.json_response({"error": "読めない指示"}, status=400)
+        script = str(body.get("script", ""))
+        if not script.strip():
+            return web.json_response({"error": "台本が空"}, status=400)
+        if body.get("dry"):
+            # ★焼く前に読み合わせできるように。**実機を鳴らさず割り方だけ見る**
+            return web.json_response({"ok": True, "lines": [
+                {"text": l.text, "face": l.face, "pause": l.pause_before}
+                for l in split_speech(script)]})
+        try:
+            r = await perform(con, script)
+        except Exception as exc:
+            return web.json_response(
+                {"error": f"読ませられません（{type(exc).__name__}）"}, status=502)
+        return web.json_response({**r, "state": panel_state(con)})
+
     async def api_history(req):
         if not guard(req):
             return web.json_response({"error": "鍵がちがいます"}, status=403)
@@ -199,6 +225,7 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
                     web.get("/api/photo", api_photo),
                     web.get("/api/camws", api_camws),
                     web.post("/api/ask", api_ask),
+                    web.post("/api/speak", api_speak),
                     web.get("/api/history", api_history)])
     runner = web.AppRunner(app, access_log=None)
     await runner.setup()
