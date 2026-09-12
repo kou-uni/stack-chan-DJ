@@ -107,25 +107,28 @@ function beams(t, p, energy, heat){
     const power = b.on*b.on * (0.55 + energy);
     if (power < 0.012) continue;
     const hue = (p.h + b.hue*200 + t*90) % 360;
-    const spread = 0.055 + 0.03*Math.sin(t*2.2 + b.base);
-    const far = innerHeight*1.7;
+    // ★細い筋にする。太いと画面全体が白く飛ぶ（2026-09-12 本人の指摘）
+    const spread = 0.030 + 0.016*Math.sin(t*2.2 + b.base);
+    const far = innerHeight*1.45;
     g.save();
     g.translate(cx, ty + L*0.55);          // ★レンズの位置から出す
     g.rotate(a);
     const grd = g.createLinearGradient(0, 0, 0, far);
-    grd.addColorStop(0,    'hsla('+hue+',100%,88%,'+(0.95*power)+')');
-    grd.addColorStop(0.22, 'hsla('+hue+',100%,68%,'+(0.40*power)+')');
+    // ★根元だけ明るく、すぐ落とす。**長く引くと霧になって全部が白む**
+    grd.addColorStop(0,    'hsla('+hue+',100%,84%,'+(0.78*power)+')');
+    grd.addColorStop(0.14, 'hsla('+hue+',100%,66%,'+(0.30*power)+')');
+    grd.addColorStop(0.45, 'hsla('+hue+',100%,58%,'+(0.10*power)+')');
     grd.addColorStop(1,    'hsla('+hue+',100%,52%,0)');
     g.fillStyle = grd;
     g.beginPath(); g.moveTo(0,0);
     g.lineTo(-far*spread, far); g.lineTo(far*spread, far);
     g.closePath(); g.fill();
     // レンズの輝き
-    const gl = g.createRadialGradient(0,0,0, 0,0, L*1.5*(0.5+power));
-    gl.addColorStop(0, 'hsla('+hue+',100%,95%,'+(0.95*power)+')');
+    const gl = g.createRadialGradient(0,0,0, 0,0, L*1.2*(0.45+power));
+    gl.addColorStop(0, 'hsla('+hue+',100%,95%,'+(0.85*power)+')');
     gl.addColorStop(1, 'hsla('+hue+',100%,60%,0)');
     g.fillStyle = gl;
-    g.beginPath(); g.arc(0,0, L*1.5*(0.5+power), 0, 6.2832); g.fill();
+    g.beginPath(); g.arc(0,0, L*1.2*(0.45+power), 0, 6.2832); g.fill();
     g.restore();
   }
   g.globalCompositeOperation = 'source-over';
@@ -159,10 +162,12 @@ function beams(t, p, energy, heat){
 function fireBeams(n){
   // ★拍ごとに違う組が点く。**毎回同じだと機械に見える**
   bar = (bar + 1) % 4;
-  const heavy = (n % 4 === 0);
+  // ★全部を同時に点けない。**面になった瞬間、光ではなく霧になる**
+  const heavy = (n % 4 === 0);                      // 4拍に1回は全灯
   for (const b of BEAMS){
-    if (heavy) { b.on = 1; continue; }              // 1拍目は全部
-    if (b.phase === bar || Math.random() < 0.35) b.on = Math.max(b.on, 0.85);
+    if (heavy) { b.on = 1; continue; }
+    if (b.phase === bar) b.on = Math.max(b.on, 0.9);
+    else if (Math.random() < 0.25) b.on = Math.max(b.on, 0.7);
   }
 }
 
@@ -192,7 +197,7 @@ function draw(now){
 
   // 背景。★静かなときは色を回さない。回ると落ち着かない
   g.fillStyle = 'hsl('+((p.h + t*26*heat) % 360)+','
-              + (40 + 45*heat)+'%,'+(2 + energy*5)+'%)';
+              + (40 + 45*heat)+'%,'+(2 + energy*3.2)+'%)';
   g.fillRect(0,0,innerWidth,innerHeight);
   // ★静かなときはライトを出さない。**コードがゆっくり流れているだけでちょうどいい**
   //   （2026-09-12 本人の指摘）。動き出したら吊り込まれる
@@ -216,13 +221,17 @@ function draw(now){
       const hue = (p.h + c.hue*(40+130*heat) + (p.h2-p.h)*(d/TAIL) + t*(6+52*heat)) % 360;
       if (d < 0.9){
         g.shadowColor = 'hsl('+hue+',100%,72%)';
-        g.shadowBlur = 8 + 24*heat + 34*energy;
-        g.fillStyle = p.core;
+        g.shadowBlur = 6 + 24*heat + 34*energy;
+        // ★静止時は先頭も白く飛ばさない
+        g.fillStyle = heat > 0.35 ? p.core
+                    : 'hsla('+hue+',60%,'+(52 + 30*heat)+'%,0.85)';
       } else {
-        const a = Math.max(0, 1 - d/TAIL) * (0.30 + 0.36*heat + energy*0.5);
+        // ★止まっている間は暗く沈める（2026-09-12 本人の指摘）
+        const a = Math.max(0, 1 - d/TAIL) * (0.17 + 0.48*heat + energy*0.45);
         g.shadowColor = 'hsl('+hue+',100%,62%)';
-        g.shadowBlur = 12 + 22*energy;
-        g.fillStyle = 'hsla('+hue+',100%,'+(58 + 20*(1-d/TAIL))+'%,'+a+')';
+        g.shadowBlur = 4 + 10*heat + 20*energy;
+        g.fillStyle = 'hsla('+hue+','+(55 + 45*heat)+'%,'
+                    + (34 + 26*heat + 18*(1-d/TAIL))+'%,'+a+')';
       }
       g.fillText(txt, c.x, r*LH);
       if (Math.random() < 0.0012 + 0.005*heat + pulse*0.06*heat){
@@ -234,7 +243,7 @@ function draw(now){
   g.globalCompositeOperation = 'source-over';
 
   if (flash > 0.01){
-    g.fillStyle = 'rgba(255,255,255,'+(flash*0.45)+')';
+    g.fillStyle = 'rgba(255,255,255,'+(flash*0.30)+')';
     g.fillRect(0,0,innerWidth,innerHeight);
   }
   requestAnimationFrame(draw);
