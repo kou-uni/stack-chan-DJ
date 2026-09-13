@@ -847,7 +847,7 @@ function drawInner(now){
         const txt = c.rows[r];
         if (!txt) continue;
         const hue = (p.h + c.hue*(30+140*heat) + (p.h2-p.h)*(d/TAIL) + t*(2+56*heat)) % 360;
-        const a = Math.max(0, 1 - d/TAIL) * (0.045 + 1.05*heat + energy*0.45)
+        const a = Math.max(0, 1 - d/TAIL) * (0.085 + 1.05*heat + energy*0.45)
                 * (1 - hold*0.25) * (1 + release*0.9);
         if (d < 0.9){
           o.shadowColor = 'hsl('+hue+',100%,72%)';
