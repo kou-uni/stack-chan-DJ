@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">aaa6734 12:08:27</div>
+<div id="v">962c86b 12:10:46</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -734,7 +734,7 @@ function draw(now){
     if (el){ el.style.color = '#7fe3ff'; el.textContent =
       Math.round(fps.n*1000/(now-fps.at)) + ' fps  mode=' + (S.mode||'?')
       + '  heat=' + heat.toFixed(2) + '  ws=' + (wsOpen ? 'ON' : 'OFF')
-      + '  beat=' + localN; }
+      + '  beat=' + localN + '\n962c86b 12:10:46'; }
     fps.n = 0; fps.at = now;
   }
   try { drawInner(now); }
