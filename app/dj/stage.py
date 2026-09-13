@@ -65,8 +65,11 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
     """背景と操作パネルを配る。**実機が無くても落ちない。**"""
     from aiohttp import web, WSMsgType
 
+    # ★毎回新しく読ませる。**iPad が古い版を握って「動かない」になる**
+    NOCACHE = {"Cache-Control": "no-store, must-revalidate", "Pragma": "no-cache"}
+
     async def index(_req):
-        return web.FileResponse(HERE / "stage.html")
+        return web.FileResponse(HERE / "stage.html", headers=NOCACHE)
 
     async def ws(req):
         sock = web.WebSocketResponse(heartbeat=20)
@@ -111,12 +114,12 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
     async def guide(_req):
         """なでかたの案内。★鍵なしで開ける。**操作ではないので誰が見てもよい**
         （会場でQRから開いてもらう）。"""
-        return web.FileResponse(HERE / "guide.html")
+        return web.FileResponse(HERE / "guide.html", headers=NOCACHE)
 
     async def panel(req):
         # ★鍵が違っても画面は返す。中で「鍵がちがいます」と出る方が、
         #   真っ白より原因が分かる（api 側は必ず弾く）
-        return web.FileResponse(HERE / "panel.html")
+        return web.FileResponse(HERE / "panel.html", headers=NOCACHE)
 
     async def api_state(req):
         if not guard(req):
