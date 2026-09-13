@@ -14,6 +14,20 @@ canvas{display:block;width:100vw;height:100vh}
 <div id="s">connecting…</div>
 <div id="v">29f39bf 11:45</div>
 <script>
+// ★画面が真っ黒になったとき、**原因を画面に出す。**
+//   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
+(function(){
+  const show = (m) => {
+    const el = document.getElementById('s');
+    if (el){ el.style.opacity = 1; el.style.color = '#ff6b8a';
+             el.style.maxWidth = '92vw'; el.style.whiteSpace = 'pre-wrap';
+             el.textContent = m; }
+  };
+  window.__err = show;
+  window.onerror = (msg, src, line, col) => { show('落ちました: ' + msg + ' @' + line + ':' + col); };
+  window.addEventListener('unhandledrejection', e => show('落ちました: ' + e.reason));
+})();
+
 // ── スタックチャンが聴いた音が、この画面を動かす ──────────────
 // ★流れているのは、**この子を動かしている本物のソース**（2026-09-12 本人の要望）。
 //   飾りの 0/1 ではなく、いま実機で走っているコードが光る。
@@ -697,7 +711,16 @@ let heat = 0;
 //   溜め  → 光を数本に絞り、手の向きへ一斉に向ける。コードは止まる。暗く沈む
 //   解放  → 全灯・白フラッシュ・コードが走り出す
 let hold = 0, prevHand = 0, release = 0;
+let drawFails = 0;
 function draw(now){
+  try { drawInner(now); }
+  catch (e){
+    if (++drawFails < 3) window.__err('描画で落ちました: ' + (e && e.message));
+  }
+  requestAnimationFrame(draw);
+}
+
+function drawInner(now){
   const dt = Math.min(0.05, (now-prev)/1000); prev = now; t += dt;
   if (S.n !== lastN){ lastN = S.n; pulse = 1; fireBeams(S.n); }
   if (S.drop) flash = 1;
@@ -1016,7 +1039,6 @@ function draw(now){
     g.fillStyle = 'rgba(255,255,255,'+(flash*0.16)+')';
     g.fillRect(0,0,innerWidth,innerHeight);
   }
-  requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
 
