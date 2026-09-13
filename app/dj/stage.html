@@ -314,7 +314,7 @@ function beams(t, p, energy, heat){
     const a = b.ang;
     const hue = b.hueDeg;                       // ★灯体ごとに固定。churn させない
     const half = M()*0.115;                     // 出口の半径 11.5cm
-    const spread = 0.085;                       // 開き角（固定）★太く
+    const spread = 0.125;                       // ★円錐。細い筋ではない（参考写真）★太く
     const far = innerHeight*1.5;
 
     const LP = lensPos(innerWidth*b.cx, a);
@@ -477,6 +477,24 @@ function rig(heat){
     }
   }
   g.lineCap = 'butt';
+
+  // ── ★光っている灯体は、**自分の光に負けて輪郭が消える**（参考写真）。
+  //   暗い会場では筐体は見えず、光る円だけが残る
+  g.globalCompositeOperation = 'lighter';
+  for (const b of BEAMS){
+    const pw = b.pw || 0;
+    if (pw < 0.05) continue;
+    const LPb = lensPos(innerWidth*b.cx, b.ang);
+    const r = rigLen()*0.85*(0.6 + pw);
+    const wo = g.createRadialGradient(LPb.x, LPb.y - rigLen()*0.15, 0,
+                                      LPb.x, LPb.y - rigLen()*0.15, r);
+    wo.addColorStop(0,   'hsla('+b.hueDeg+',70%,80%,'+(0.30*pw)+')');
+    wo.addColorStop(0.5, 'hsla('+b.hueDeg+',85%,62%,'+(0.10*pw)+')');
+    wo.addColorStop(1,   'hsla('+b.hueDeg+',90%,55%,0)');
+    g.fillStyle = wo;
+    g.beginPath(); g.arc(LPb.x, LPb.y - rigLen()*0.15, r, 0, 6.2832); g.fill();
+  }
+  g.globalCompositeOperation = 'source-over';
 
   // ── ★レンズの発光。**筐体を描いたあとに乗せる。**
   //   先に描いていたので、黒い筐体に塗り潰されて「光源が黒いまま」だった
@@ -1018,11 +1036,11 @@ function draw(now){
       const ly2 = lensY();
       const hx = lensPos(innerWidth*b.cx, b.ang).x
                + Math.tan(b.ang) * (innerHeight - ly2) * 0.55;
-      const rx = M()*0.55*(1 + 1.6*pw2), ry = rx*0.20;
+      const rx = M()*0.85*(1 + 1.8*pw2), ry = rx*0.26;
       const gp = g.createRadialGradient(hx, innerHeight*0.93, 0,
                                         hx, innerHeight*0.93, rx);
-      gp.addColorStop(0,   'hsla('+b.hueDeg+',95%,72%,'+(0.32*pw2)+')');
-      gp.addColorStop(0.5, 'hsla('+b.hueDeg+',95%,58%,'+(0.10*pw2)+')');
+      gp.addColorStop(0,   'hsla('+b.hueDeg+',90%,80%,'+(0.55*pw2)+')');
+      gp.addColorStop(0.5, 'hsla('+b.hueDeg+',95%,62%,'+(0.18*pw2)+')');
       gp.addColorStop(1,   'hsla('+b.hueDeg+',95%,50%,0)');
       g.fillStyle = gp;
       g.save(); g.translate(hx, innerHeight*0.93); g.scale(1, ry/rx);
