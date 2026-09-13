@@ -198,6 +198,14 @@ ok('中央下の落とし込みを画面全体に塗る',
    /画面全体に塗る/.test(src) && !/fillRect\(0, innerHeight\*0\.35/.test(src));
 // 床の映り込みは 2026-09-13 に削除（重く、境目に帯が出た）
 
+// ★save と restore の数が合わないと、**毎フレーム状態が積み上がって描画が壊れる**
+//   （2026-09-13：光らない原因がこれだった）
+{
+  const s = (src.match(/g\.save\(\)/g)||[]).length;
+  const r = (src.match(/g\.restore\(\)/g)||[]).length;
+  ok('save と restore の数が合う', s === r, 'save=' + s + ' restore=' + r);
+}
+
 // ── 構造材の統一（2026-09-13 本人の指摘）────────────
 // ★横も縦も**同じ素材・同じ粒度・同じ太さ**で描く。別々に描くと柱だけ浮く
 ok('トラスは1つの関数で描く', /function trussRun\(/.test(src));

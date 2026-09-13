@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">042e8db 12:13:00</div>
+<div id="v">909393f 12:15:12</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -474,6 +474,7 @@ function rig(heat){
     for (const s2 of [-1, 1]){
       g.beginPath(); g.arc(s2*AX, PY, L*0.024, 0, 6.2832); g.fill();   // シャフト端
     }
+    g.restore();   // ★灯体ごとの save を戻す。**抜けていて毎フレーム積み上がっていた**
   }
   // ★ブラインダーをやめた（2026-09-13：足しすぎて壊れたので引いた）
 
