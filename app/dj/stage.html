@@ -466,9 +466,9 @@ function rig(heat){
     const LP = lensPos(innerWidth*b.cx, b.ang);
     const cx = LP.x, ly = LP.y, hue = b.hueDeg, half = M()*0.115;
     // ★大きな白玉にしない。**芯は小さく、周りは色**（2026-09-13 本人の指摘）
-    for (const [r, a2, s2, l2] of [[2.6, 0.075, 92, 52],
-                                   [1.2, 0.24,  84, 66],
-                                   [0.42,0.62,  55, 88]]){
+    for (const [r, a2, s2, l2] of [[1.9, 0.06, 92, 50],
+                                   [0.85,0.20, 86, 64],
+                                   [0.30,0.85, 45, 94]]){
       const gl = g.createRadialGradient(cx, ly, 0, cx, ly, half*r);
       gl.addColorStop(0,   'hsla('+hue+','+s2+'%,'+l2+'%,'+(a2*pw)+')');
       gl.addColorStop(0.5, 'hsla('+hue+','+(s2+8)+'%,'+(l2-16)+'%,'+(a2*0.28*pw)+')');
@@ -489,12 +489,13 @@ function rig(heat){
     const hue = b.hueDeg, cx = LP2.x, ly = LP2.y;
 
     // ① 灯体まわりの散り。**レンズの近くがいちばん明るい**
-    const sp = g.createRadialGradient(cx, ly, 0, cx, ly, L*1.1);
-    sp.addColorStop(0,   'hsla('+hue+',85%,74%,'+(0.52*pw)+')');
+    // ★大きな塊にしない。**いちばん明るい点は筒の先**（2026-09-13 本人の指摘）
+    const sp = g.createRadialGradient(cx, ly, 0, cx, ly, L*0.42);
+    sp.addColorStop(0,   'hsla('+hue+',85%,74%,'+(0.30*pw)+')');
     sp.addColorStop(0.4, 'hsla('+hue+',90%,60%,'+(0.18*pw)+')');
     sp.addColorStop(1,   'hsla('+hue+',90%,50%,0)');
     g.fillStyle = sp;
-    g.beginPath(); g.arc(cx, ly, L*1.1, 0, 6.2832); g.fill();
+    g.beginPath(); g.arc(cx, ly, L*0.42, 0, 6.2832); g.fill();
 
     // ② トラスに当たる。★**手前にあるので強く出る**（2026-09-13 本人の指摘）
     const h = trussH(), pipe = M()*0.05, top = ty - h/2, bot = ty + h/2;
