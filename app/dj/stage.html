@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">b4e942c 13:24:01</div>
+<div id="v">8cb41f6 13:31:55</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -393,6 +393,51 @@ function beams(t, p, energy, heat, dt){
   }
   g.globalCompositeOperation = 'source-over';
 
+}
+
+// ── 柱に這わせたテープライト ──────────────────────────
+// ★**実機のテープに流しているのと同じ配列**（S.leds）をそのまま映す。
+//   画面側でパターンを再実装しない。実装が2つあると、必ずどちらかがずれる
+//   （2026-09-13 本人の要望：目の前の物理LEDと背景のスタジオLEDを連動させて
+//    リアル感と奥行きを出す）。
+//
+// 並べ方：左の柱を**下から上へ** 0..h-1、右の柱を**上から下へ** h..n-1。
+//   こうすると chase / sweep が「左を昇って、右を降りる」1本の流れに見える。
+//
+// 描き方：粒ごとに四角を描かない。**1本のグラデーションに色を全部載せる**
+//   （COBテープは連続発光。粒で描くと安っぽいうえ、描画命令も食う）
+function tape(y0, y1, kc, gx){
+  const c = gx || g;              // ★検算では偽の canvas を渡す
+  const L = S.leds;
+  if (!L || L.length < 2) return;
+  const n = L.length, h = Math.ceil(n/2);
+  const w = Math.max(1.5, M()*0.045*kc);      // テープの幅
+  const GAIN = 2.7;                            // 実機は max_brightness で絞ってある
+  const side = [
+    {x: innerWidth*JOINT_L, idx: (u)=> u*(h-1)},                 // 下→上
+    {x: innerWidth*JOINT_R, idx: (u)=> (n-1) - u*(n-1-h)},       // 上→下
+  ];
+  for (const s of side){
+    const gd = c.createLinearGradient(0, y1, 0, y0);   // u=0 が下
+    for (let i=0;i<n;i++){
+      const u = i/(n-1);
+      const c = L[Math.round(s.idx(u))] || [0,0,0];
+      gd.addColorStop(u, 'rgb('+Math.min(255,c[0]*GAIN|0)+','
+                              + Math.min(255,c[1]*GAIN|0)+','
+                              + Math.min(255,c[2]*GAIN|0)+')');
+    }
+    // 芯
+    c.globalCompositeOperation = 'lighter';
+    c.fillStyle = gd;
+    c.fillRect(s.x - w/2, y0, w, y1-y0);
+    // にじみ。★同じグラデーションを広く薄く重ねるだけで、粒が溶ける
+    c.globalAlpha = 0.30;
+    c.fillRect(s.x - w*3.2, y0, w*6.4, y1-y0);
+    c.globalAlpha = 0.13;
+    c.fillRect(s.x - w*9.0, y0, w*18.0, y1-y0);
+    c.globalAlpha = 1;
+    c.globalCompositeOperation = 'source-over';
+  }
 }
 
 function rrect(x, y, w, h, r){
@@ -1017,7 +1062,7 @@ function drawInner(now){
   //   奥にあるので縮尺は壁に合わせる
   const kc = CENTER_K, ch = innerHeight*kc, cy = hy - hy*kc;
   {
-    for (const x0 of [0.172, 0.828]){
+    for (const x0 of [JOINT_L, JOINT_R]){
       const x = innerWidth*x0;
       const hh = M()*0.30*kc*0.85;
       trussRun(x, cy + hh*0.6, x, cy + ch, kc*0.85, 0.85);   // 角の分だけ下から
@@ -1026,6 +1071,7 @@ function drawInner(now){
                     g.rect(x - M()*0.16*kc, cy, M()*0.32*kc, ch); },
             x, cy, cy + ch, 1.25);
     }
+    tape(cy, cy + ch, kc);
   }
 
   // ★ウォール上端の横トラスと袖のトラスをやめた（2026-09-13：足しすぎて壊れたので引いた）
@@ -1250,6 +1296,7 @@ window.__debug = {
   litColor: () => litColor(pal()),
   lensPos, pivotY, lensY, stepHeads, rigLen, trussY, trussH,
   litFloor, floorPanels: () => floorLit, FLOOR_COLS, FLOOR_ROWS,
+  tape, JOINT_L, JOINT_R, setLeds: (v)=>{ S.leds = v; },
   blinderX: () => { const a=[]; for(let i=0;i<BEAMS.length-1;i++)
       a.push((BEAMS[i].cx+BEAMS[i+1].cx)/2);
     a.push(BEAMS[0].cx-0.14, BEAMS[BEAMS.length-1].cx+0.14);

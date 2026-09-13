@@ -40,6 +40,10 @@ def stage_state(led, presence, now: float | None = None, jog=None) -> dict:
 
     - `beat` は秒ではなく**拍の中の位置 0..1**。画面はこれで光る
     - `series` は LED と**同じ関数**から採る（テープと画面で色が食い違わない）
+    - `leds` は**実機のテープに流しているのと同じ配列**。背景の柱のテープが
+      これをそのまま映すので、目の前の物理LEDと画面が同じ光り方になる
+      （2026-09-13 本人の要望）。**画面側でパターンを再実装しない。**
+      LED ストリームと同じ 20Hz で送っているので、実機と画面は同じ粒度で動く
     """
     n, _ph = led._phase()
     # ★使っていない項目は載せない。**毎拍送るので、増やすとネットワークが先に詰まる**
@@ -58,6 +62,8 @@ def stage_state(led, presence, now: float | None = None, jog=None) -> dict:
         # ★演者の手（右レコード）。触っていなければ 0 に戻る
         "jog": float(jog.value()) if jog is not None else 0.0,
         "jogw": float(jog.weight()) if jog is not None else 0.0,
+        # ★実機のテープと同じ色。12個 × 3値で 200 バイト弱。20Hz でも詰まらない
+        "leds": led.colors(),
     }
 
 

@@ -273,5 +273,40 @@ ok('柱を四角塗りで描いていない',
      D.BEAMS.length % 2 === 1 || ms.every(m => Math.abs(m) > 1e-6));
 }
 
+// ★柱のテープライト（2026-09-13）。**実機の配列をそのまま映しているか**
+{
+  const seen = [];
+  const gd = { addColorStop(u, c){ seen.push([u, c]); } };
+  const rects = [];
+  const gt = new Proxy({}, {get(_,k){
+    const s = String(k);
+    if (s === 'createLinearGradient') return () => gd;
+    if (s === 'fillRect') return (x,y,w,h) => rects.push({x,y,w,h});
+    return () => {};
+  }, set(){ return true; }});
+  // ① 実機の色が来ていないときは描かない（勝手に光らせない）
+  D.setLeds(null);
+  seen.length = 0; rects.length = 0;
+  D.tape(100, 500, 0.78, gt);
+  ok('LEDが来ていなければテープは描かない', rects.length === 0, rects.length + '枚');
+
+  // ② 来ていれば、その色がそのまま乗る
+  const leds = Array.from({length:12}, (_,i)=> [i*20, 255-i*20, 40]);
+  D.setLeds(leds);
+  seen.length = 0; rects.length = 0;
+  D.tape(100, 500, 0.78, gt);
+  ok('テープは柱2本ぶん描く', rects.length >= 2, rects.length + '枚');
+  ok('LEDの数だけ色を置く', seen.length === leds.length*2, seen.length + '色');
+  // 下（u=0）は 0番、上（u=1）は 5番（左の柱は下から上へ 0..5）
+  const first = seen[0], last = seen[leds.length-1];
+  ok('左の柱は下が0番', first[0] === 0 && first[1].startsWith('rgb(0,'), first[1]);
+  ok('左の柱は上がテープの中ほど', last[0] === 1, last[0]);
+  // 右の柱は上（u=1 側）が末尾に向かう＝左右で1本の流れになる
+  const rFirst = seen[leds.length], rLast = seen[seen.length-1];
+  ok('右の柱は下が末尾の11番', rFirst[0] === 0 && rFirst[1] === 'rgb(255,94,108)', rFirst[1]);
+  ok('右の柱も上がテープの中ほど', rLast[0] === 1);
+  D.setLeds(null);
+}
+
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
 process.exit(bad ? 1 : 0);
