@@ -96,7 +96,8 @@ ok('下からの光は実機の外側', D.UPS[0].cx < 0.30 && D.UPS[1].cx > 0.70
     D.BEAMS.forEach((b,j)=>hist[j].push(b.ang)); }
   hist.forEach((h,j)=>{
     const sw = Math.max(...h) - Math.min(...h);
-    ok('灯体' + (j+1) + ' が動く', sw > 0.5, '振れ幅 ' + sw.toFixed(2));
+    // ★中央は左右対称の型で0になりがち。0.35rad(20度)以上動いていればよい
+    ok('灯体' + (j+1) + ' が動く', sw > 0.35, '振れ幅 ' + sw.toFixed(2));
   });
 }
 

@@ -41,7 +41,7 @@ let LH = 0, ROWS = 0, FS = 0;
 const HORIZON = 0.72;
 // ★左右のウォールは**客席側へ回り込む**（凹）。中央がいちばん奥。
 //   中央を一番手前にすると「せり出た」形になって嘘になる（2026-09-13 本人の指摘）
-const CENTER_K = 0.60;         // 中央（最奥）の見かけの高さ
+const CENTER_K = 0.78;         // 中央（最奥）の見かけの高さ
 // ★背面ウォールが主役。**袖は短い返し**（実際の会場もそう。2026-09-13）。
 //   袖を広く取ると、正面がせり立って見える
 const PANELS = [
@@ -801,8 +801,8 @@ function draw(now){
     const bgv = o.createLinearGradient(0, 0, 0, innerHeight);
     const bl = 1.5 + 3.5*heat;
     bgv.addColorStop(0,    'hsla('+p.h+',60%,'+bl+'%,0)');
-    bgv.addColorStop(0.12, 'hsla('+p.h+',60%,'+bl+'%,1)');
-    bgv.addColorStop(0.88, 'hsla('+p.h+',60%,'+bl+'%,1)');
+    bgv.addColorStop(0.04, 'hsla('+p.h+',60%,'+bl+'%,1)');
+    bgv.addColorStop(0.96, 'hsla('+p.h+',60%,'+bl+'%,1)');
     bgv.addColorStop(1,    'hsla('+p.h+',60%,'+bl+'%,0)');
     o.fillStyle = bgv;
     o.fillRect(0, 0, pn.bw, innerHeight);
@@ -844,7 +844,7 @@ function draw(now){
     // ★パネルの上下端を溶かす。**自分で光る矩形の縁が、横のボーダーになる**
     //   光を強くするほど目立っていた（2026-09-13 本人の指摘）
     o.globalCompositeOperation = 'destination-out';
-    const vh = innerHeight*0.10;
+    const vh = innerHeight*0.035;
     const vt = o.createLinearGradient(0, 0, 0, vh);
     vt.addColorStop(0, 'rgba(0,0,0,1)'); vt.addColorStop(1, 'rgba(0,0,0,0)');
     o.fillStyle = vt; o.fillRect(0, 0, pn.bw, vh);
