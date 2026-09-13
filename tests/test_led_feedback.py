@@ -102,15 +102,37 @@ def test_つまみのバーは滑らかに追いつく():
     assert seen[-1] > seen[0], seen
 
 
-def test_バーの先には薄い尾が残る():
-    """★粒の間を埋めないと、飛び飛びに見える。"""
+def _bar(v):
     led = _led()
-    led._meter_now = 0.5
-    led.show_meter(0.5, now=0.0)
-    led.now = lambda: 0.2
-    cols = led.colors()
-    tail = [max(c) for c in cols]
-    assert 0 < tail[6] < tail[5], tail
+    led._meter_now = v                        # 追いつきを飛ばして目盛りだけ見る
+    led.show_meter(v, now=0.0)
+    led.now = lambda: 0.01
+    return [max(c) for c in led.colors()]
+
+
+def test_目盛りは0で全消灯_1で全点灯():
+    """★100%になる前に100%に見えてはいけない（2026-09-13 本人の指摘）。
+
+    以前は先の粒にも薄い尾を出していたので、**0%で1個光り、83%で全部光って**
+    見えていた。メーターは値を読む道具なので、目盛りの正しさが先。
+    """
+    assert all(v == 0 for v in _bar(0.0))
+    full = _bar(1.0)
+    assert all(v > 0 for v in full)
+    # 99% と 100% が見分けられること（＝手前で振り切れない）
+    assert _bar(0.99)[-1] < full[-1]
+
+
+def test_目盛りは値どおりの本数():
+    for v, n in ((0.25, 3), (0.5, 6), (0.75, 9)):
+        lit = sum(1 for x in _bar(v) if x > 0)
+        assert lit == n, (v, lit)
+
+
+def test_先端は明るさで半端を表す():
+    """★12個しかないので、間は先端の明るさで埋める。"""
+    b = _bar(0.5 + 1/24)                      # ちょうど半目盛りぶん上
+    assert 0 < b[6] < b[5], b
 
 
 def test_つまみを回しきると全部点く():
