@@ -127,3 +127,28 @@ def test_首の揺れは遅くて大きい():
         seen.append(abs(pose._with_burst(0.0, 0.0)[0]))
         _t.sleep(0.001)
     assert max(seen) >= 0.0     # 位相依存なので、式そのものは上で見る
+
+
+def test_OFFのときテープは消えている():
+    """★背景のテープは実機と同じでなければならない。
+
+    colors() は消灯中も模様を返すので、そのまま流すと
+    「実機は消えているのに画面のテープだけ光る」になる（2026-09-13）。
+    """
+    led = LedState(count=12, target="base_ring")
+    led.enabled = False
+    led.manual = False
+    led.talk = None
+    led.burst = 0.0
+    assert all(c == [0, 0, 0] for c in led.emitted())
+    pres = Presence()
+    s = stage_state(led, pres, now=0.0)
+    assert all(c == [0, 0, 0] for c in s["leds"])
+
+
+def test_踊っていればテープは光る():
+    led = LedState(count=12, target="base_ring")
+    led.enabled = True
+    led.bpm = 124
+    led.groove = 1.0
+    assert any(any(c) for c in led.emitted())

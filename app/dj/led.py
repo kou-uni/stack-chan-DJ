@@ -492,6 +492,21 @@ class LedState:
             self.hold_until = 0.0
         return self.pattern
 
+    def emitted(self):
+        """★実機のテープに**いま実際に出している色**。
+
+        `colors()` は「模様の計算結果」。消灯中でも色を返すので、
+        そのまま背景に流すと**実機は消えているのに画面のテープだけ光る**。
+        画面と実機を合わせるため、点いているかの判定はここ1箇所に置く
+        （2026-09-13：OFF なのに背景のテープが光っていた）。
+        """
+        self.current_pattern()          # ★期限切れならここで基本に戻る
+        # ★バーストは人が意図してゲージを上げている。**消えていても点ける**
+        from constants import burst_amount
+        lit = (self.enabled or self.manual or self.talk in self.TALK_COLOR
+               or burst_amount(self.burst) > 0)
+        return self.colors() if lit else [[0, 0, 0]] * self.count
+
     def frame(self) -> str:
         """★LEDストリームと poseストリームで、フレームの形が違う。
 
@@ -505,12 +520,7 @@ class LedState:
         # ★会話中は踊っていない（enabled=False）。それでも光らせる。
         #   ここを enabled だけで閉じていたので、緑も青も一度も出ない作りだった
         #   （テストを先に書いたので、実装前に分かった）
-        self.current_pattern()          # ★期限切れならここで基本に戻る
-        # ★バーストは人が意図してゲージを上げている。**消えていても点ける**
-        from constants import burst_amount
-        lit = (self.enabled or self.manual or self.talk in self.TALK_COLOR
-               or burst_amount(self.burst) > 0)
-        colors = self.colors() if lit else [[0, 0, 0]] * self.count
+        colors = self.emitted()
         return json.dumps({
             "source": "ddj-flx2",
             "kind": "continuous",

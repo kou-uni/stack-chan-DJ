@@ -62,8 +62,10 @@ def stage_state(led, presence, now: float | None = None, jog=None) -> dict:
         # ★演者の手（右レコード）。触っていなければ 0 に戻る
         "jog": float(jog.value()) if jog is not None else 0.0,
         "jogw": float(jog.weight()) if jog is not None else 0.0,
-        # ★実機のテープと同じ色。12個 × 3値で 200 バイト弱。20Hz でも詰まらない
-        "leds": led.colors(),
+        # ★実機のテープに**いま出している色**。colors() ではなく emitted()。
+        #   colors() は消灯中も模様を返すので、実機が消えているのに
+        #   背景のテープだけ光る（2026-09-13 本人の指摘：OFFなら照明も落とす）
+        "leds": led.emitted(),
         # ★右の音量ゲージ。0.70 から赤いバースト、1.00 で花火（2026-09-13）
         "burst": float(getattr(presence, "burst", 0.0) or 0.0),
     }

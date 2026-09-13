@@ -598,5 +598,31 @@ ok('柱を四角塗りで描いていない',
      /hud=1/.test(src) && /keydown/.test(src));
 }
 
+// ★OFF は照明が落ちている（2026-09-13 本人の指示）
+{
+  const send = (o) => sb0.__ws.onmessage({data: JSON.stringify(Object.assign(
+    {bpm:124,n:4,series:'blue',dancing:false,drop:false,talk:null,mode:'off',
+     jog:0,jogw:0}, o))});
+  // DJ で温める
+  send({mode:'dj', dancing:true});
+  for (let i=0;i<120;i++){ frameN++; rafFn(frameN*16.7); }
+  const hotDJ = D.heat();
+  // OFF に落とす
+  send({mode:'off', dancing:false});
+  for (let i=0;i<400;i++){ frameN++; rafFn(frameN*16.7); }
+  const hotOFF = D.heat();
+  ok('OFFにすると照明が落ちる', hotOFF < 0.10, 'heat ' + hotOFF.toFixed(3));
+  ok('OFFでもDJより十分暗い', hotOFF < hotDJ*0.3,
+     'DJ ' + hotDJ.toFixed(2) + ' → OFF ' + hotOFF.toFixed(3));
+  ok('OFFでは灯体が光っていない',
+     D.BEAMS.every(b => (b.pw||0) < 0.05), D.BEAMS.map(b=>(b.pw||0).toFixed(2)).join(' '));
+  ok('OFFでは床も光っていない', D.floorPanels().length === 0,
+     D.floorPanels().length + '枚');
+  // 真っ暗ではない（壊れて見えない）
+  ok('真っ暗にはしない（コードは流れている）', hotOFF > 0.02, hotOFF.toFixed(3));
+  send({mode:'dj', dancing:true});
+  for (let i=0;i<60;i++){ frameN++; rafFn(frameN*16.7); }
+}
+
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
 process.exit(bad ? 1 : 0);

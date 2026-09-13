@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">11ef1e6 15:49:39</div>
+<div id="v">803a5df 15:53:06</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -1235,8 +1235,13 @@ function drawInner(now){
   {
     const bpm = (S.bpm && S.bpm > 20) ? S.bpm : 120;
     beatAcc += dt * (bpm / 60);
-    while (beatAcc >= 1){ beatAcc -= 1; localN++; pulse = 1; fireBeams(localN);
-                          litFloor(pal().h); }
+    while (beatAcc >= 1){
+      beatAcc -= 1; localN++;
+      // ★OFF のときは灯体も床も光らせない。**照明が落ちている**
+      if (S.mode === 'dj' || S.dancing || S.talk){
+        pulse = 1; fireBeams(localN); litFloor(pal().h);
+      }
+    }
   }
   if (S.drop) flash = 1;
   // ★レコードを触っている＝演者が動かしている。**それも「動いている」**
@@ -1256,7 +1261,11 @@ function drawInner(now){
   // ★立ち上がりは速く、落ちるのはゆっくり。**盛り上がりは急に、余韻は残す**
   // ★モードは**強さ**を変えるだけ。止まって見える状態を作らない
   //   （2026-09-13：OFF が暗く遅すぎて「壊れている」と見えた）
-  const floor0 = 0.30;                       // 静かなときの下限
+  // ★OFF は**照明が落ちている状態**（2026-09-13 本人の指示）。
+  //   ただし真っ暗にはしない。コードがゆっくり流れていれば「壊れている」に見えない
+  //   （0.30 の下限は、以前 OFF が暗すぎて壊れて見えたときの対策。
+  //    いまは OFF と DJ を分けて、DJ の静かなときだけ 0.30 を残す）
+  const floor0 = playing ? 0.30 : 0.045;
   heat += ((live ? 1 : floor0) - heat) * dt * (live ? 6.5 : 1.6);
   heat = Math.max(heat, floor0);
   heat = Math.max(heat, hand*0.85);      // ★手の分は即座に効かせる
@@ -1670,7 +1679,7 @@ function drawInner(now){
   }
 
   // ── ⑤ トラスと灯体。**光を遮る**
-  if (heat > 0.06) rig(heat);
+  if (heat > 0.02) rig(heat);
 
   // ── ⑥ 花火。★**いちばん手前。** 実際に舞台前縁から吹き上がるので、
   //   トラスにも灯体にも隠されない（2026-09-13 本人の指示：100%で噴射）
@@ -1710,7 +1719,7 @@ window.__debug = {
   lensPos, pivotY, lensY, stepHeads, rigLen, trussY, trussH,
   litFloor, floorPanels: () => floorLit, FLOOR_COLS, FLOOR_ROWS,
   tape, tapeRuns, TOP_RUN_LIFT, trussCorner, JOINT_L, JOINT_R, M,
-  burstAmt, burstHue, fireworkAmt, BURST_ON, BURST_MAX, pal, BURST_PAL,
+  heat: () => heat, burstAmt, burstHue, fireworkAmt, BURST_ON, BURST_MAX, pal, BURST_PAL,
   sparks: () => SPARKS, gerbX, puffs: () => PUFFS, PUFF_MAX,
   beamHues: () => BEAMS.map(b=>b.hueDeg), fireBeams,
   setBurst: (v)=>{ S.burst = v; },
