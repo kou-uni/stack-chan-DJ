@@ -344,5 +344,38 @@ ok('柱を四角塗りで描いていない',
   ok('横トラスだけが上にある', T.y0 < L.y1, '差 ' + (L.y1 - T.y0).toFixed(1) + 'px');
 }
 
+// ★横トラスと柱の連結部（2026-09-13 本人の指摘：離れて見えていた）
+{
+  const rs = D.tapeRuns(100, 500);
+  const [Lr, Tr] = rs;
+  const d = D.M()*0.30*(D.CENTER_K*0.85);
+  // ① 角のブロックが、横トラスと柱の上端の**すきまを跨いでいる**
+  const top = Tr.y0 - d*0.62, bot = Lr.y1 + d*0.10;
+  ok('連結部のブロックが横トラスと柱の両方に掛かる',
+     top <= Tr.y0 - d*0.4 && bot >= Lr.y1, top.toFixed(1) + '〜' + bot.toFixed(1));
+  // ② テープは連結部の手前で終わる（光る端がブロックの中に入らない）
+  const rects = [];
+  let cur = null;
+  const gt = new Proxy({}, {get(_,k){
+    const s = String(k);
+    if (s === 'createLinearGradient') return () => ({addColorStop(){}});
+    if (s === 'translate') return (x,y)=>{ cur = {x,y,a:0}; };
+    if (s === 'rotate')    return (a2)=>{ if (cur) cur.a = a2; };
+    if (s === 'fillRect')  return (x,y,w,h)=> rects.push({...cur, w});
+    return () => {};
+  }, set(){ return true; }});
+  D.setLeds(Array.from({length:12},(_,i)=>[i*20,255-i*20,40]));
+  D.tape(100, 500, 0.78, gt);
+  D.setLeds(null);
+  const vert = rects.filter(r => Math.abs(r.a) > 0.1);
+  const yStart = Math.min(...vert.map(r => r.y));
+  ok('テープは連結部の手前で終わる', vert.every(r => r.w < 400 - 1),
+     '長さ ' + Math.max(...vert.map(r=>r.w)).toFixed(0));
+  // ③ 連結部の素地は暗い（光っていない）
+  const cols = [...D.trussCorner.toString().matchAll(/rgb\((\d+),(\d+),(\d+)\)/g)]
+    .map(m => Math.max(+m[1], +m[2], +m[3]));
+  ok('連結部の素地が暗い（最大60未満）', Math.max(...cols) < 60, '最大 ' + Math.max(...cols));
+}
+
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
 process.exit(bad ? 1 : 0);

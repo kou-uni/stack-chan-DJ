@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">e4cd01f 13:58:48</div>
+<div id="v">57debec 14:14:49</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -437,6 +437,7 @@ function tape(y0, y1, kc, gx){
   if (!L || L.length < 2) return;
   const n = L.length;
   const s  = kc*0.85;                             // ★柱の trussRun と同じ縮尺
+  const inset = M()*0.30*s*0.75;                  // ★連結部の手前で終わる
   const off = M()*0.30*s/2;                       // ★弦材の位置。同じ式から出す
   const w  = Math.max(1.2, M()*0.05*s) * 0.78;    // テープは弦材より少し細い
   const GAIN = 4.4;                               // 実機は max_brightness で絞ってある
@@ -456,7 +457,14 @@ function tape(y0, y1, kc, gx){
   };
 
   c.globalCompositeOperation = 'lighter';
-  for (const r of tapeRuns(y0, y1)){
+  for (const r0 of tapeRuns(y0, y1)){
+    // ★端を連結部の手前で切る。**コーナーブロックの下は光らない**
+    //   （2026-09-13 本人の指摘：連結部が光って、離れて見えていた）
+    const full = Math.hypot(r0.x1-r0.x0, r0.y1-r0.y0);
+    const ux = (r0.x1-r0.x0)/full, uy = (r0.y1-r0.y0)/full;
+    const cut = Math.min(inset, full*0.30);
+    const r = {x0: r0.x0 + ux*cut, y0: r0.y0 + uy*cut,
+               x1: r0.x1 - ux*cut, y1: r0.y1 - uy*cut};
     const len = Math.hypot(r.x1-r.x0, r.y1-r.y0);
     if (len < 2) continue;
     const body = mk(len, 0), hot = mk(len, 0.55);
@@ -478,6 +486,34 @@ function tape(y0, y1, kc, gx){
   }
   c.globalAlpha = 1;
   c.globalCompositeOperation = 'source-over';
+}
+
+// ── 横トラスと柱の連結部（コーナーブロック）───────────
+// ★実物のトラスは、直交する部材を**角のブロック（コーナーキューブ）**で繋ぐ。
+//   ここは板とボルトの塊なので**光らない。** 逆にここが光っていると、
+//   横材と柱が宙で離れて見える（2026-09-13 本人の指摘）。
+//   **不透明で暗く置いて、繋がっていることを見せる**
+function trussCorner(x, yTop, yBot, s){
+  const d = M()*0.30*s;
+  const w = d*1.06;
+  const y0 = yTop - d*0.62, y1 = yBot + d*0.10;
+  // 影。**ブロックの裏の光を殺す**
+  g.fillStyle = 'rgb(2,3,4)';
+  rrect(x - w/2 - 1, y0 - 1, w + 2, (y1-y0) + 2, d*0.14); g.fill();
+  // 板。断面の陰影だけ付ける（素地は暗いまま）
+  const gr = g.createLinearGradient(x - w/2, 0, x + w/2, 0);
+  gr.addColorStop(0,    'rgb(26,30,38)');
+  gr.addColorStop(0.32, 'rgb(12,14,19)');
+  gr.addColorStop(1,    'rgb(4,5,7)');
+  g.fillStyle = gr;
+  rrect(x - w/2, y0, w, y1-y0, d*0.12); g.fill();
+  // ボルト。★4隅に小さく。**大きく描くと玩具に見える**
+  g.fillStyle = 'rgb(38,44,54)';
+  const br = Math.max(0.8, d*0.055);
+  for (const px of [-w*0.33, w*0.33])
+    for (const py of [y0 + d*0.22, y1 - d*0.22]){
+      g.beginPath(); g.arc(x + px, py, br, 0, 6.2832); g.fill();
+    }
 }
 
 function rrect(x, y, w, h, r){
@@ -1121,6 +1157,13 @@ function drawInner(now){
             innerWidth*(JOINT_L+JOINT_R)/2, yT - hh, yT + hh, 1.25);
     }
     tape(cy, cy + ch, kc);
+    // ★テープの**あと**に置く。連結部は光を遮る側
+    {
+      const hh = M()*0.30*kc*0.85;
+      for (const x0 of [JOINT_L, JOINT_R])
+        trussCorner(innerWidth*x0, cy + hh*0.6 - hh*TOP_RUN_LIFT,
+                    cy + hh*0.6, kc*0.85);
+    }
   }
 
   // ★ウォール上端の横トラスと袖のトラスをやめた（2026-09-13：足しすぎて壊れたので引いた）
@@ -1345,7 +1388,7 @@ window.__debug = {
   litColor: () => litColor(pal()),
   lensPos, pivotY, lensY, stepHeads, rigLen, trussY, trussH,
   litFloor, floorPanels: () => floorLit, FLOOR_COLS, FLOOR_ROWS,
-  tape, tapeRuns, TOP_RUN_LIFT, JOINT_L, JOINT_R, M,
+  tape, tapeRuns, TOP_RUN_LIFT, trussCorner, JOINT_L, JOINT_R, M,
   setLeds: (v)=>{ S.leds = v; },
   blinderX: () => { const a=[]; for(let i=0;i<BEAMS.length-1;i++)
       a.push((BEAMS[i].cx+BEAMS[i+1].cx)/2);
