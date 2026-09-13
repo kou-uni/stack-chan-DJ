@@ -746,5 +746,45 @@ ok('柱を四角塗りで描いていない',
   D.setLeds(null);
 }
 
+// ★グリルの溝のLEDテープ（2026-09-13 本人の案）
+{
+  const rects = [], stops = [];
+  const gt3 = new Proxy({}, {get(_,k){
+    const s = String(k);
+    if (s === 'createLinearGradient') return () => ({addColorStop(u,c){ stops.push(c); }});
+    if (s === 'fillRect') return (x,y,w,h) => rects.push({x,y,w,h,c: cur});
+    return () => {};
+  }, set(_,k,v){ if (k === 'fillStyle') cur = v; return true; }});
+  let cur = null;
+  const M0 = D.M();
+  const run = (leds, dir) => { rects.length = 0; stops.length = 0;
+    D.setLeds(leds); D.grilleTape(200, M0*0.60, 300, M0*2.05*0.62, dir, gt3); };
+
+  run(null, 1);
+  ok('LEDが消えていれば溝も光らない', rects.length === 0, rects.length + '本');
+  run(Array.from({length:12}, () => [0,0,0]), 1);
+  ok('全部黒なら溝も光らない', rects.length === 0, rects.length + '本');
+
+  // ★実機の値の範囲で試す（max_brightness 0.35 なので 0..89）。
+  //   255 で試すと、画面側の持ち上げで全部飽和して「色が同じ」に見える
+  const leds = Array.from({length:12}, (_,i) => [i*7, 89-i*7, 20]);
+  run(leds, 1);
+  ok('溝にテープが並ぶ', rects.length >= 9, rects.length + '本');
+  // rects[0] は箱全体のぼんやり。テープはその後ろ
+  ok('溝は横向き（幅が高さより大きい）',
+     rects.slice(1).every(r => r.w > r.h*4));
+  const cols = new Set(rects.slice(1).map(r => r.c));
+  ok('溝ごとに色が違う', cols.size >= 6, cols.size + '色');
+  ok('箱全体にも色が乗る', stops.length === leds.length, stops.length + '段');
+  // 左右で鏡合わせ
+  const left = rects.slice(1).map(r => r.c);
+  run(leds, -1);
+  const right = rects.slice(1).map(r => r.c);
+  ok('左右のスピーカーは鏡合わせ',
+     left.length === right.length &&
+     left.every((c,i) => c === right[right.length-1-i]));
+  D.setLeds(null);
+}
+
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
 process.exit(bad ? 1 : 0);

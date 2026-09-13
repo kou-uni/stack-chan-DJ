@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">d769f38 19:51:09</div>
+<div id="v">4ba86da 20:04:19</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -699,7 +699,7 @@ function drawSparks(){
 const PUFFS = [];
 // ★一発の大きい塊ではなく、**細かいのが重なって「シュワわわわ」**（2026-09-13 本人の指示）。
 //   実物も1つの煙ではなく、無数の粒が入れ替わりながら塊に見えている
-const PUFF_MAX = 112;
+const PUFF_MAX = 92;
 let blastAt = 0, blastEnd = 0;
 // ★var で宣言する。layout() はこの行より先に走るので、let だと
 //   「初期化前に触った」で落ちる（2026-09-13）
@@ -1044,6 +1044,54 @@ function hitHeight(b, sx, y0, y1){
   return Math.max(y0, Math.min(y1, y));
 }
 
+// ── グリルの溝に這わせたLEDテープ ───────────────────────
+// ★ラインアレイの桟の間にテープを仕込む（2026-09-13 本人の案）。
+//   **色は実機のテープと同じ配列から。** 縁のリングと同じ考え方で、
+//   目の前の物理LEDと画面が繋がって見える。
+//   ・粒は箱の**高さ方向**に並べる。上から下へ流れると背が高く見える
+//   ・左右のスピーカーは**鏡合わせ**にする（片側だけ流れると散らかる）
+//   ・溝の位置に載せる。桟と桟の間から光が出るのが実物
+function grilleTape(x, w, yTop, topH, dir, gx){
+  const gc = gx || g;
+  const L = S.leds;
+  if (!L || L.length < 2) return;
+  const n = L.length, gain = 3.4;
+  let bv = 0;
+  for (const c of L) bv = Math.max(bv, c[0], c[1], c[2]);
+  if (bv < 6) return;
+  const pad = M()*0.05;
+  const y0 = yTop + pad, y1 = yTop + topH - pad;
+  const step = Math.max(3, M()*0.032);
+  const cc = (c, a) => 'rgba(' + Math.min(255, c[0]*gain|0) + ','
+                               + Math.min(255, c[1]*gain|0) + ','
+                               + Math.min(255, c[2]*gain|0) + ',' + A(a) + ')';
+  gc.save();
+  rrect(x - w/2 + M()*0.045, y0, w - M()*0.09, y1 - y0, M()*0.012);
+  gc.clip();
+  gc.globalCompositeOperation = 'lighter';
+  // ① 箱全体がほんのり色を持つ
+  const gg = gc.createLinearGradient(0, y0, 0, y1);
+  for (let i = 0; i < n; i++){
+    const c = L[dir < 0 ? (n - 1 - i) : i] || [0,0,0];
+    gg.addColorStop(i/(n-1), cc(c, 0.11));
+  }
+  gc.fillStyle = gg;
+  gc.fillRect(x - w/2, y0, w, y1 - y0);
+  // ② 溝に載ったテープ。★桟の位置に合わせる
+  const rows = 8, h = Math.max(1.5, M()*0.013);
+  for (let k = 0; k < rows; k++){
+    const u = (k + 0.5) / rows;
+    const yy = y0 + Math.round((u*(y1 - y0)) / step) * step;
+    const c = L[Math.min(n-1, Math.round((dir < 0 ? 1 - u : u) * (n - 1)))] || [0,0,0];
+    const v = Math.max(c[0], c[1], c[2]);
+    if (v < 4) continue;
+    gc.fillStyle = cc(c, Math.min(1, v/72));
+    gc.fillRect(x - w/2, yy - h/2, w, h);
+  }
+  gc.globalCompositeOperation = 'source-over';
+  gc.restore();
+}
+
 // ── ウーファーの縁のLEDリング ─────────────────────────
 // ★実物のサブにも縁を光らせるリングが付いている（Alan Walker のステージ写真）。
 //   **実機のテープと同じ色にする。** 目の前の物理LEDと画面が繋がって見える
@@ -1163,7 +1211,7 @@ function speakerLight(x, w, yTop, topH, sw, subY, subH, wr, wy){
       const step = Math.max(3, M()*0.032);
       const y0g = yTop + M()*0.05, y1g = yTop + topH;
       const i0 = Math.max(0, Math.ceil((h.hy - r - y0g) / step));
-      const i1 = Math.min(Math.floor((y1g - y0g) / step), i0 + 9);
+      const i1 = Math.min(Math.floor((y1g - y0g) / step), i0 + 7);
       for (let i = i0; i <= i1; i++){
         const yy = y0g + i*step;
         const dy = Math.abs(yy - h.hy) / r;
@@ -1864,7 +1912,8 @@ function drawInner(now){
       g.lineWidth = Math.max(1, M()*0.010);
       g.beginPath(); g.arc(x, wy, wr*0.98, 0, 6.2832); g.stroke();
 
-      // ★縁のLEDリング。実機のテープと同じ色で光る
+      // ★グリルの溝と縁のリング。どちらも実機のテープと同じ色で光る
+      grilleTape(x, w, yTop, topH, dir);
       wooferRing(x, wy, wr, dir);
       // ★スポットが当たったところだけ、素材ごとの返し方で光る
       speakerLight(x, w, yTop, topH, sw, subY, subH, wr, wy);
@@ -1938,7 +1987,7 @@ window.__debug = {
   lensPos, pivotY, lensY, stepHeads, rigLen, trussY, trussH,
   litFloor, floorPanels: () => floorLit, FLOOR_COLS, FLOOR_ROWS,
   tape, tapeRuns, TOP_RUN_LIFT, trussCorner, JOINT_L, JOINT_R, M,
-  heat: () => heat, speakerLight, ledRing, wooferRing, lightSources, hitHeight, burstAmt, burstHue, fireworkAmt, BURST_ON, BURST_MAX, pal, BURST_PAL,
+  heat: () => heat, speakerLight, ledRing, wooferRing, grilleTape, lightSources, hitHeight, burstAmt, burstHue, fireworkAmt, BURST_ON, BURST_MAX, pal, BURST_PAL,
   sparks: () => SPARKS, gerbX, puffs: () => PUFFS, PUFF_MAX,
   beamHues: () => BEAMS.map(b=>b.hueDeg), fireBeams,
   setBurst: (v)=>{ S.burst = v; },
