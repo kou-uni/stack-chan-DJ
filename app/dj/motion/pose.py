@@ -123,10 +123,15 @@ class PoseState:
         a = burst_amount(self.burst)
         if a <= 0:
             return yaw, dip
+        # ★速く振ると**痙攣に見える**（2026-09-13 本人の指摘）。
+        #   サーボは指令に追いつけず、振り幅が出ないまま小刻みに震えるだけになる。
+        #   **遅く・大きく。** 1秒に1往復強くらいが、いちばん「暴れて」見える
         t = time.time()
-        fy = 6.5 + 5.5 * a                                     # 1秒あたりの往復
-        yaw += math.sin(t * fy * math.tau) * self.YAW_LIM * (0.42 + 0.38 * a)
-        dip += math.sin(t * fy * 0.61 * math.tau) * self.PITCH_LIM * (0.28 + 0.30 * a)
+        fy = 1.05 + 0.55 * a                                   # 1秒あたりの往復
+        yaw += math.sin(t * fy * math.tau) * self.YAW_LIM * (0.55 + 0.25 * a)
+        # ★上下は左右と**周期をずらす**（同じだと斜めに往復するだけ）。
+        #   割り切れない比にすると、同じ形が戻ってこない
+        dip += math.sin(t * fy * 0.63 * math.tau) * self.PITCH_LIM * (0.40 + 0.35 * a)
         return (phrases.clamp(yaw, self.YAW_LIM),
                 phrases.clamp(dip, self.PITCH_LIM))
 

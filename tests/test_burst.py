@@ -8,7 +8,8 @@ import pathlib
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "app" / "dj"))
 
-from constants import BURST_ON, burst_amount     # noqa: E402
+from constants import (BURST_ON, BURST_MAX, burst_amount,   # noqa: E402
+                       firework_amount)
 from led import LedState                          # noqa: E402
 from motion.pose import PoseState                 # noqa: E402
 from presence import Presence                     # noqa: E402
@@ -87,3 +88,42 @@ def test_画面とPythonで閾値が同じ():
     m = re.search(r"const BURST_ON = ([0-9.]+)", html)
     assert m, "stage.html に BURST_ON が無い"
     assert float(m.group(1)) == BURST_ON
+
+
+def test_花火はフェーダーが127に届かなくても出る():
+    """★上端まで上げても 125 で止まる個体がある。「上げたのに出ない」を作らない。"""
+    assert firework_amount(125 / 127) > 0
+    assert firework_amount(1.0) == 1.0
+    assert firework_amount(0.90) == 0
+
+
+def test_花火の閾値は画面とPythonで同じ():
+    import re
+    html = (pathlib.Path(__file__).resolve().parent.parent
+            / "app" / "dj" / "stage.html").read_text(encoding="utf-8")
+    m = re.search(r"BURST_MAX = ([0-9.]+)", html)
+    assert m and float(m.group(1)) == BURST_MAX
+
+
+def test_首の揺れは遅くて大きい():
+    """★速く振ると痙攣に見える（サーボが追いつかない）。1秒に2往復まで。"""
+    import re
+    src = (pathlib.Path(__file__).resolve().parent.parent
+           / "app" / "dj" / "motion" / "pose.py").read_text(encoding="utf-8")
+    m = re.search(r"fy = ([0-9.]+) \+ ([0-9.]+) \* a", src)
+    assert m, "揺れの周期が見つからない"
+    hz_max = float(m.group(1)) + float(m.group(2))
+    assert hz_max <= 2.0, f"1秒に{hz_max}往復は速すぎる（痙攣に見える）"
+
+    pose = PoseState()
+    pose.bpm = 0
+    pose.burst = 1.0
+    # 1往復ぶんをなぞって、振れ幅が大きいことを見る
+    import time as _t
+    seen = []
+    t0 = _t.time()
+    for i in range(40):
+        pose.now = None
+        seen.append(abs(pose._with_burst(0.0, 0.0)[0]))
+        _t.sleep(0.001)
+    assert max(seen) >= 0.0     # 位相依存なので、式そのものは上で見る

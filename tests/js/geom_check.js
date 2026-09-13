@@ -468,7 +468,14 @@ ok('柱を四角塗りで描いていない',
     {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',
      jog:0,jogw:0,burst:0.9})});
   for (let i=0;i<180;i++){ frameN++; rafFn(frameN*16.7); }
-  ok('100%未満では花火は出ない（消えきる）', D.sparks().length === 0,
+  ok('90%では花火は出ない（消えきる）', D.sparks().length === 0,
+     D.sparks().length + '粒');
+  // ★フェーダーが127に届かなくても出ること。**「上げたのに出ない」を作らない**
+  sb0.__ws.onmessage({data: JSON.stringify(
+    {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',
+     jog:0,jogw:0,burst:125/127})});
+  for (let i=0;i<90;i++){ frameN++; rafFn(frameN*16.7); }
+  ok('フェーダーが125/127でも花火は出る', D.sparks().length > 10,
      D.sparks().length + '粒');
   sb0.__ws.onmessage({data: JSON.stringify(
     {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0})});

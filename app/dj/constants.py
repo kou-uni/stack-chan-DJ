@@ -35,7 +35,17 @@ def _scale(v: int, lo: float, hi: float, in_lo: int = 0, in_hi: int = 127) -> fl
 #   0.70 で赤く点火、1.00 で花火。途中は連続量で強さが上がる
 #   （2026-09-13 本人の指示）
 BURST_ON = 0.70          # ここから赤いバースト
-BURST_MAX = 0.995        # ここから花火
+BURST_MAX = 0.96         # ここから花火。★127きっかりを要求しない
+#   フェーダーは物理的に上端まで行っても 125 前後で止まることがある。
+#   「100%にしたのに出ない」が起きるので、上端の数%を花火の帯にする
+#   （2026-09-13 本人の指摘：花火は出てこないな）
+
+
+def firework_amount(v: float) -> float:
+    """ゲージの生値 0..1 を、花火の強さ 0..1 に直す。"""
+    if v is None or v < BURST_MAX:
+        return 0.0
+    return min(1.0, (v - BURST_MAX) / max(1e-6, 1.0 - BURST_MAX))
 
 
 def burst_amount(v: float) -> float:

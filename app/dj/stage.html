@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">b586f94 14:49:48</div>
+<div id="v">2cf7e5c 14:57:44</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -438,7 +438,14 @@ const TOP_RUN_LIFT = 1.15;
 // ★盛り上がりの頂点で、人が手でゲージを上げる。**段差を作らない。**
 //   0.70 で点火、そこから連続で強くなり、1.00 で花火（2026-09-13 本人の指示）
 //   ★閾値と式は Python 側（constants.burst_amount）と同じにすること
-const BURST_ON = 0.70, BURST_MAX = 0.995;
+const BURST_ON = 0.70, BURST_MAX = 0.96;
+// ★花火は「上端の帯」で出す。**127きっかりを要求しない。**
+//   フェーダーは上まで上げても 125 前後で止まることがあり、
+//   「100%にしたのに出ない」が起きる（2026-09-13 本人の指摘）
+function fireworkAmt(){
+  const v = S.burst || 0;
+  return v < BURST_MAX ? 0 : Math.min(1, (v - BURST_MAX) / (1 - BURST_MAX));
+}
 // ★色を赤へ寄せる。**強いほど赤一色に。**
 //   これが無いと、色相の散らし（±170度）と時間回転に負けて、
 //   赤いはずのバーストが黄緑になる（2026-09-13 実際にそうなった）
@@ -598,10 +605,10 @@ function gerbX(){
   return UPS.map(u => u.cx);
 }
 function stepSparks(dt, amt){
-  if (amt >= 1){
+  if (amt > 0){
     // ★吹き上げ。強さではなく**満で全開**。ここは段階を作らない
     for (const cx of gerbX()){
-      const n = Math.min(9, SPARK_MAX - SPARKS.length);
+      const n = Math.min(3 + (6*amt)|0, SPARK_MAX - SPARKS.length);
       for (let i=0;i<n;i++){
         const a = (-Math.PI/2) + (Math.random()-0.5)*0.42;   // ほぼ真上
         const sp = (0.9 + Math.random()*0.75) * innerHeight*1.35;
@@ -1089,7 +1096,10 @@ function draw(now){
     if (el){ el.style.color = '#7fe3ff'; el.textContent =
       Math.round(fps.n*1000/(now-fps.at)) + ' fps  mode=' + (S.mode||'?')
       + '  heat=' + heat.toFixed(2) + '  ws=' + (wsOpen ? 'ON' : 'OFF')
-      + '  beat=' + localN + '\n' + VERSION; }
+      + '  beat=' + localN
+      + '  burst=' + Math.round((S.burst||0)*100) + '%'
+      + (fireworkAmt() > 0 ? ' 🎆' : (burstAmt() > 0 ? ' 🔥' : ''))
+      + '\n' + VERSION; }
     fps.n = 0; fps.at = now;
   }
   try { drawInner(now); }
@@ -1543,7 +1553,7 @@ function drawInner(now){
 
   // ── ⑥ 花火。★**いちばん手前。** 実際に舞台前縁から吹き上がるので、
   //   トラスにも灯体にも隠されない（2026-09-13 本人の指示：100%で噴射）
-  stepSparks(dt, burst >= 1 ? 1 : 0);
+  stepSparks(dt, fireworkAmt());
   drawSparks();
 
 
@@ -1576,7 +1586,8 @@ window.__debug = {
   lensPos, pivotY, lensY, stepHeads, rigLen, trussY, trussH,
   litFloor, floorPanels: () => floorLit, FLOOR_COLS, FLOOR_ROWS,
   tape, tapeRuns, TOP_RUN_LIFT, trussCorner, JOINT_L, JOINT_R, M,
-  burstAmt, burstHue, BURST_ON, pal, BURST_PAL, sparks: () => SPARKS,
+  burstAmt, burstHue, fireworkAmt, BURST_ON, BURST_MAX, pal, BURST_PAL,
+  sparks: () => SPARKS,
   beamHues: () => BEAMS.map(b=>b.hueDeg), fireBeams,
   setBurst: (v)=>{ S.burst = v; },
   setLeds: (v)=>{ S.leds = v; },
