@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">8cb41f6 13:31:55</div>
+<div id="v">b171ba6 13:39:13</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -395,49 +395,71 @@ function beams(t, p, energy, heat, dt){
 
 }
 
-// ── 柱に這わせたテープライト ──────────────────────────
+// ── 柱の支柱（弦材）に這わせたテープライト ─────────────
 // ★**実機のテープに流しているのと同じ配列**（S.leds）をそのまま映す。
 //   画面側でパターンを再実装しない。実装が2つあると、必ずどちらかがずれる
 //   （2026-09-13 本人の要望：目の前の物理LEDと背景のスタジオLEDを連動させて
 //    リアル感と奥行きを出す）。
 //
-// 並べ方：左の柱を**下から上へ** 0..h-1、右の柱を**上から下へ** h..n-1。
-//   こうすると chase / sweep が「左を昇って、右を降りる」1本の流れに見える。
+// 場所：★**網目（筋交い）ではなく支柱に這わせる**（2026-09-13 本人の指摘）。
+//   trussRun の弦材と同じ式で位置を出す。柱1本につき左右2本、計4本。
 //
-// 描き方：粒ごとに四角を描かない。**1本のグラデーションに色を全部載せる**
-//   （COBテープは連続発光。粒で描くと安っぽいうえ、描画命令も食う）
+// 並べ方：左の柱を**下から上へ** 0..h-1、右の柱を**上から下へ** h..n-1。
+//   chase / sweep が「左を昇って、右を降りる」1本の流れに見える。
+//
+// 光り方：★1本の線で描かない（安っぽい）。**幅の違う帯を重ねる。**
+//   ・断面の山（中心が白く飛び、外へ色が出る）→ 立体感
+//   ・**スモークが焚いてあるので、テープからじんわり外まで薄く光る**
+//   ビームの円錐と同じ考え方。幅と濃さを段階的に変えて縁を溶かす
+const TAPE_W = [[18.0, 0.030], [11.2, 0.048], [6.90, 0.076],
+                [4.20, 0.120], [2.55, 0.190], [1.55, 0.310], [1.00, 0.620]];
 function tape(y0, y1, kc, gx){
-  const c = gx || g;              // ★検算では偽の canvas を渡す
+  const c = gx || g;               // ★検算では偽の canvas を渡す
   const L = S.leds;
   if (!L || L.length < 2) return;
-  const n = L.length, h = Math.ceil(n/2);
-  const w = Math.max(1.5, M()*0.045*kc);      // テープの幅
-  const GAIN = 2.7;                            // 実機は max_brightness で絞ってある
-  const side = [
-    {x: innerWidth*JOINT_L, idx: (u)=> u*(h-1)},                 // 下→上
-    {x: innerWidth*JOINT_R, idx: (u)=> (n-1) - u*(n-1-h)},       // 上→下
-  ];
-  for (const s of side){
+  const n = L.length, half = Math.ceil(n/2);
+  const s  = kc*0.85;                             // ★柱の trussRun と同じ縮尺
+  const off = M()*0.30*s/2;                       // ★弦材の位置。同じ式から出す
+  const w  = Math.max(1.2, M()*0.05*s) * 0.78;    // テープは弦材より少し細い
+  const GAIN = 4.4;                               // 実機は max_brightness で絞ってある
+
+  // 下→上（左の柱）と 上→下（右の柱）。★色の並びだけが違う
+  const mk = (idx, white) => {
     const gd = c.createLinearGradient(0, y1, 0, y0);   // u=0 が下
     for (let i=0;i<n;i++){
       const u = i/(n-1);
-      const c = L[Math.round(s.idx(u))] || [0,0,0];
-      gd.addColorStop(u, 'rgb('+Math.min(255,c[0]*GAIN|0)+','
-                              + Math.min(255,c[1]*GAIN|0)+','
-                              + Math.min(255,c[2]*GAIN|0)+')');
+      const v = L[Math.round(idx(u))] || [0,0,0];
+      // ★白飛びは**そのLEDの明るさに比例**させる。
+      //   消えている粒まで白く持ち上げると、テープ全体が灰色に浮く
+      const lum = Math.max(v[0], v[1], v[2]) / 255;
+      const f = (k) => { const b = Math.min(255, v[k]*GAIN);
+                         return (b*(1 - white*lum) + 255*white*lum) | 0; };
+      gd.addColorStop(u, 'rgb('+f(0)+','+f(1)+','+f(2)+')');
     }
-    // 芯
-    c.globalCompositeOperation = 'lighter';
-    c.fillStyle = gd;
-    c.fillRect(s.x - w/2, y0, w, y1-y0);
-    // にじみ。★同じグラデーションを広く薄く重ねるだけで、粒が溶ける
-    c.globalAlpha = 0.30;
-    c.fillRect(s.x - w*3.2, y0, w*6.4, y1-y0);
-    c.globalAlpha = 0.13;
-    c.fillRect(s.x - w*9.0, y0, w*18.0, y1-y0);
-    c.globalAlpha = 1;
-    c.globalCompositeOperation = 'source-over';
+    return gd;
+  };
+  const up   = (u)=> u*(half-1);
+  const down = (u)=> (n-1) - u*(n-1-half);
+  const cols = [{x: JOINT_L, body: mk(up,   0), hot: mk(up,   0.55)},
+                {x: JOINT_R, body: mk(down, 0), hot: mk(down, 0.55)}];
+
+  c.globalCompositeOperation = 'lighter';
+  for (const col of cols){
+    for (const sgn of [-1, 1]){
+      const x = innerWidth*col.x + sgn*off;
+      c.fillStyle = col.body;
+      for (const [wm, am] of TAPE_W){
+        c.globalAlpha = am;
+        c.fillRect(x - w*wm/2, y0, w*wm, y1-y0);
+      }
+      // ★芯。白く飛ぶところ。**これが無いと平らな帯に見える**
+      c.fillStyle = col.hot;
+      c.globalAlpha = 0.85;
+      c.fillRect(x - w*0.36/2, y0, w*0.36, y1-y0);
+    }
   }
+  c.globalAlpha = 1;
+  c.globalCompositeOperation = 'source-over';
 }
 
 function rrect(x, y, w, h, r){
@@ -1296,7 +1318,7 @@ window.__debug = {
   litColor: () => litColor(pal()),
   lensPos, pivotY, lensY, stepHeads, rigLen, trussY, trussH,
   litFloor, floorPanels: () => floorLit, FLOOR_COLS, FLOOR_ROWS,
-  tape, JOINT_L, JOINT_R, setLeds: (v)=>{ S.leds = v; },
+  tape, JOINT_L, JOINT_R, M, setLeds: (v)=>{ S.leds = v; },
   blinderX: () => { const a=[]; for(let i=0;i<BEAMS.length-1;i++)
       a.push((BEAMS[i].cx+BEAMS[i+1].cx)/2);
     a.push(BEAMS[0].cx-0.14, BEAMS[BEAMS.length-1].cx+0.14);

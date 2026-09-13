@@ -245,8 +245,10 @@ ok('柱を四角塗りで描いていない',
     return () => {};
   }, set(){ return true; }});
   // 5フレーム回してから1フレームぶん数える
+  // ★テープも込みで数える。**実機がつながっているときが本番**（2026-09-13）
   sb0.__ws.onmessage({data: JSON.stringify(
-    {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0})});
+    {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0,
+     leds: Array.from({length:12},(_,i)=>[i*20, 255-i*20, 40])})});
   for (let i=0;i<5;i++){ frameN++; rafFn(frameN*16.7); }
   const before = drawCount(); frameN++; rafFn(frameN*16.7);
   const per = drawCount() - before;
@@ -275,36 +277,54 @@ ok('柱を四角塗りで描いていない',
 
 // ★柱のテープライト（2026-09-13）。**実機の配列をそのまま映しているか**
 {
-  const seen = [];
-  const gd = { addColorStop(u, c){ seen.push([u, c]); } };
+  const grads = [];
   const rects = [];
   const gt = new Proxy({}, {get(_,k){
     const s = String(k);
-    if (s === 'createLinearGradient') return () => gd;
+    if (s === 'createLinearGradient'){
+      return () => { const cur = []; grads.push(cur);
+                     return {addColorStop(u,c2){ cur.push([u,c2]); }}; };
+    }
     if (s === 'fillRect') return (x,y,w,h) => rects.push({x,y,w,h});
     return () => {};
   }, set(){ return true; }});
+  const run = (leds) => { grads.length = 0; rects.length = 0;
+                          D.setLeds(leds); D.tape(100, 500, 0.78, gt); };
+
   // ① 実機の色が来ていないときは描かない（勝手に光らせない）
-  D.setLeds(null);
-  seen.length = 0; rects.length = 0;
-  D.tape(100, 500, 0.78, gt);
+  run(null);
   ok('LEDが来ていなければテープは描かない', rects.length === 0, rects.length + '枚');
 
   // ② 来ていれば、その色がそのまま乗る
   const leds = Array.from({length:12}, (_,i)=> [i*20, 255-i*20, 40]);
-  D.setLeds(leds);
-  seen.length = 0; rects.length = 0;
-  D.tape(100, 500, 0.78, gt);
-  ok('テープは柱2本ぶん描く', rects.length >= 2, rects.length + '枚');
-  ok('LEDの数だけ色を置く', seen.length === leds.length*2, seen.length + '色');
-  // 下（u=0）は 0番、上（u=1）は 5番（左の柱は下から上へ 0..5）
-  const first = seen[0], last = seen[leds.length-1];
-  ok('左の柱は下が0番', first[0] === 0 && first[1].startsWith('rgb(0,'), first[1]);
-  ok('左の柱は上がテープの中ほど', last[0] === 1, last[0]);
-  // 右の柱は上（u=1 側）が末尾に向かう＝左右で1本の流れになる
-  const rFirst = seen[leds.length], rLast = seen[seen.length-1];
-  ok('右の柱は下が末尾の11番', rFirst[0] === 0 && rFirst[1] === 'rgb(255,94,108)', rFirst[1]);
-  ok('右の柱も上がテープの中ほど', rLast[0] === 1);
+  run(leds);
+  const [upBody, upHot, dnBody, dnHot] = grads;
+  ok('色の並びは 上り/下り × 芯 の4本', grads.length === 4, grads.length + '本');
+  ok('LEDの数だけ色を置く', grads.every(gd => gd.length === leds.length));
+  ok('左の柱は下が0番', upBody[0][0] === 0 && upBody[0][1].startsWith('rgb(0,'), upBody[0][1]);
+  ok('右の柱は下が末尾の11番',
+     dnBody[0][1] === 'rgb(255,154,176)', dnBody[0][1]);
+  ok('芯は白く飛ぶ（同じ位置で明るい）',
+     (upHot[0][1].match(/\d+/g).reduce((s2,v)=>s2+ +v,0))
+     > (upBody[0][1].match(/\d+/g).reduce((s2,v)=>s2+ +v,0)));
+
+  // ③ ★網目の真ん中ではなく、支柱（弦材）に載っていること
+  const cxs = [...new Set(rects.map(r => Math.round(r.x + r.w/2)))].sort((a2,b2)=>a2-b2);
+  ok('テープは柱1本につき2本（支柱の左右）', cxs.length === 4, cxs.join(' '));
+  const JL = 1600*D.JOINT_L, JR = 1600*D.JOINT_R;
+  const M0 = D.M();
+  const offX = M0*0.30*(0.78*0.85)/2;
+  const near = (v, w2) => Math.abs(v-w2) < 1.5;
+  ok('左の柱は継ぎ目の左右に離れて乗る',
+     near(cxs[0], JL-offX) && near(cxs[1], JL+offX), cxs[0]+' '+cxs[1]);
+  ok('右の柱も同じ', near(cxs[2], JR-offX) && near(cxs[3], JR+offX), cxs[2]+' '+cxs[3]);
+  ok('柱の真ん中には置かない', !cxs.some(v => near(v, JL) || near(v, JR)));
+
+  // ④ ★スモークのにじみ。幅の違う帯が重なっていること（1本の線ではない）
+  const ws = [...new Set(rects.map(r => Math.round(r.w*100)))].sort((a2,b2)=>a2-b2);
+  ok('幅の違う帯を重ねている', ws.length >= 6, ws.length + '種');
+  ok('いちばん外は芯の30倍以上に広がる', ws[ws.length-1] / ws[0] > 30,
+     'x' + (ws[ws.length-1]/ws[0]).toFixed(0));
   D.setLeds(null);
 }
 
