@@ -464,6 +464,16 @@ ok('柱を四角塗りで描いていない',
   ok('100%で花火が出る', n1 > 20, n1 + '粒');
   ok('花火の粒に上限がある', n1 <= 460, n1 + '粒');
   ok('花火の量が十分', n1 > 120, n1 + '粒');
+  // ★左右で同じだけ出ること。上限をループ内で見ていて右が痩せていた（2026-09-13）
+  {
+    const gs = D.gerbX();
+    const mid = (gs[0] + gs[1]) / 2 * 1600;
+    const left = D.sparks().filter(s => s.x < mid).length;
+    const right = D.sparks().length - left;
+    const bal = Math.min(left, right) / Math.max(1, Math.max(left, right));
+    ok('花火は左右で同じだけ出る', bal > 0.75,
+       '左' + left + ' / 右' + right + '（比 ' + bal.toFixed(2) + '）');
+  }
   // 90%では出ない
   sb0.__ws.onmessage({data: JSON.stringify(
     {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',

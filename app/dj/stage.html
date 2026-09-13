@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">dc87a1a 15:15:30</div>
+<div id="v">6035a08 15:24:28</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -608,9 +608,14 @@ function gerbX(){
 }
 function stepSparks(dt, amt){
   if (amt > 0){
-    // ★吹き上げ。強さではなく**満で全開**。ここは段階を作らない
-    for (const cx of gerbX()){
-      const n = Math.min(7 + ((11*amt)|0), SPARK_MAX - SPARKS.length);
+    // ★上限は**噴出口で山分けする。**
+    //   ループの中で残量を見ていたので、先に回った左が使い切って、
+    //   右がいつも少なかった（2026-09-13 本人の指摘）
+    const gs = gerbX();
+    const room = Math.max(0, SPARK_MAX - SPARKS.length);
+    const per = Math.min(7 + ((11*amt)|0), Math.floor(room / gs.length));
+    for (const cx of gs){
+      const n = per;
       for (let i=0;i<n;i++){
         const a = (-Math.PI/2) + (Math.random()-0.5)*0.42;   // ほぼ真上
         const sp = (0.9 + Math.random()*0.75) * innerHeight*1.35;
@@ -1591,7 +1596,7 @@ window.__debug = {
   litFloor, floorPanels: () => floorLit, FLOOR_COLS, FLOOR_ROWS,
   tape, tapeRuns, TOP_RUN_LIFT, trussCorner, JOINT_L, JOINT_R, M,
   burstAmt, burstHue, fireworkAmt, BURST_ON, BURST_MAX, pal, BURST_PAL,
-  sparks: () => SPARKS,
+  sparks: () => SPARKS, gerbX,
   beamHues: () => BEAMS.map(b=>b.hueDeg), fireBeams,
   setBurst: (v)=>{ S.burst = v; },
   setLeds: (v)=>{ S.leds = v; },
