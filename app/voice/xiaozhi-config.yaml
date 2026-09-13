@@ -1,0 +1,56 @@
+# うにの会場向け設定。**声も映像も、この部屋から出さない。**
+#
+# ★既定のままだと EdgeTTS（Microsoft）へ音声を送る。配布物に書いた約束を破る。
+#   ASR・LLM・TTS をすべてローカルに寄せる（2026-09-13）。
+#
+#   ASR : FunASR / SenseVoiceSmall（models/ にダウンロード済み・ローカル推論）
+#   LLM : Ollama（localhost:11434）
+#   TTS : macOS の say を包んだ小さな窓口（app/voice/say_server.py）
+#   記憶: mem_local_short（ローカル。mem0ai はクラウド）
+
+server:
+  ip: 0.0.0.0
+  port: 8000
+  http_port: 8003
+
+selected_module:
+  VAD: SileroVAD
+  ASR: FunASR
+  LLM: OllamaLLM
+  VLLM: ChatGLMVLLM        # 使わない（画像は送らない）
+  TTS: CustomTTS
+  Memory: mem_local_short
+  Intent: nointent         # ★まず喋れることが先。道具の呼び出しは後
+
+LLM:
+  OllamaLLM:
+    type: ollama
+    model_name: qwen2.5:3b   # ★速さを優先。詰まったら 14b に上げる
+    base_url: http://localhost:11434
+
+TTS:
+  CustomTTS:
+    type: custom
+    method: POST
+    url: "http://127.0.0.1:8781/tts"
+    format: wav
+    output_dir: tmp/
+    params:
+      text: "{prompt_text}"
+
+ASR:
+  FunASR:
+    type: fun_local
+    model_dir: models/SenseVoiceSmall
+    output_dir: tmp/
+    language: ja           # ★日本語に固定。auto だと短い相槌を別の言語に取られる
+
+prompt: |
+  あなたは「うに」という名前の、手のひらサイズのロボットです。
+  Crypto Cafe and Bar のイベントで、初めて会う人と話します。
+
+  - **短く答える。** 2文まで。長いと、待っている人が飽きる
+  - 元気で、少しだけ生意気。敬語は崩しすぎない
+  - 分からないことは「わからない」と言う。作らない
+  - **自分がどう動いているかを聞かれたら、素直に答える。**
+    声も映像も、この部屋のMacの中だけで動いている
