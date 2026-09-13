@@ -330,8 +330,9 @@ ok('柱を四角塗りで描いていない',
   // ⑤ ★スモークのにじみ。幅の違う帯が重なっていること（1本の線ではない）
   const ws = [...new Set(rects.map(r => Math.round(r.h*100)))].sort((a2,b2)=>a2-b2);
   ok('幅の違う帯を重ねている', ws.length >= 6, ws.length + '種');
-  ok('いちばん外は芯の30倍以上に広がる', ws[ws.length-1] / ws[0] > 30,
-     'x' + (ws[ws.length-1]/ws[0]).toFixed(0));
+  // ★スモークのにじみ。**広げすぎると会場全体が洗い流される**（2026-09-13）
+  const spread = ws[ws.length-1] / ws[0];
+  ok('にじみは芯の10〜30倍', spread > 10 && spread < 30, 'x' + spread.toFixed(0));
   D.setLeds(null);
 }
 
@@ -375,6 +376,23 @@ ok('柱を四角塗りで描いていない',
   const cols = [...D.trussCorner.toString().matchAll(/rgb\((\d+),(\d+),(\d+)\)/g)]
     .map(m => Math.max(+m[1], +m[2], +m[3]));
   ok('連結部の素地が暗い（最大60未満）', Math.max(...cols) < 60, '最大 ' + Math.max(...cols));
+}
+
+// ★テープの合計の濃さ。**加算なので1を大きく超えると会場全体が洗い流される**
+//   （2026-09-13 本人の指摘：全体的に色が滲んで見える）
+{
+  const rows = src.match(/const TAPE_W = \[([\s\S]*?)\];/)[1];
+  const pairs = [...rows.matchAll(/\[([0-9.]+), ([0-9.]+)\]/g)].map(m => [+m[1], +m[2]]);
+  const sum = pairs.reduce((s2,p2)=> s2 + p2[1], 0);
+  ok('テープの帯の合計が濃すぎない', sum < 1.0, '合計 ' + sum.toFixed(2));
+  ok('いちばん外の帯が広がりすぎない', Math.max(...pairs.map(p2=>p2[0])) <= 9,
+     'x' + Math.max(...pairs.map(p2=>p2[0])));
+}
+
+// ★版番号は1箇所から。**2箇所に書くと必ず食い違う**（2026-09-13）
+{
+  const n = (src.match(/[0-9a-f]{7} \d\d:\d\d:\d\d/g) || []).length;
+  ok('版番号はファイル中1箇所だけ', n === 1, n + '箇所');
 }
 
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');

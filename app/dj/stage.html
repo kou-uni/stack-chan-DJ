@@ -14,8 +14,11 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">57debec 14:14:49</div>
+<div id="v">fa7e74f 14:24:17</div>
 <script>
+// ★版番号は div から読む。**2箇所に書くと必ず食い違う**
+//   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
+const VERSION = (document.getElementById('v')||{}).textContent || '?';
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
 (function(){
@@ -416,8 +419,11 @@ function beams(t, p, energy, heat, dt){
 //   **柱は動かさない。** 両端が重なって見えたのは横トラスだけ（2026-09-13 本人の指摘）
 const TOP_RUN_LIFT = 1.15;
 
-const TAPE_W = [[18.0, 0.030], [11.2, 0.048], [6.90, 0.076],
-                [4.20, 0.120], [2.55, 0.190], [1.55, 0.310], [1.00, 0.620]];
+// ★加算で重ねるので、**合計が1を超えると芯が白く飛んで、周りまで洗い流す**
+//   （2026-09-13：合計2.24 で会場全体が滲んだ）。合計は1.3前後に収める。
+//   いちばん外の帯がにじみの正体。18倍は広すぎた
+const TAPE_W = [[8.00, 0.016], [5.20, 0.026], [3.50, 0.042],
+                [2.40, 0.068], [1.70, 0.110], [1.20, 0.190], [1.00, 0.420]];
 function tapeRuns(y0, y1){
   // ★骨組みの位置と1箇所で揃える。**テープだけ別の数字で置かない**
   const kc = CENTER_K;
@@ -479,7 +485,7 @@ function tape(y0, y1, kc, gx){
       }
       // ★芯。白く飛ぶところ。**これが無いと平らな帯に見える**
       c.fillStyle = hot;
-      c.globalAlpha = 0.85;
+      c.globalAlpha = 0.45;
       c.fillRect(0, sgn*off - w*0.18, len, w*0.36);
     }
     c.restore();
@@ -917,7 +923,7 @@ function draw(now){
     if (el){ el.style.color = '#7fe3ff'; el.textContent =
       Math.round(fps.n*1000/(now-fps.at)) + ' fps  mode=' + (S.mode||'?')
       + '  heat=' + heat.toFixed(2) + '  ws=' + (wsOpen ? 'ON' : 'OFF')
-      + '  beat=' + localN + '\n962c86b 12:10:46'; }
+      + '  beat=' + localN + '\n' + VERSION; }
     fps.n = 0; fps.at = now;
   }
   try { drawInner(now); }
