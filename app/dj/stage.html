@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">ed95a66 12:05:29</div>
+<div id="v">aaa6734 12:08:27</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -704,6 +704,7 @@ function fireBeams(n){
 }
 
 let prev = performance.now(), t = 0, freeBeat = 0, freeN = 0, frameNo = 0;
+let beatAcc = 0, localN = 0;
 // ★動いていないときは静かに、動いた瞬間に爆発する。**差が無いと見せ場が無い**
 //   （2026-09-12 本人の指摘）。急に切り替えず、少しだけ滑らせる
 let heat = 0;
@@ -733,7 +734,7 @@ function draw(now){
     if (el){ el.style.color = '#7fe3ff'; el.textContent =
       Math.round(fps.n*1000/(now-fps.at)) + ' fps  mode=' + (S.mode||'?')
       + '  heat=' + heat.toFixed(2) + '  ws=' + (wsOpen ? 'ON' : 'OFF')
-      + '  n=' + S.n; }
+      + '  beat=' + localN; }
     fps.n = 0; fps.at = now;
   }
   try { drawInner(now); }
@@ -745,7 +746,14 @@ function draw(now){
 
 function drawInner(now){
   const dt = Math.min(0.05, (now-prev)/1000); prev = now; t += dt;
-  if (S.n !== lastN){ lastN = S.n; pulse = 1; fireBeams(S.n); }
+  // ★拍は**画面側で刻む。** サーバの n が止まると照明が一度も切り替わらない
+  //   （2026-09-13：n=0 のまま固まり「動かない」になった）。
+  //   曲があればその BPM に、無ければ 120 で自走する
+  {
+    const bpm = (S.bpm && S.bpm > 20) ? S.bpm : 120;
+    beatAcc += dt * (bpm / 60);
+    while (beatAcc >= 1){ beatAcc -= 1; localN++; pulse = 1; fireBeams(localN); }
+  }
   if (S.drop) flash = 1;
   // ★レコードを触っている＝演者が動かしている。**それも「動いている」**
   //   （2026-09-12：静止中はライトを消しているので、こすっても見えなかった）
@@ -769,11 +777,6 @@ function drawInner(now){
   heat = Math.max(heat, floor0);
   heat = Math.max(heat, hand*0.85);      // ★手の分は即座に効かせる
 
-  // 音が来ていないときの自走。**静かなときは叩かない**
-  if (!S.bpm || S.bpm < 1){          // ★音が無くても常に打つ
-    freeBeat += dt;
-    if (freeBeat >= 0.5){ freeBeat -= 0.5; pulse = 1; fireBeams(++freeN); }
-  }
   pulse = Math.max(0, pulse - dt*3.4);
   flash = Math.max(0, flash - dt*2.0);
 
