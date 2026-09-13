@@ -146,7 +146,13 @@ ok('どの型も振り幅を超えない',
   let worst = 0;
   for (const a of [0, -0.8, 0.8, D.PAN_MAX, -D.PAN_MAX]){
     const lp = D.lensPos(800, a);
-    const drawn = {x: 800 + Math.sin(a)*L*HEAD_H, y: D.pivotY() + Math.cos(a)*L*HEAD_H};
+    // ★**canvas の変換をそのまま使う。** 自分の式と自分の式を突き合わせても
+    //   同じ間違いが両方に入るだけで、検算にならない（2026-09-13 の失敗）
+    //   translate(cx,piv) → rotate(a) → 点(0, HL)
+    //   canvas の行列: x' = cos*x - sin*y,  y' = sin*x + cos*y
+    const HL = L*HEAD_H;
+    const drawn = {x: 800 + (Math.cos(a)*0 - Math.sin(a)*HL),
+                   y: D.pivotY() + (Math.sin(a)*0 + Math.cos(a)*HL)};
     worst = Math.max(worst, Math.abs(lp.x-drawn.x), Math.abs(lp.y-drawn.y));
   }
   ok('光の出口と筒の先が一致する', worst < 0.5, 'ずれ ' + worst.toFixed(2) + 'px');

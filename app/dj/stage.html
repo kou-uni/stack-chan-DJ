@@ -186,8 +186,12 @@ function pivotY(){                     // ヨークの支点（ここを中心�
 // ★レンズは**回った先**にある。ヘッドが向きを変えれば、光の出口も動く
 //   （2026-09-13：横に潰して固定していたので、最初の姿勢のまま止まって見えた）
 function lensPos(cx, ang){
+  // ★canvas の rotate(a) は (0,r) を **(-sin(a)·r, cos(a)·r)** に写す
+  //   （y軸が下向きなので、正の角度は時計回り）。
+  //   +sin にしていたので、**横を向いた瞬間だけ反対側にずれていた。**
+  //   真下（a=0）では一致するので、静止画では気づけない（2026-09-13 本人の指摘）
   const r = rigLen()*HEAD_H;
-  return {x: cx + Math.sin(ang)*r, y: pivotY() + Math.cos(ang)*r};
+  return {x: cx - Math.sin(ang)*r, y: pivotY() + Math.cos(ang)*r};
 }
 function lensY(){ return pivotY() + rigLen()*HEAD_H; }   // 真下を向いたとき
 
