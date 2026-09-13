@@ -791,7 +791,13 @@ function draw(now){
     const o = pn.octx;
     o.setTransform(1,0,0,1,0,0);
     o.globalCompositeOperation = 'source-over';
-    o.fillStyle = 'hsla('+p.h+',60%,'+(1.5 + 3.5*heat)+'%,1)';
+    const bgv = o.createLinearGradient(0, 0, 0, innerHeight);
+    const bl = 1.5 + 3.5*heat;
+    bgv.addColorStop(0,    'hsla('+p.h+',60%,'+bl+'%,0)');
+    bgv.addColorStop(0.12, 'hsla('+p.h+',60%,'+bl+'%,1)');
+    bgv.addColorStop(0.88, 'hsla('+p.h+',60%,'+bl+'%,1)');
+    bgv.addColorStop(1,    'hsla('+p.h+',60%,'+bl+'%,0)');
+    o.fillStyle = bgv;
     o.fillRect(0, 0, pn.bw, innerHeight);
     o.textBaseline = 'top';
     o.font = '600 '+FS+'px ui-monospace,SFMono-Regular,Menlo,monospace';
@@ -828,6 +834,17 @@ function draw(now){
 
     // ★LEDウォールは**500×500mm のキャビネットの集合**（レンタルの業界標準）。
     //   継ぎ目のグリッドが薄く見えるのが本物。一枚板だと嘘になる（2026-09-13 調査）
+    // ★パネルの上下端を溶かす。**自分で光る矩形の縁が、横のボーダーになる**
+    //   光を強くするほど目立っていた（2026-09-13 本人の指摘）
+    o.globalCompositeOperation = 'destination-out';
+    const vh = innerHeight*0.10;
+    const vt = o.createLinearGradient(0, 0, 0, vh);
+    vt.addColorStop(0, 'rgba(0,0,0,1)'); vt.addColorStop(1, 'rgba(0,0,0,0)');
+    o.fillStyle = vt; o.fillRect(0, 0, pn.bw, vh);
+    const vb = o.createLinearGradient(0, innerHeight-vh, 0, innerHeight);
+    vb.addColorStop(0, 'rgba(0,0,0,0)'); vb.addColorStop(1, 'rgba(0,0,0,1)');
+    o.fillStyle = vb; o.fillRect(0, innerHeight-vh, pn.bw, vh);
+
     o.globalCompositeOperation = 'source-over';
     const cab = M()*0.5;                       // キャビネット 500mm
     o.strokeStyle = 'rgba(0,0,0,0.55)';
