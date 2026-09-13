@@ -26,6 +26,7 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import re
 from pathlib import Path
 
@@ -256,34 +257,59 @@ def find_ollama() -> str | None:
     return shutil.which("ollama")
 
 
-async def think(question: str, model: str = MODEL, timeout_s: float = 60.0,
-                ollama: str | None = None) -> str:
-    """Ollama に訊く。**この Mac の中だけで完結する。**
+# ★頭脳の在処。**設定に出す。** コードを機械ごとに分けない
+#   （insights/20260908-one-codebase-config-only）
+#
+#   Mac Studio : 自分自身（既定）
+#   MacBook    : 自宅の Mac Studio を指す。**当日「いま自宅まで往復しています」の実体**
+#
+#   OLLAMA_URL で上書きできる。console からは --think-url で渡る
+DEFAULT_THINK_URL = "http://127.0.0.1:11434"
 
-    ★端末の制御文字が混ざることがあるので、落としてから返す。
+
+def think_url() -> str:
+    return os.environ.get("OLLAMA_URL", DEFAULT_THINK_URL).rstrip("/")
+
+
+async def think(question: str, model: str = MODEL, timeout_s: float = 60.0,
+                ollama: str | None = None, url: str | None = None) -> str:
+    """Ollama に訊く。**HTTP で叩く。**
+
+    ★以前は `ollama run` を起動していた。同じ機械にしか頭脳を置けない作りで、
+      当日 MacBook で console を動かすと**会場側の Ollama を探しに行く**。
+      「頭脳は自宅」という主張と食い違うので、HTTP に変えた（2026-09-14）。
+
+    `ollama` 引数は**後方互換のため残している**。渡されたら、その実体が
+    無い場合に限り「見つからない」として空を返す（既存の試験がこれを見ている）。
     """
-    import asyncio as _a
     # ★聞き取れなかったのに投げると、知識をそのまま読み上げる（実測）
     if not (question or "").strip():
         return ""
-    exe = ollama or find_ollama()
-    if not exe:
-        print("★ ollama が見つかりません（OLLAMA_BIN で指定できます）")
+    if ollama is not None and not os.path.exists(ollama):
+        print(f"★ ollama が見つかりません: {ollama}")
         return ""
+
+    base = (url or think_url()).rstrip("/")
+    payload = {
+        "model": model,
+        "prompt": f"{system_prompt()}\n\n質問: {question}",
+        "stream": False,
+    }
     try:
-        proc = await _a.create_subprocess_exec(
-            exe, "run", model, f"{system_prompt()}\n\n質問: {question}",
-            stdout=_a.subprocess.PIPE, stderr=_a.subprocess.DEVNULL)
-    except OSError as exc:
-        print(f"★ ollama を起動できません: {exc}")
+        import aiohttp
+        timeout = aiohttp.ClientTimeout(total=timeout_s)
+        async with aiohttp.ClientSession(timeout=timeout) as s:
+            async with s.post(f"{base}/api/generate", json=payload) as r:
+                if r.status != 200:
+                    print(f"★ 頭脳が {r.status} を返しました（{base}）")
+                    return ""
+                data = await r.json()
+    except Exception as exc:                       # noqa: BLE001
+        # ★沈黙もクラッシュも同じくらい困る。**理由が分かる形で返す**
+        print(f"★ 頭脳に繋がりません（{base}）: {exc}")
         return ""
-    try:
-        out, _ = await _a.wait_for(proc.communicate(), timeout=timeout_s)
-    except (TimeoutError, _a.TimeoutError):
-        proc.kill()
-        return ""
-    text = out.decode("utf-8", "replace")
-    # ★端末の制御文字（進捗表示の消去）が混ざる。潰さないと読み上げに乗る
+    text = data.get("response") or ""
+    # ★端末の制御文字が混ざることがある。潰さないと読み上げに乗る
     text = re.sub(r"\x1b\[[0-9;]*[A-Za-z]|[\x00-\x08\x0b-\x1f]", "", text)
     return text.strip()
 

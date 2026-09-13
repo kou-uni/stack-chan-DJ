@@ -107,3 +107,16 @@ avatar = "app/avatar/avatar_layered.raw"
 #   実機のマイクが聴いた音 → gateway → console → 画面
 #   「スタックチャンが指令している」は演出ではなく事実
 stage-port = 8779
+
+# ── 頭脳の在処 ────────────────────────────────
+# ★コードは1本。**機械ごとに変えるのはここだけ**
+#   （insights/20260908-one-codebase-config-only）
+#
+#   Mac Studio（自宅）: 自分自身。既定のまま
+#   MacBook（会場）   : 自宅の Mac Studio を指す。
+#                      当日「いま自宅まで往復しています」の実体
+#                      url = "http://mac-studio.local:11434"
+#   ★キー名は CLI 引数と揃える（settings.py が平らにして突き合わせる）
+[think]
+think-url = "http://127.0.0.1:11434"
+think-model = "gemma3:4b"

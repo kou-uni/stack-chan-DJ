@@ -701,10 +701,19 @@ def main() -> int:
                     help="何拍ごとに色を変えるか")
     ap.add_argument("--led-brightness", type=float, default=0.35,
                     help="明るさ上限 0..1。★A093 は全開 1.8A で Grove から取れない。既定 0.35")
+    # ★頭脳の在処。**コードは1本、機械ごとに変えるのは設定だけ**
+    #   Mac Studio は自分自身、MacBook は自宅の Mac Studio を指す（2026-09-14）
+    ap.add_argument("--think-url", default="http://127.0.0.1:11434",
+                    help="頭脳(Ollama)の在処。会場の MacBook では自宅を指す")
+    ap.add_argument("--think-model", default="gemma3:4b", help="頭脳のモデル")
     # ★ config.toml を先に読んで既定値を差し替える。CLI 引数はそのあとで勝つ。
     used = settings.load(ap, _pre_config(ap))
     args = ap.parse_args()
     args.led_color = tuple(args.led_color)
+    # ★頭脳の在処は環境変数で渡す。**呼ぶ側すべてに引き回さない**
+    os.environ.setdefault("OLLAMA_URL", args.think_url)
+    import talk
+    talk.MODEL = args.think_model
     if used and not args.quiet:
         print(f"設定: {used}")
     try:

@@ -28,6 +28,14 @@ async def main() -> int:
             async def j(name, **a):
                 return json.loads((await gw.call(name, **a)).content[0].text)
 
+            # ★実機が居ないときに「gateway に繋がらない」と出していた（2026-09-14）。
+            #   gateway は動いているので、**嘘の案内で人を遠回りさせる。**
+            #   繋がっていないことは、繋がっていないと言う
+            st = await j("get_status")
+            if not st.get("connected"):
+                print("× 実機         繋がっていない"
+                      "（電源・Wi-Fi・mDNS を見る。gateway は動いています）")
+                return
             head = await j("get_head_angles")
             print(f"○ 実機         繋がっている  首 yaw={head['yaw']} pitch={head['pitch']}")
 

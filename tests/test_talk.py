@@ -273,3 +273,39 @@ def test_見つからないときは黙って落ちない():
     from talk import think
     out = asyncio.run(think("やあ", ollama="/nonexistent/ollama"))
     assert out == "", "見つからないのに何か返している"
+
+
+def test_頭脳の在処は設定で変えられる():
+    """★コードは1本。**機械ごとに変えるのは設定だけ**（2026-09-14）。
+
+    当日、会場の MacBook で console を動かす。以前は `ollama run` を
+    起動していたので、**会場側の Ollama を探しに行っていた。**
+    「頭脳は自宅」という主張と食い違う。
+    """
+    import os
+    import importlib
+    import talk as t
+    importlib.reload(t)
+    assert t.think_url() == "http://127.0.0.1:11434"
+    os.environ["OLLAMA_URL"] = "http://mac-studio.local:11434/"
+    try:
+        assert t.think_url() == "http://mac-studio.local:11434"
+    finally:
+        del os.environ["OLLAMA_URL"]
+
+
+def test_頭脳に繋がらなくても黙って落ちない():
+    import asyncio
+    from talk import think
+    out = asyncio.run(think("やあ", url="http://127.0.0.1:9", timeout_s=3))
+    assert out == "", "繋がらないのに何か返している"
+
+
+def test_設定のキーがCLI引数と揃っている():
+    """★settings.py は知らないキーで起動を止める。**config.toml と揃える。**"""
+    import pathlib
+    import tomllib
+    root = pathlib.Path(__file__).resolve().parent.parent
+    cfg = tomllib.loads((root / "app" / "dj" / "config.toml").read_text(encoding="utf-8"))
+    keys = set(cfg.get("think", {}))
+    assert keys == {"think-url", "think-model"}, keys
