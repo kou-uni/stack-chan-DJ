@@ -44,8 +44,12 @@ class TouchReactor:
     """撫でられた通知を、顔と首の動きにする。**出すだけ。**"""
 
     def __init__(self, presence, pose, face_s: float = 3.0,
-                 max_stroke_ms: int = MAX_STROKE_MS, quiet: bool = False):
+                 max_stroke_ms: int = MAX_STROKE_MS, quiet: bool = False,
+                 led=None):
         self.presence, self.pose = presence, pose
+        # ★LED も返事をする。**入力があったら身体のどこかが応える**
+        #   （2026-09-13 docs/ideas.md ①）。無くても動く（実機なしの試験）
+        self.led = led
         self.face_s, self.max_stroke_ms, self.quiet = face_s, max_stroke_ms, quiet
         self.petting = Petting()
         self._task: asyncio.Task | None = None
@@ -69,6 +73,9 @@ class TouchReactor:
             print(f"    ♡ {r.name}（{dur}ms）"
                   + (f" 「{line}」" if line and gw and not busy else ""))
         self.presence.overlay("touch", r.face, self.face_s)
+        # ★顔と同時に光る。**遅れて光ると別の出来事に見える**
+        if self.led is not None:
+            self.led.poke("touch", now)
         if gw is not None and not busy and line:
             self._last_line = line
             # ★待たない。**返事より先に体が動くほうが自然**
@@ -115,7 +122,7 @@ class TouchMixin:
         te = TouchEvents(max_stroke_ms=10 ** 9)     # 選別は TouchReactor 側で
         te.catch_up()                                # 起動前の分は無視する
         reactor = TouchReactor(self.presence, self.pose,
-                               face_s=self.args.touch_face_s)
+                               face_s=self.args.touch_face_s, led=self.led)
         loop = asyncio.get_running_loop()
         while True:
             ev = te.poll()

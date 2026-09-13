@@ -126,6 +126,23 @@ class Console(ExpressionMixin, MidiMixin, AudioMixin, TouchMixin, VisionMixin):
         self.pose.dance = on
         self.presence.dancing = on
 
+    async def nod_once(self) -> None:
+        """一度だけ頷く。**割り当てていないボタンでも身体が応える**ため。
+
+        ★Arbiter を通す（設計 I2）。`pose.hold` に置いて、必ず戻す。
+          戻さないと下を向いたままになる。
+        """
+        if self._nod and not self._nod.done():
+            return                                  # 連打で首が固まらないように
+        async def run():
+            try:
+                for a in ((0.0, -12.0), (0.0, 6.0), (0.0, 0.0)):
+                    self.pose.hold = a
+                    await asyncio.sleep(0.13)
+            finally:
+                self.pose.hold = None
+        self._nod = asyncio.ensure_future(run())
+
     async def home_head(self) -> None:
         """首を正面へ。**Arbiter を通す**（設計 I2。move_head を直接叩かない）。"""
         self.pose.hold = (0.0, 0.0)
@@ -154,6 +171,7 @@ class Console(ExpressionMixin, MidiMixin, AudioMixin, TouchMixin, VisionMixin):
 
         self._knob_was = False
         self._cc_seen: dict[tuple[int, int], float] = {}
+        self._nod: asyncio.Task | None = None
         self._last_check = 0.0
         self.mode = MODE_IDLE
         self._silent_since = None

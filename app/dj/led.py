@@ -105,6 +105,12 @@ class LedState:
         #   会話（サブ講師）が入ったらここを動かす。踊りより優先される。
         self.talk: str | None = None
         self.burst = 0.0        # ★右の音量ゲージ 0..1（バーストモード）
+        # ★入力への返事。**期限つき**（Presence の overlay と同じ考え方）。
+        #   期限のない割り込みは消し忘れが起きる
+        self.poke_kind: str | None = None
+        self.poke_until = 0.0
+        self.meter: float | None = None      # つまみの値 0..1
+        self.meter_until = 0.0
         # ★時計を外から差し替えられるようにする。
         #   サビの点滅は時刻で決まるので、これが無いと試験で測れない
         self.now = time.time
@@ -163,6 +169,94 @@ class LedState:
         v = int(255 * f * self.max_brightness)
         return [[v, v, v]] * self.count
 
+    # ── 入力への返事 ──────────────────────────────
+    # ★**入力があったら、必ず身体のどこかが応える。**（docs/ideas.md）
+    #   撫でても、こすっても、つまみを回しても、いままでLEDは無反応だった。
+    #   ハンズオンで人が触るのだから、ここが空いているのはいちばん痛い。
+    #
+    # 強さの順（迷ったらここを見る）:
+    #   バースト > 会話の色 > 入力への返事 > つまみメーター > うっとり > 模様
+    #
+    # ★**会話の色は入力より強い。** 配布物に「緑=聞く／青=喋る」と書いてある。
+    #   撫でた瞬間だけ色が変わると、その紙が嘘になる（顔と声では返している）
+    POKE_S = {"touch": 2.6, "scratch": 0.9, "button": 0.7}
+
+    def poke(self, kind: str, now: float | None = None) -> None:
+        """入力に返事をする。**期限は種類ごとに決め打ち。**"""
+        if kind not in self.POKE_S:
+            raise ValueError(f"知らない返事: {kind}（POKE_S に足すこと）")
+        now = self.now() if now is None else now
+        until = now + self.POKE_S[kind]
+        # ★強い返事が出ている間は上書きしない。ちらつく
+        if self.poke_kind and now < self.poke_until and kind == "scratch" \
+           and self.poke_kind == "touch":
+            return
+        self.poke_kind, self.poke_until = kind, until
+
+    def show_meter(self, v: float, seconds: float = 1.1,
+                   now: float | None = None) -> None:
+        """つまみの値を、点灯本数で見せる。**手元を見ずに分かるのが本当の価値。**"""
+        now = self.now() if now is None else now
+        self.meter = max(0.0, min(1.0, float(v)))
+        self.meter_until = now + seconds
+
+    def _poke_colors(self, kind: str, left: float):
+        """返事の色。**残り時間で細っていく**（ぶつ切りにしない）。"""
+        t = time.time()
+        f = min(1.0, left / self.POKE_S[kind])         # 1 → 0
+        k = self.max_brightness * (0.55 + 1.65 * f)
+        out = []
+        if kind == "touch":
+            # ★七色がぐるぐる回る。**撫でられて照れた勢い**
+            spin = t * 2.6
+            for i in range(self.count):
+                h = (spin + i / self.count) % 1.0
+                c = self._hsv(h, 1.0, 1.0)
+                # 粒ごとにチカチカさせる（一様だとただの虹）
+                g = 0.55 + 0.45 * math.sin((t * 14.0) + i * 1.7)
+                out.append([min(255, int(c[0] * k * g)),
+                            min(255, int(c[1] * k * g)),
+                            min(255, int(c[2] * k * g))])
+            return out
+        if kind == "scratch":
+            # ★こすりは**速くて白い**。音の解析を待たず、操作そのものに返す
+            step = int(t * 26)
+            for i in range(self.count):
+                on = ((step + i) % 3) == 0
+                c = (255, 255, 255) if on else (40, 140, 255)
+                g = 1.0 if on else 0.35
+                out.append([min(255, int(c[0] * k * g)),
+                            min(255, int(c[1] * k * g)),
+                            min(255, int(c[2] * k * g))])
+            return out
+        # button: 端から中央へ一度だけ寄せる
+        u = 1.0 - f
+        mid = (self.count - 1) / 2.0
+        for i in range(self.count):
+            d = abs(i - mid) / max(1e-6, mid)
+            g = max(0.0, 1.0 - abs(d - u) * 3.0)
+            out.append([min(255, int(255 * k * g)),
+                        min(255, int(210 * k * g)),
+                        min(255, int(90 * k * g))])
+        return out
+
+    def _meter_colors(self, v: float):
+        """点灯本数で値を出す。★端は赤、真ん中は緑。**音量計と同じ読み方**"""
+        n = self.count
+        lit = v * n
+        k = self.max_brightness * 1.5
+        out = []
+        for i in range(n):
+            f = max(0.0, min(1.0, lit - i))            # 端の1つは半端に光る
+            if f <= 0:
+                out.append([0, 0, 0]); continue
+            u = i / max(1, n - 1)
+            c = (int(60 + 195 * u), int(255 - 165 * u), 40)   # 緑→橙→赤
+            out.append([min(255, int(c[0] * k * f)),
+                        min(255, int(c[1] * k * f)),
+                        min(255, int(c[2] * k * f))])
+        return out
+
     # ★バーストは赤を中心に。**白を混ぜて振り切れさせる。**
     #   青を残すと桃色になって、赤の圧が出ない（2026-09-13）
     BURST_HUES = ((255, 20, 10), (255, 90, 0), (255, 0, 60), (255, 255, 255))
@@ -208,6 +302,18 @@ class LedState:
             f = 0.55 + 0.45 * (1 + math.sin(time.time() * 1.6 * math.tau / 2)) / 2
             k = self.max_brightness * f
             return [[int(c[0] * k), int(c[1] * k), int(c[2] * k)]] * self.count
+
+        # ★入力への返事。会話の色より弱く、模様より強い
+        now = self.now()
+        if self.poke_kind:
+            left = self.poke_until - now
+            if left > 0:
+                return self._poke_colors(self.poke_kind, left)
+            self.poke_kind = None
+        if self.meter is not None:
+            if now < self.meter_until:
+                return self._meter_colors(self.meter)
+            self.meter = None
 
         if self.flash_white:                          # サビ：白で焼く（点滅）
             return self._drop_flash()
@@ -503,8 +609,12 @@ class LedState:
         self.current_pattern()          # ★期限切れならここで基本に戻る
         # ★バーストは人が意図してゲージを上げている。**消えていても点ける**
         from constants import burst_amount
+        now = self.now()
         lit = (self.enabled or self.manual or self.talk in self.TALK_COLOR
-               or burst_amount(self.burst) > 0)
+               or burst_amount(self.burst) > 0
+               # ★触られたら、消えていても返事をする
+               or (self.poke_kind and now < self.poke_until)
+               or (self.meter is not None and now < self.meter_until))
         return self.colors() if lit else [[0, 0, 0]] * self.count
 
     def frame(self) -> str:

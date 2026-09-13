@@ -71,12 +71,20 @@ class MidiMixin:
             if slot == "yaw":
                 self.pose.yaw = _scale(msg.value, YAW_MIN, YAW_MAX)
                 self.pose.touch()
+                # ★つまみの値を点灯本数で出す。**手元を見ずに分かるのが価値**
+                #   （2026-09-13 docs/ideas.md ②）
+                self.led.show_meter(msg.value / 127.0)
                 await self.wake_servos()
                 self._show_pose("yaw")
             elif slot == "jog_r":
                 # ★照明だけを動かす。**首やモードは触らない**
                 #   （スクラッチ中に状態が変わると演奏が壊れる）
                 self.jog.feed(msg.value)
+                # ★こすったらLEDも踊る。**音の解析を待たない。**
+                #   操作そのものに返すほうが速くて気持ちいい
+                #   （2026-09-13 docs/ideas.md ③）
+                if self.jog.weight() > 0.15:
+                    self.led.poke("scratch")
             elif slot == "burst":
                 # ★右の音量ゲージ。**首もモードも触らない。**
                 #   0..127 をそのまま 0..1 に。閾値の判定は使う側でやる
@@ -84,6 +92,7 @@ class MidiMixin:
             elif slot == "pitch":
                 self.pose.pitch = _scale(msg.value, PITCH_REL_MIN, PITCH_REL_MAX)
                 self.pose.touch()
+                self.led.show_meter(msg.value / 127.0)
                 await self.wake_servos()
                 self._show_pose("pitch")
             elif slot == "burst_lsb":
@@ -93,6 +102,9 @@ class MidiMixin:
                 #   ボタンには出ていたのに、つまみには出していなかった
                 now = time.time()
                 key = (msg.channel, msg.control)
+                # ★割り当てていなくても、**必ず何か起きる**
+                #   （2026-09-13 docs/ideas.md ④）。無反応は「壊れている」に見える
+                self.led.show_meter(msg.value / 127.0)
                 if now - self._cc_seen.get(key, 0.0) > 2.0:
                     self._cc_seen[key] = now
                     print(f"  ? 未割当のつまみ: CC ch{msg.channel} #{msg.control}"
@@ -130,6 +142,10 @@ class MidiMixin:
                 print(f"  ▶ {self.ctl[slot]['label']} → {face}")
                 await self.show_face(face, slot)
             else:
-                # 未割当のボタン。PLAY などの番号を調べるのに使う
+                # ★割り当てていないボタンでも、**必ず何か起きる。**
+                #   1ボタン1アクションにしない（2026-09-13 docs/ideas.md ④）。
+                #   押して無反応だと、その人は「壊れている」と思って離れる
+                self.led.poke("button")
+                await self.nod_once()
                 print(f"  ? 未割当のボタン: Note ch{msg.channel} #{msg.note}"
                       f"   → --play-ch {msg.channel} --play-note {msg.note} で PLAY にできます")
