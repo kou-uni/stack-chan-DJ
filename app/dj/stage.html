@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">3eb078f 12:58:16</div>
+<div id="v">4b374f0 13:03:17</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -749,6 +749,19 @@ function fireBeams(n){
 
 let prev = performance.now(), t = 0, freeBeat = 0, freeN = 0, frameNo = 0;
 let beatAcc = 0, localN = 0;
+// ★床のパネルを拍ごとにランダムで光らせる（2026-09-13 本人の要望）。
+//   毎フレーム選び直すとチラつくので、**拍で選んで、消えるまで持たせる**
+const FLOOR_COLS = 10, FLOOR_ROWS = 6;
+let floorLit = [];
+function litFloor(hue){
+  const k = 2 + ((Math.random()*4)|0);
+  for (let i=0;i<k;i++){
+    floorLit.push({c: (Math.random()*FLOOR_COLS)|0,
+                   r: (Math.random()*FLOOR_ROWS)|0,
+                   hue: (hue + (Math.random()*60-30)) % 360, on: 1});
+  }
+  if (floorLit.length > 24) floorLit.splice(0, floorLit.length - 24);
+}
 // ★動いていないときは静かに、動いた瞬間に爆発する。**差が無いと見せ場が無い**
 //   （2026-09-12 本人の指摘）。急に切り替えず、少しだけ滑らせる
 let heat = 0;
@@ -796,7 +809,8 @@ function drawInner(now){
   {
     const bpm = (S.bpm && S.bpm > 20) ? S.bpm : 120;
     beatAcc += dt * (bpm / 60);
-    while (beatAcc >= 1){ beatAcc -= 1; localN++; pulse = 1; fireBeams(localN); }
+    while (beatAcc >= 1){ beatAcc -= 1; localN++; pulse = 1; fireBeams(localN);
+                          litFloor(pal().h); }
   }
   if (S.drop) flash = 1;
   // ★レコードを触っている＝演者が動かしている。**それも「動いている」**
@@ -1026,8 +1040,8 @@ function drawInner(now){
     g.strokeStyle = 'hsla('+p.h+',60%,60%,'+(0.06 + 0.14*heat)+')';
     g.lineWidth = Math.max(1, M()*0.008);
     g.beginPath();
-    for (let i=1; i<=9; i++){
-      const u = i/10;
+    for (let i=1; i<FLOOR_ROWS; i++){
+      const u = i/FLOOR_ROWS;
       const yy = backY + (innerHeight - backY) * (u*u);   // 二乗で手前ほど広く
       const s = (yy - backY) / (innerHeight - backY);
       const xl = innerWidth*WALL_L * (1-s) + 0 * s;
@@ -1035,13 +1049,41 @@ function drawInner(now){
       g.moveTo(xl, yy); g.lineTo(xr, yy);
     }
     // 消失点へ向かう線
-    for (const a of [0.10, 0.30, 0.50, 0.70, 0.90]){
+    for (let ci=1; ci<FLOOR_COLS; ci++){ const a = ci/FLOOR_COLS;
       g.moveTo(innerWidth*(WALL_L + (WALL_R-WALL_L)*a), backY);
       g.lineTo(innerWidth*a, innerHeight);
     }
     g.stroke();
 
   // ★床の映り込みをやめた（2026-09-13：足しすぎて壊れたので引いた）
+
+    // ★床のパネルが拍ごとに光る。**マス目に沿って四角く光る**
+    g.globalCompositeOperation = 'lighter';
+    for (const f of floorLit){
+      f.on = Math.max(0, f.on - dt*2.4);
+      if (f.on < 0.02) continue;
+      // 手前ほど広い（床の目地と同じ割り方）
+      const u0 = f.r / FLOOR_ROWS, u1 = (f.r + 1) / FLOOR_ROWS;
+      const y0 = backY + (innerHeight - backY) * (u0*u0);
+      const y1 = backY + (innerHeight - backY) * (u1*u1);
+      const s0 = (y0 - backY) / (innerHeight - backY);
+      const s1 = (y1 - backY) / (innerHeight - backY);
+      const lerp = (s, a2, b2) => (innerWidth*a2)*(1-s) + b2*s;
+      const xl0 = lerp(s0, WALL_L, 0),         xr0 = lerp(s0, WALL_R, innerWidth);
+      const xl1 = lerp(s1, WALL_L, 0),         xr1 = lerp(s1, WALL_R, innerWidth);
+      const a0 = f.c / FLOOR_COLS, a1 = (f.c + 1) / FLOOR_COLS;
+      const gp2 = g.createLinearGradient(0, y0, 0, y1);
+      gp2.addColorStop(0,   'hsla('+f.hue+',92%,64%,'+(0.10*f.on)+')');
+      gp2.addColorStop(0.5, 'hsla('+f.hue+',90%,72%,'+(0.26*f.on)+')');
+      gp2.addColorStop(1,   'hsla('+f.hue+',92%,60%,'+(0.06*f.on)+')');
+      g.fillStyle = gp2;
+      g.beginPath();
+      g.moveTo(xl0 + (xr0-xl0)*a0, y0); g.lineTo(xl0 + (xr0-xl0)*a1, y0);
+      g.lineTo(xl1 + (xr1-xl1)*a1, y1); g.lineTo(xl1 + (xr1-xl1)*a0, y1);
+      g.closePath(); g.fill();
+    }
+    floorLit = floorLit.filter(f => f.on >= 0.02);
+    g.globalCompositeOperation = 'source-over';
 
     // ★ビームが床に落ちる。**当たったところが光の色になる**
     const L2 = litColor(p);
