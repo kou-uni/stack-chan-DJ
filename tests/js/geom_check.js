@@ -247,5 +247,16 @@ ok('柱を四角塗りで描いていない',
   ok('1フレームの描画命令が1000未満', per < 1000, per + '命令');
 }
 
+// ★床のパネル発光（2026-09-13）
+{
+  const before = D.floorPanels().length;
+  D.litFloor(200); D.litFloor(200);
+  const after = D.floorPanels().length;
+  ok('拍で床のパネルが光る', after > before, after + '枚');
+  const cells = D.floorPanels();
+  ok('光るのはマス目の中', cells.every(f => f.c >= 0 && f.c < D.FLOOR_COLS && f.r >= 0 && f.r < D.FLOOR_ROWS));
+  ok('同時に光りすぎない', cells.length <= 24, cells.length + '枚');
+}
+
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
 process.exit(bad ? 1 : 0);

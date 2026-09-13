@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">4b374f0 13:03:17</div>
+<div id="v">32455eb 13:08:20</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -1241,6 +1241,7 @@ window.__debug = {
   tex:   (k, u) => k*u / (1 - u*(1-k)),
   litColor: () => litColor(pal()),
   lensPos, pivotY, lensY, stepHeads, rigLen, trussY, trussH,
+  litFloor, floorPanels: () => floorLit, FLOOR_COLS, FLOOR_ROWS,
   blinderX: () => { const a=[]; for(let i=0;i<BEAMS.length-1;i++)
       a.push((BEAMS[i].cx+BEAMS[i+1].cx)/2);
     a.push(BEAMS[0].cx-0.14, BEAMS[BEAMS.length-1].cx+0.14);
