@@ -55,6 +55,7 @@ class Presence:
     mode: str = MODE_IDLE
     dancing: bool = False                          # ② 活動：踊っている
     talk: str | None = None                        # ② 活動："listening" / "speaking"
+    burst: float = 0.0                             # ② 活動：右の音量ゲージ 0..1
     dance_face: str = "happy"                      # 踊っている間の顔
     now: Callable[[], float] = time.time
     _overlays: dict[str, Overlay] = field(default_factory=dict)

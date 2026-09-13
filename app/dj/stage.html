@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">8062e64 14:33:53</div>
+<div id="v">b586f94 14:49:48</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -51,7 +51,13 @@ const SERIES = {
 };
 const TALK = {listening:{h:150, h2:196, core:'#e6fff0'},
               speaking:{h:212, h2:286, core:'#e9f3ff'}};
-function pal(){ return (S.talk && TALK[S.talk]) || SERIES[S.series] || SERIES.blue; }
+const BURST_PAL = {h: 2, h2: 26, core: '#fff0ec'};   // ★赤〜橙。芯は白熱
+function pal(){
+  // ★バースト中は**赤で塗り替える。** 元の色を混ぜると濁って圧が出ない
+  const v = S.burst || 0;
+  if (v >= BURST_ON) return BURST_PAL;
+  return (S.talk && TALK[S.talk]) || SERIES[S.series] || SERIES.blue;
+}
 
 // ── 降ってくるコード ───────────────────────────────
 let LH = 0, ROWS = 0, FS = 0;
@@ -428,6 +434,26 @@ const TOP_RUN_LIFT = 1.15;
 // ★加算で重ねるので、**合計が1を超えると芯が白く飛んで、周りまで洗い流す**
 //   （2026-09-13：合計2.24 で会場全体が滲んだ）。合計は1.3前後に収める。
 //   いちばん外の帯がにじみの正体。18倍は広すぎた
+// ── バーストモード（右の音量ゲージ）─────────────────────
+// ★盛り上がりの頂点で、人が手でゲージを上げる。**段差を作らない。**
+//   0.70 で点火、そこから連続で強くなり、1.00 で花火（2026-09-13 本人の指示）
+//   ★閾値と式は Python 側（constants.burst_amount）と同じにすること
+const BURST_ON = 0.70, BURST_MAX = 0.995;
+// ★色を赤へ寄せる。**強いほど赤一色に。**
+//   これが無いと、色相の散らし（±170度）と時間回転に負けて、
+//   赤いはずのバーストが黄緑になる（2026-09-13 実際にそうなった）
+function burstHue(h){
+  const b = burstAmt();
+  if (b <= 0) return h;
+  const target = 6;                                  // 赤
+  const d = ((h - target + 540) % 360) - 180;        // -180..180
+  return (target + d * (1 - 0.86*b) + 360) % 360;
+}
+function burstAmt(){
+  const v = S.burst || 0;
+  return v < BURST_ON ? 0 : Math.min(1, (v - BURST_ON) / (1 - BURST_ON));
+}
+
 const TAPE_W = [[8.00, 0.016], [5.20, 0.026], [3.50, 0.042],
                 [2.40, 0.068], [1.70, 0.110], [1.20, 0.190], [1.00, 0.420]];
 function tapeRuns(y0, y1){
@@ -556,6 +582,110 @@ function trussCorner(x, yTop, yBot, s){
         g.globalCompositeOperation = 'source-over';
       }
     }
+}
+
+
+// ── 100% の花火（ステージ前縁の噴水花火）──────────────
+// ★「下から噴射」なので、打ち上げではなく**舞台用のゲルブ**。
+//   実物は火薬の粒が上へ吹き上がって、重力で落ちながら消える。
+//   ・粒は**線分**で描く（点だと止まって見える。尾があると速さが出る）
+//   ・**1本のパスにまとめて1回で描く。** 粒ごとに描くと iPad が止まる
+//   ・色は白熱→橙→赤。金属花火は温度が下がる順に色が変わる
+const SPARKS = [];
+const SPARK_MAX = 240;
+function gerbX(){
+  // ★噴出口は下からのスポットライトと同じ位置。**装置は増やさない**
+  return UPS.map(u => u.cx);
+}
+function stepSparks(dt, amt){
+  if (amt >= 1){
+    // ★吹き上げ。強さではなく**満で全開**。ここは段階を作らない
+    for (const cx of gerbX()){
+      const n = Math.min(9, SPARK_MAX - SPARKS.length);
+      for (let i=0;i<n;i++){
+        const a = (-Math.PI/2) + (Math.random()-0.5)*0.42;   // ほぼ真上
+        const sp = (0.9 + Math.random()*0.75) * innerHeight*1.35;
+        SPARKS.push({x: innerWidth*cx + (Math.random()-0.5)*M()*0.18,
+                     y: innerHeight*1.01,
+                     vx: Math.cos(a)*sp, vy: Math.sin(a)*sp,
+                     t: 0, life: 0.75 + Math.random()*0.75});
+      }
+    }
+  }
+  const G = innerHeight*1.9;                    // 重力
+  for (let i=SPARKS.length-1; i>=0; i--){
+    const s = SPARKS[i];
+    s.px = s.x; s.py = s.y;
+    s.t += dt;
+    s.vy += G*dt;
+    s.vx *= (1 - 1.1*dt);                       // 空気抵抗
+    s.x += s.vx*dt; s.y += s.vy*dt;
+    if (s.t >= s.life || s.y > innerHeight*1.15) SPARKS.splice(i,1);
+  }
+}
+function drawSparks(){
+  if (!SPARKS.length) return;
+  g.globalCompositeOperation = 'lighter';
+  g.lineCap = 'round';
+  // ★寿命で3群に分けて、群ごとに1回で描く。**粒ごとに描かない**
+  const bands = [[0.00, 0.33, '#fff6ea', 3.0, 0.95],
+                 [0.33, 0.68, '#ffb347', 2.2, 0.80],
+                 [0.68, 1.01, '#ff4a22', 1.5, 0.55]];
+  for (const [lo, hi, col, w, a] of bands){
+    g.beginPath();
+    let any = false;
+    for (const s of SPARKS){
+      const u = s.t / s.life;
+      if (u < lo || u >= hi || s.px === undefined) continue;
+      g.moveTo(s.px, s.py); g.lineTo(s.x, s.y);
+      any = true;
+    }
+    if (!any) continue;
+    g.strokeStyle = col;
+    g.globalAlpha = a;
+    g.lineWidth = w;
+    g.stroke();
+  }
+  // 噴出口の白熱。★根元がいちばん明るい
+  for (const cx of gerbX()){
+    const x = innerWidth*cx, y = innerHeight*1.01, r = M()*0.9;
+    const gp = g.createRadialGradient(x, y, 0, x, y, r);
+    gp.addColorStop(0,   'rgba(255,246,232,0.75)');
+    gp.addColorStop(0.4, 'rgba(255,150,60,0.22)');
+    gp.addColorStop(1,   'rgba(255,60,20,0)');
+    g.fillStyle = gp; g.globalAlpha = 1;
+    g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+  }
+  g.globalAlpha = 1;
+  g.lineCap = 'butt';
+  g.globalCompositeOperation = 'source-over';
+}
+
+// ── バーストの光沢 ────────────────────────────────
+// ★「赤く光沢」。**面が濡れたように見える**のは、光源の像が細く走るから。
+//   全面を赤で塗ると彩度が上がるだけで、光沢にはならない
+function burstGloss(amt){
+  if (amt <= 0) return;
+  g.globalCompositeOperation = 'lighter';
+  // ① 会場全体に赤が回る（下ほど強い＝床からの照り返し）
+  const gv = g.createLinearGradient(0, 0, 0, innerHeight);
+  gv.addColorStop(0,   'hsla(2,95%,52%,'+(0.05*amt)+')');
+  gv.addColorStop(0.55,'hsla(6,95%,50%,'+(0.10*amt)+')');
+  gv.addColorStop(1,   'hsla(14,95%,54%,'+(0.20*amt)+')');
+  g.fillStyle = gv;
+  g.fillRect(0, 0, innerWidth, innerHeight);
+  // ② 走る光沢。★斜めに細く。**ゆっくり動かすと「艶」に見える**
+  const u = (t*0.45) % 1.6 - 0.3;
+  const gx = g.createLinearGradient(innerWidth*(u-0.22), 0,
+                                    innerWidth*(u+0.22), innerHeight);
+  gx.addColorStop(0,    'hsla(10,100%,60%,0)');
+  gx.addColorStop(0.45, 'hsla(14,100%,72%,'+(0.16*amt)+')');
+  gx.addColorStop(0.5,  'hsla(30,100%,86%,'+(0.26*amt)+')');
+  gx.addColorStop(0.55, 'hsla(14,100%,72%,'+(0.16*amt)+')');
+  gx.addColorStop(1,    'hsla(10,100%,60%,0)');
+  g.fillStyle = gx;
+  g.fillRect(0, 0, innerWidth, innerHeight);
+  g.globalCompositeOperation = 'source-over';
 }
 
 function rrect(x, y, w, h, r){
@@ -790,7 +920,7 @@ function litColor(p){
   let hue = 0, w = 0;
   for (const b of BEAMS){ const q = b.pw || 0; hue += b.hueDeg*q; w += q; }
   for (const u of UPS){   const q = u.pw || 0; hue += (u.hueDeg||0)*q; w += q; }
-  return {hue: w > 0 ? hue/w : p.h, pow: Math.min(1.4, w)};
+  return {hue: burstHue(w > 0 ? hue/w : p.h), pow: Math.min(1.4, w)};
 }
 
 function wash(p, amt){
@@ -819,7 +949,7 @@ function uplights(t, p, amt, jog){
     // ★仕込んだ首振り＋演者の手。手が勝つが、離せば首振りに戻る
     const a = u.ang + jog*1.05;
     const pw = amt * (0.35 + 0.65*Math.abs(jog));
-    const hue = (p.h + 170 + u.hue*150) % 360;
+    const hue = burstHue((p.h + 170 + u.hue*150) % 360);
     const half = M()*0.13;
     u.pw = pw; u.hueDeg = hue; u.x = cx;      // 反射で使う
 
@@ -909,7 +1039,7 @@ function fireBeams(n){
   for (const b of BEAMS){
     b.tgt = clampPan(LOOKS[look](b, BEAMS.indexOf(b), BEAMS.length) + swing);
     // ★色は点けるときに決める。**光っている最中に色が回るのは嘘**
-    b.hueDeg = (pl.h + b.hue*70 + ((Math.random()*3)|0)*40) % 360;
+    b.hueDeg = burstHue((pl.h + b.hue*70 + ((Math.random()*3)|0)*40) % 360);
     // ★毎拍、全部が点く。強弱で表情をつける。**消えている時間が長いと「光らない」**
     b.on = heavy ? 1 : (b.phase === bar ? 1 : 0.72);
   }
@@ -926,7 +1056,7 @@ function litFloor(hue){
   for (let i=0;i<k;i++){
     floorLit.push({c: (Math.random()*FLOOR_COLS)|0,
                    r: (Math.random()*FLOOR_ROWS)|0,
-                   hue: (hue + (Math.random()*60-30)) % 360, on: 1});
+                   hue: burstHue((hue + (Math.random()*60-30)) % 360), on: 1});
   }
   if (floorLit.length > 14) floorLit.splice(0, floorLit.length - 14);   // ★iPadの描画予算
 }
@@ -1006,12 +1136,15 @@ function drawInner(now){
   pulse = Math.max(0, pulse - dt*3.4);
   flash = Math.max(0, flash - dt*2.0);
 
+  // ★バーストの強さ。**ここで1回だけ出して、全部が同じ値を見る**
+  const burst = burstAmt();
+  if (burst > 0) heat = 1.0;                      // 照明は振り切る
   const p = pal();
   // ★静かなとき 0.10 前後、盛り上がると 1.6 くらいまで振れる
-  const energy = 0.10 + heat*0.75 + pulse*0.70*heat + flash*0.6;
+  const energy = (0.10 + heat*0.75 + pulse*0.70*heat + flash*0.6) * (1 + burst*0.9);
 
   // 背景。★静かなときは色を回さない。回ると落ち着かない
-  g.fillStyle = 'hsl('+((p.h + t*26*heat) % 360)+','
+  g.fillStyle = 'hsl('+burstHue((p.h + t*26*heat*(1-burst)) % 360)+','
               + (40 + 45*heat)+'%,'+(0.6 + energy*1.6)+'%)';
   g.fillRect(0,0,innerWidth,innerHeight);
   // ★静かなときはライトを出さない。**コードがゆっくり流れているだけでちょうどいい**
@@ -1052,7 +1185,9 @@ function drawInner(now){
 
   // ── ② 会場の奥：3面のディスプレイ。**裏で正面から描いて、台形に貼る**
   const TAIL = 13 + 9*heat;   // ★描画数を抑える（iPad が止まる）
-  const flow = (0.22 + heat*2.4 + energy*6.0) * (1 - hold*0.45) + release*14.0;
+  // ★バーストでコードが走る。**倍率で効かせる**（足すと止まっているとき変になる）
+  const flow = ((0.22 + heat*2.4 + energy*6.0) * (1 - hold*0.45) + release*14.0)
+             * (1 + burst*7.0);
 
   frameNo++;
   for (const pn of panels){
@@ -1081,7 +1216,10 @@ function drawInner(now){
         if (d > TAIL) continue;
         const txt = c.rows[r];
         if (!txt) continue;
-        const hue = (p.h + c.hue*(30+140*heat) + (p.h2-p.h)*(d/TAIL) + t*(2+56*heat)) % 360;
+        // ★バースト中は散らしも回転も止める。**赤で押し切る**
+        const hue = burstHue(
+          (p.h + c.hue*(30+140*heat)*(1-burst*0.85)
+             + (p.h2-p.h)*(d/TAIL) + t*(2+56*heat)*(1-burst)) % 360);
         const a = Math.max(0, 1 - d/TAIL) * (0.085 + 1.05*heat + energy*0.45)
                 * (1 - hold*0.25) * (1 + release*0.9);
         if (d < 0.9){
@@ -1375,6 +1513,7 @@ function drawInner(now){
   }
 
   // ── 下からの光。★機材より**手前**（ステージ前縁に置く）
+  burstGloss(burst);                    // ★赤い光沢は空気の色。実体より奥
   uplights(t, p, playing ? hold : 0, S.jog || 0);
   uplightBodies(t, p, S.jog || 0);      // ★実体は常に置く
 
@@ -1401,6 +1540,11 @@ function drawInner(now){
 
   // ── ⑤ トラスと灯体。**光を遮る**
   if (heat > 0.06) rig(heat);
+
+  // ── ⑥ 花火。★**いちばん手前。** 実際に舞台前縁から吹き上がるので、
+  //   トラスにも灯体にも隠されない（2026-09-13 本人の指示：100%で噴射）
+  stepSparks(dt, burst >= 1 ? 1 : 0);
+  drawSparks();
 
 
   if (flash > 0.01){
@@ -1432,6 +1576,9 @@ window.__debug = {
   lensPos, pivotY, lensY, stepHeads, rigLen, trussY, trussH,
   litFloor, floorPanels: () => floorLit, FLOOR_COLS, FLOOR_ROWS,
   tape, tapeRuns, TOP_RUN_LIFT, trussCorner, JOINT_L, JOINT_R, M,
+  burstAmt, burstHue, BURST_ON, pal, BURST_PAL, sparks: () => SPARKS,
+  beamHues: () => BEAMS.map(b=>b.hueDeg), fireBeams,
+  setBurst: (v)=>{ S.burst = v; },
   setLeds: (v)=>{ S.leds = v; },
   blinderX: () => { const a=[]; for(let i=0;i<BEAMS.length-1;i++)
       a.push((BEAMS[i].cx+BEAMS[i+1].cx)/2);

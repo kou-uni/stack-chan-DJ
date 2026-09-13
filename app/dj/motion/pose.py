@@ -6,6 +6,7 @@ console.py から切り出した。**振る舞いは1行も変えていない。
 from __future__ import annotations
 
 import json
+import math
 import time
 
 from .arbiter import HeadArbiter
@@ -51,6 +52,9 @@ class PoseState:
         self._phrase_span = 8.0
         self.arb = HeadArbiter(knob_hold_s=hold_s)
         self.hold = None         # (yaw, pitch) を入れると、そこで固定する
+        # ★右の音量ゲージ 0..1。閾値を超えると**曲が無くても激しく揺れる**。
+        #   盛り上がりの頂点で人が意図して上げるものなので、拍を待たない
+        self.burst = 0.0
 
     def touch(self) -> None:
         self.touched_at = time.time()
@@ -88,7 +92,8 @@ class PoseState:
         """いまの角度。返すのは yaw と「45度からの差」。"""
         g = self._groove_now
         if self.bpm <= 0 or g <= 0.02:
-            return 0.0, 0.0
+            # ★曲が無くてもバーストなら揺れる（頂点は人が決める）
+            return self._with_burst(0.0, 0.0)
         t = (time.time() - self.beat0) / (60.0 / self.bpm)     # 拍単位の時刻
 
         if t >= self._phrase_end:                              # フレーズを切り替える
@@ -100,12 +105,30 @@ class PoseState:
         span = max(1e-6, self._phrase_span)
         in_phrase = 1.0 - max(0.0, min(1.0, (self._phrase_end - t) / span))
 
-        return phrases.angles(
+        return self._with_burst(*phrases.angles(
             self._phrase, t, in_phrase,
             sway=self.sway_deg * (g ** 1.15),                  # ノリで振り幅が伸びる
             nod=self.nod_deg * (0.45 + 0.55 * g),
             dip=self.nod_deg,                                  # 頷きの深さはノリで薄めない
-        )
+        ))
+
+    def _with_burst(self, yaw: float, dip: float):
+        """バーストの揺れを重ねる。**踊りを消さず、上に乗せる。**
+
+        ★ゲージは人が意図して上げている。**曲が無くても揺らす。**
+          左右と上下で周期をずらす（同じだと斜めに往復するだけで、
+          「暴れている」に見えない）
+        """
+        from constants import burst_amount
+        a = burst_amount(self.burst)
+        if a <= 0:
+            return yaw, dip
+        t = time.time()
+        fy = 6.5 + 5.5 * a                                     # 1秒あたりの往復
+        yaw += math.sin(t * fy * math.tau) * self.YAW_LIM * (0.42 + 0.38 * a)
+        dip += math.sin(t * fy * 0.61 * math.tau) * self.PITCH_LIM * (0.28 + 0.30 * a)
+        return (phrases.clamp(yaw, self.YAW_LIM),
+                phrases.clamp(dip, self.PITCH_LIM))
 
     # ── 主導権の判定は HeadArbiter に委譲する ──────────────
     #   以前はここに散らばっていて、19箇所から首を書いていた。
@@ -116,8 +139,10 @@ class PoseState:
             a.set_pose(self.hold[0], self.hold[1])
         else:
             a.set_pose(None)
-        a.dancing = self.dance
-        if self.dance:
+        from constants import burst_amount
+        shaking = burst_amount(self.burst) > 0
+        a.dancing = self.dance or shaking          # ★バースト中は首を明け渡す
+        if self.dance or shaking:
             a.set_dance(*self.dance_angles())
         if self.touched_at:
             a._knob, a._knob_at = (self.yaw, self.pitch), self.touched_at

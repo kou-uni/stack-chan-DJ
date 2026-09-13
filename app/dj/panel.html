@@ -68,6 +68,14 @@ input{width:100%;background:var(--card);border:1px solid var(--line);color:var(-
 .bub.think{color:var(--dim)}
 #log{font-size:12px;color:var(--dim);min-height:1.3em;margin-top:8px;text-align:center}
 #log.err{color:var(--warm)}
+  .burst{margin:0 0 6px}
+  #burst{width:100%;height:38px;accent-color:#ff3b1f}
+  .brow{display:flex;align-items:center;gap:10px;font-size:13px;opacity:.85;
+        margin-top:2px}
+  #bnum{font-variant-numeric:tabular-nums;min-width:3.5em;font-weight:700}
+  #bnum.hot{color:#ff6a3d}
+  .bhint{flex:1;opacity:.6}
+  .bmini{padding:4px 10px;font-size:12px;width:auto}
 </style></head><body>
 
 <!-- ★カメラは既定でオフ。**家のカメラが勝手に外へ流れない。**
@@ -105,6 +113,16 @@ input{width:100%;background:var(--card);border:1px solid var(--line);color:var(-
 <div class="grid g2">
   <button data-a="mode" data-v="off">OFF しずか</button>
   <button data-a="mode" data-v="dj">DJ おどる</button>
+</div>
+
+<h2>バースト（もりあがり）</h2>
+<!-- ★本番はDJの右の音量ゲージ。ここは**手元に機材が無いときの逃げ道**。
+     リハで確かめられないものは、本番で壊れる -->
+<div class="burst">
+  <input id="burst" type="range" min="0" max="100" value="0" step="1">
+  <div class="brow"><span id="bnum">0%</span>
+    <span class="bhint">70% 赤 / 100% 花火</span>
+    <button id="bzero" class="bmini">もどす</button></div>
 </div>
 
 <h2>LED</h2>
@@ -148,6 +166,7 @@ function paint(s){
     `<span>${s.pattern}</span>`,
     s.bpm>1?`<span>${s.bpm.toFixed(0)} BPM</span>`:''
   ].join('');
+  /* ★バーストのつまみは塗り直さない。握っている指から値を奪う */
   document.querySelectorAll('button[data-a="led"]').forEach(b=>
     b.classList.toggle('on', b.dataset.v===s.pattern));
   document.querySelectorAll('button[data-a="mode"]').forEach(b=>
@@ -255,6 +274,23 @@ async function ask(){
   finally{ asking = false; }
 }
 $('#guide').onclick = () => { buzz(); window.open('guide', '_blank'); };
+/* ── バースト。★指を離すまで送り続ける（つまみと同じ手触り）───── */
+const bslider = $('#burst'), bnum = $('#bnum');
+let bLast = 0;
+function sendBurst(){
+  const v = +bslider.value / 100;
+  bnum.textContent = bslider.value + '%';
+  bnum.classList.toggle('hot', v >= 0.70);
+  if (Math.abs(v - bLast) < 0.005) return;
+  bLast = v;
+  /* ★状態の塗り直しはしない。**つまみを握っている間に画面が動くと外れる** */
+  fetch(`api/act?k=${encodeURIComponent(K)}`,{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'burst', value:v})}).catch(()=>{});
+}
+bslider.addEventListener('input', sendBurst);
+$('#bzero').onclick = ()=>{ bslider.value = 0; sendBurst(); buzz(); };
+
 $('#askbtn').onclick = ask;
 $('#q').addEventListener('keydown', e => { if(e.key === 'Enter') ask(); });
 

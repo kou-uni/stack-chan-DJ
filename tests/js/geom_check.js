@@ -253,6 +253,17 @@ ok('柱を四角塗りで描いていない',
   const before = drawCount(); frameN++; rafFn(frameN*16.7);
   const per = drawCount() - before;
   ok('1フレームの描画命令が1000未満', per < 1000, per + '命令');
+
+  // ★バースト全開（花火つき）でも予算に収まるか。**頂点で止まったら台無し**
+  sb0.__ws.onmessage({data: JSON.stringify(
+    {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0,
+     burst:1.0, leds: Array.from({length:12},(_,i)=>[i*20, 255-i*20, 40])})});
+  for (let i=0;i<90;i++){ frameN++; rafFn(frameN*16.7); }
+  const b0 = drawCount(); frameN++; rafFn(frameN*16.7);
+  const bper = drawCount() - b0;
+  ok('バースト全開でも描画命令が1100未満', bper < 1100, bper + '命令');
+  sb0.__ws.onmessage({data: JSON.stringify(
+    {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0})});
 }
 
 // ★床のパネル発光（2026-09-13）
@@ -410,6 +421,57 @@ ok('柱を四角塗りで描いていない',
      (src.match(/imageSmoothingQuality = 'high'/g) || []).length >= 2);
   const dw = src.match(/const dw = pn\.pw\/N \+ ([0-9.]+);/);
   ok('台形の帯の重なりが小さい（二重写りしない）', dw && +dw[1] <= 0.6, dw && dw[1]);
+}
+
+// ★バーストモード（2026-09-13 本人の指示）
+{
+  D.setBurst(0);
+  ok('ゲージが低いうちは何も起きない', D.burstAmt() === 0);
+  D.setBurst(0.69);
+  ok('69%でもまだ起きない', D.burstAmt() === 0, D.burstAmt().toFixed(2));
+  D.setBurst(0.70);
+  ok('70%で点火する（ただし0から始まる＝段差がない）', D.burstAmt() === 0,
+     D.burstAmt().toFixed(3));
+  D.setBurst(0.85);
+  ok('70〜100%は連続で上がる', Math.abs(D.burstAmt() - 0.5) < 1e-9,
+     D.burstAmt().toFixed(2));
+  D.setBurst(1.0);
+  ok('100%で満', D.burstAmt() === 1);
+  ok('バースト中は赤に塗り替わる', D.pal() === D.BURST_PAL);
+  D.setBurst(0.5);
+  ok('閾値の下では元の色に戻る', D.pal() !== D.BURST_PAL);
+
+  // ★色。**赤で押し切れているか。** 散らしと時間回転に負けて黄緑になっていた
+  D.setBurst(1.0);
+  const near = (h) => Math.min(Math.abs(((h - 6 + 540) % 360) - 180), 180);
+  const worst = [0, 60, 120, 180, 240, 300].map(h => near(D.burstHue(h)));
+  ok('バースト中はどの色も赤に寄る（30度以内）', Math.max(...worst) <= 30,
+     '最大 ' + Math.max(...worst).toFixed(0) + '度');
+  D.fireBeams(1);
+  ok('灯体の色も赤に寄る',
+     D.beamHues().every(h => near(h) <= 40), D.beamHues().map(h=>h|0).join(' '));
+  D.setBurst(0);
+  D.fireBeams(2);
+  ok('閾値の下では色は散らばったまま', true);
+
+  // 花火は100%のときだけ、しかも粒に上限がある
+  D.setBurst(1.0);
+  sb0.__ws.onmessage({data: JSON.stringify(
+    {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',
+     jog:0,jogw:0,burst:1.0})});
+  for (let i=0;i<90;i++){ frameN++; rafFn(frameN*16.7); }
+  const n1 = D.sparks().length;
+  ok('100%で花火が出る', n1 > 20, n1 + '粒');
+  ok('花火の粒に上限がある', n1 <= 240, n1 + '粒');
+  // 90%では出ない
+  sb0.__ws.onmessage({data: JSON.stringify(
+    {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',
+     jog:0,jogw:0,burst:0.9})});
+  for (let i=0;i<180;i++){ frameN++; rafFn(frameN*16.7); }
+  ok('100%未満では花火は出ない（消えきる）', D.sparks().length === 0,
+     D.sparks().length + '粒');
+  sb0.__ws.onmessage({data: JSON.stringify(
+    {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0})});
 }
 
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');

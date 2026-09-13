@@ -104,6 +104,7 @@ class LedState:
         # ★会話の状態。"listening" / "speaking" / None
         #   会話（サブ講師）が入ったらここを動かす。踊りより優先される。
         self.talk: str | None = None
+        self.burst = 0.0        # ★右の音量ゲージ 0..1（バーストモード）
         # ★時計を外から差し替えられるようにする。
         #   サビの点滅は時刻で決まるので、これが無いと試験で測れない
         self.now = time.time
@@ -162,7 +163,43 @@ class LedState:
         v = int(255 * f * self.max_brightness)
         return [[v, v, v]] * self.count
 
+    # ★バーストは赤を中心に。**白を混ぜて振り切れさせる。**
+    #   青を残すと桃色になって、赤の圧が出ない（2026-09-13）
+    BURST_HUES = ((255, 20, 10), (255, 90, 0), (255, 0, 60), (255, 255, 255))
+
+    def _burst_colors(self, amt: float):
+        """バーストの色。**強さが上がるほど速く、白が増える。**
+
+        amt は 0..1（`constants.burst_amount`）。段差を作らない。
+        """
+        t = time.time()
+        rate = 9.0 + 13.0 * amt                   # 1秒あたりの刻み
+        step = int(t * rate)
+        ph = (t * rate) % 1.0
+        k = min(1.0, self.max_brightness * (1.6 + 1.4 * amt))
+        out = []
+        for i in range(self.count):
+            # ★粒ごとに位相をずらす。全部同時だと「ただの点滅」に見える
+            j = (step + i * 3) % len(self.BURST_HUES)
+            c = self.BURST_HUES[j]
+            # 白は amt が高いときだけ出す（低い間は赤〜橙で押す）
+            if c == (255, 255, 255) and amt < 0.45:
+                c = self.BURST_HUES[0]
+            f = (1.0 - ph) ** (1.4 - 0.9 * amt)   # 強いほど落ちが遅い＝焼き付く
+            f = 0.35 + 0.65 * f
+            out.append([min(255, int(c[0] * f * k)),
+                        min(255, int(c[1] * f * k)),
+                        min(255, int(c[2] * f * k))])
+        return out
+
     def colors(self):
+        # ★バーストは会話より強い。**頂点で止めない。**
+        #   ここだけは人が意図してゲージを上げているので、最優先でよい
+        from constants import burst_amount
+        amt = burst_amount(self.burst)
+        if amt > 0:
+            return self._burst_colors(amt)
+
         # ★会話がいちばん強い。踊っている最中に話しかけられても、
         #   「聞いている」ことが分かるようにする。
         c = self.TALK_COLOR.get(self.talk)
@@ -469,7 +506,10 @@ class LedState:
         #   ここを enabled だけで閉じていたので、緑も青も一度も出ない作りだった
         #   （テストを先に書いたので、実装前に分かった）
         self.current_pattern()          # ★期限切れならここで基本に戻る
-        lit = self.enabled or self.manual or self.talk in self.TALK_COLOR
+        # ★バーストは人が意図してゲージを上げている。**消えていても点ける**
+        from constants import burst_amount
+        lit = (self.enabled or self.manual or self.talk in self.TALK_COLOR
+               or burst_amount(self.burst) > 0)
         colors = self.colors() if lit else [[0, 0, 0]] * self.count
         return json.dumps({
             "source": "ddj-flx2",

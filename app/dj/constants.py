@@ -29,3 +29,21 @@ def _scale(v: int, lo: float, hi: float, in_lo: int = 0, in_hi: int = 127) -> fl
     span = max(1, in_hi - in_lo)
     t = (max(in_lo, min(in_hi, v)) - in_lo) / span
     return lo + t * (hi - lo)
+
+# ── バーストモード（右の音量ゲージ）─────────────────────
+# ★盛り上がりの頂点で使う。**段階を作る。**
+#   0.70 で赤く点火、1.00 で花火。途中は連続量で強さが上がる
+#   （2026-09-13 本人の指示）
+BURST_ON = 0.70          # ここから赤いバースト
+BURST_MAX = 0.995        # ここから花火
+
+
+def burst_amount(v: float) -> float:
+    """ゲージの生値 0..1 を、バーストの強さ 0..1 に直す。
+
+    ★閾値の下では 0。閾値を超えたところから 0 で始まり、満で 1。
+      **段差を作らない。** 0.70 でいきなり全開になると事故に見える
+    """
+    if v is None or v < BURST_ON:
+        return 0.0
+    return min(1.0, (v - BURST_ON) / (1.0 - BURST_ON))

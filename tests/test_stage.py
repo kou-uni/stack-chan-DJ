@@ -82,7 +82,15 @@ def test_曲が止まっていても落ちない():
 
 
 def test_送る中身は小さい():
-    """★毎拍たくさん送ると、iPad より先にネットワークが詰まる。"""
+    """★毎拍たくさん送ると、iPad より先にネットワークが詰まる。
+
+    ★項目数ではなく**バイト数**で見る（2026-09-13）。
+      leds のように「1項目だが中身が12個」があるので、数えても意味がない。
+      20Hz で流すので、1KB を超えたら 20KB/s。会場の Wi-Fi では重い。
+    """
+    import json
     led, pres = _parts()
+    led.enabled, led.bpm = True, 124
     s = stage_state(led, pres, now=0.0)
-    assert len(s) <= 10, f"項目が {len(s)} 個。増やしすぎ"
+    size = len(json.dumps(s))
+    assert size <= 1024, f"1フレーム {size} バイト。20Hz で {size*20//1024}KB/s"

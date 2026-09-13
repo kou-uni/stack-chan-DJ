@@ -64,6 +64,8 @@ def stage_state(led, presence, now: float | None = None, jog=None) -> dict:
         "jogw": float(jog.weight()) if jog is not None else 0.0,
         # ★実機のテープと同じ色。12個 × 3値で 200 バイト弱。20Hz でも詰まらない
         "leds": led.colors(),
+        # ★右の音量ゲージ。0.70 から赤いバースト、1.00 で花火（2026-09-13）
+        "burst": float(getattr(presence, "burst", 0.0) or 0.0),
     }
 
 

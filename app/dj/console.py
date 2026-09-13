@@ -110,6 +110,17 @@ class Console(ExpressionMixin, MidiMixin, AudioMixin, TouchMixin, VisionMixin):
         self.presence.talk = state
         self.led.talk = state
 
+    def set_burst(self, v: float) -> None:
+        """右の音量ゲージ。**盛り上がりの頂点を、人が手で決める。**
+
+        0.70 から赤いバースト（LED・首・背景が一斉に変わる）、1.00 で花火。
+        ★1箇所で持つ。画面・LED・首がばらばらの値を見ると、必ず食い違う。
+        """
+        v = max(0.0, min(1.0, float(v)))
+        self.presence.burst = v
+        self.led.burst = v
+        self.pose.burst = v
+
     def set_dancing(self, on: bool) -> None:
         """踊っているかどうか。**首と顔で食い違わないよう1箇所で切り替える。**"""
         self.pose.dance = on
@@ -142,6 +153,7 @@ class Console(ExpressionMixin, MidiMixin, AudioMixin, TouchMixin, VisionMixin):
         self._torque_off = False
 
         self._knob_was = False
+        self._cc_seen: dict[tuple[int, int], float] = {}
         self._last_check = 0.0
         self.mode = MODE_IDLE
         self._silent_since = None

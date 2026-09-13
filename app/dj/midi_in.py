@@ -77,11 +77,24 @@ class MidiMixin:
                 # ★照明だけを動かす。**首やモードは触らない**
                 #   （スクラッチ中に状態が変わると演奏が壊れる）
                 self.jog.feed(msg.value)
+            elif slot == "burst":
+                # ★右の音量ゲージ。**首もモードも触らない。**
+                #   0..127 をそのまま 0..1 に。閾値の判定は使う側でやる
+                self.set_burst(msg.value / 127.0)
             elif slot == "pitch":
                 self.pose.pitch = _scale(msg.value, PITCH_REL_MIN, PITCH_REL_MAX)
                 self.pose.touch()
                 await self.wake_servos()
                 self._show_pose("pitch")
+            elif slot is None:
+                # ★未割当のつまみ。**番号を調べるのはここでしかできない。**
+                #   ボタンには出ていたのに、つまみには出していなかった
+                now = time.time()
+                key = (msg.channel, msg.control)
+                if now - self._cc_seen.get(key, 0.0) > 2.0:
+                    self._cc_seen[key] = now
+                    print(f"  ? 未割当のつまみ: CC ch{msg.channel} #{msg.control}"
+                          f" = {msg.value}   → scripts/learn_cc.py で割り当てられます")
         elif msg.type == "note_on" and msg.velocity > 0:
             # ★ON と OFF を別のボタンに分ける。トグルにしない。
             #   MASTER は押しっぱなしで使う人がいるので、トグルだと事故る。

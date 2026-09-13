@@ -120,6 +120,15 @@ async def apply_action(con, action: str, value: str) -> dict:
             con.pose.hold = None
         return _ok(con, mode=value)
 
+    if action == "burst":
+        # ★DJ機材が無いときの逃げ道。**リハで確かめられないものは、本番で壊れる**
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            raise ValueError(f"バーストの値がおかしい: {value!r}")
+        con.set_burst(v)
+        return _ok(con, burst=con.presence.burst)
+
     if action == "led":
         if value not in LedState.PATTERNS:
             raise ValueError(f"知らない模様: {value}")
@@ -153,6 +162,7 @@ def panel_state(con) -> dict:
         "dancing": bool(con.presence.dancing),
         "talk": con.presence.talk,
         "pattern": con.led.pattern,
+        "burst": float(getattr(con.presence, "burst", 0.0) or 0.0),
         "bpm": float(getattr(con.led, "bpm", 0) or 0),
         "face": d.get("face"),
         "head": list(con.pose.hold) if con.pose.hold else None,
