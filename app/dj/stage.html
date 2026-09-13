@@ -325,12 +325,12 @@ function beams(t, p, energy, heat){
     //   ・**中心は白飛びする**（彩度が落ちる）。外側ほど色が乗る
     //   ・遠いほど広がって薄い → 層ごとに減衰の効き方を変える
     // ★ヘイズが濃い。**光は太い塊になる**（参考画像）。細い筋ではない
-    for (const [wm, am, sat, lig] of [[6.0, 0.016, 60, 40],
-                                      [4.0, 0.028, 72, 46],
-                                      [2.6, 0.048, 84, 54],
-                                      [1.6, 0.080, 88, 64],
-                                      [0.9, 0.130, 70, 80],
-                                      [0.35,0.210, 30, 95]]){
+    for (const [wm, am, sat, lig] of [[6.0, 0.030, 60, 44],
+                                      [4.0, 0.052, 72, 52],
+                                      [2.6, 0.090, 84, 60],
+                                      [1.6, 0.150, 88, 70],
+                                      [0.9, 0.245, 70, 84],
+                                      [0.35,0.390, 30, 97]]){
       const gg = g.createLinearGradient(0, 0, 0, far);
       // ★逆二乗を階段で近似する。d0 は「光源からこの距離で半分」の目安
       for (const s of [0, 0.06, 0.14, 0.26, 0.45, 0.70, 1.0]){
@@ -471,8 +471,8 @@ function rig(heat){
     const cx = LP.x, ly = LP.y, hue = b.hueDeg, half = M()*0.115;
     // ★大きな白玉にしない。**芯は小さく、周りは色**（2026-09-13 本人の指摘）
     for (const [r, a2, s2, l2] of [[1.9, 0.06, 92, 50],
-                                   [0.85,0.20, 86, 64],
-                                   [0.30,0.85, 45, 94]]){
+                                   [0.85,0.34, 86, 68],
+                                   [0.30,1.00, 45, 97]]){
       const gl = g.createRadialGradient(cx, ly, 0, cx, ly, half*r);
       gl.addColorStop(0,   'hsla('+hue+','+s2+'%,'+l2+'%,'+(a2*pw)+')');
       gl.addColorStop(0.5, 'hsla('+hue+','+(s2+8)+'%,'+(l2-16)+'%,'+(a2*0.28*pw)+')');
@@ -521,9 +521,29 @@ function rig(heat){
 // ★実機は画面の**中央下**に立つ（実物の配置・2026-09-13）。
 //   真後ろに置くと隠れるので、**実機の外側**から立ち上げて、実機を挟む
 const UPS = [
-  {cx: 0.17, hue: 0.00, side: -1},
-  {cx: 0.83, hue: 0.55, side:  1},
+  {cx: 0.17, hue: 0.00, side: -1, ang: 0, tgt: 0, vel: 0, base: 0},
+  {cx: 0.83, hue: 0.55, side:  1, ang: 0, tgt: 0, vel: 0, base: 0},
 ];
+// ★下の灯体も首を振る。固定だと置物に見える（2026-09-13 本人の指摘）
+const UP_LOOKS = [
+  (u)=> u.side*0.55, (u)=> -u.side*0.55, (u)=> 0,
+  (u)=> u.side*0.85, (u)=> -0.35, (u)=> 0.35,
+];
+let upLook = 0;
+function newUpLook(){
+  let k = upLook;
+  while (k === upLook) k = (Math.random()*UP_LOOKS.length)|0;
+  upLook = k;
+  UPS.forEach(u => u.tgt = UP_LOOKS[upLook](u));
+}
+newUpLook();
+function stepUps(dt){
+  for (const u of UPS){
+    u.vel += (u.tgt - u.ang) * 46.0 * dt;
+    u.vel -= u.vel * 12.5 * dt;
+    u.ang += u.vel * dt;
+  }
+}
 
 function stageWell(){
   // ★実機は白い。**背後が明るいと顔が沈む。** 中央下だけ暗く落として浮かせる
@@ -603,7 +623,8 @@ function uplights(t, p, amt, jog){
   const far = innerHeight*1.5;
   for (const u of UPS){
     const cx = innerWidth*u.cx;
-    const a = u.side*0.26 + jog*1.05;
+    // ★仕込んだ首振り＋演者の手。手が勝つが、離せば首振りに戻る
+    const a = u.ang + jog*1.05;
     const pw = amt * (0.35 + 0.65*Math.abs(jog));
     const hue = (p.h + 170 + u.hue*150) % 360;
     const half = M()*0.13;
@@ -614,11 +635,11 @@ function uplights(t, p, amt, jog){
     g.translate(cx, y);
     g.rotate(Math.PI + a);                    // 上へ向ける
     // ★層を重ねて縁を溶かす。逆二乗で落とす
-    for (const [wm, am, sat, lig] of [[5.0, 0.014, 60, 42],
-                                      [3.2, 0.026, 74, 50],
-                                      [2.0, 0.046, 86, 60],
-                                      [1.2, 0.080, 84, 72],
-                                      [0.6, 0.140, 40, 92]]){
+    for (const [wm, am, sat, lig] of [[5.0, 0.028, 60, 46],
+                                      [3.2, 0.050, 74, 56],
+                                      [2.0, 0.090, 86, 66],
+                                      [1.2, 0.155, 84, 78],
+                                      [0.6, 0.270, 40, 95]]){
       const gg = g.createLinearGradient(0, 0, 0, far);
       for (const s2 of [0, 0.08, 0.18, 0.34, 0.58, 1.0]){
         const d = 1 + s2*6.0;
@@ -632,8 +653,8 @@ function uplights(t, p, amt, jog){
     }
     g.restore();
     // レンズのブルーム
-    for (const [r, a2, s2, l2] of [[4.0, 0.09, 88, 55], [1.8, 0.32, 66, 80],
-                                   [0.8, 0.85, 20, 98]]){
+    for (const [r, a2, s2, l2] of [[4.0, 0.16, 88, 58], [1.8, 0.48, 66, 82],
+                                   [0.8, 1.00, 20, 99]]){
       const gl = g.createRadialGradient(cx, y, 0, cx, y, half*r);
       gl.addColorStop(0, 'hsla('+hue+','+s2+'%,'+l2+'%,'+(a2*pw)+')');
       gl.addColorStop(1, 'hsla('+hue+',95%,55%,0)');
@@ -652,6 +673,7 @@ function fireBeams(n){
   bar = (bar + 1) % 4;
   // ★全部を同時に点けない。**面になった瞬間、光ではなく霧になる**
   newLook(n);                                       // ★毎拍、位置を変える
+  if (n % 2 === 0) newUpLook();                     // 下は2拍ごと
   const heavy = (n % 4 === 0);                      // 4拍に1回は全灯
   const pl = pal();
   for (const b of BEAMS){
@@ -715,6 +737,7 @@ function draw(now){
   // ★静かなときはライトを出さない。**コードがゆっくり流れているだけでちょうどいい**
   //   （2026-09-12 本人の指摘）。動き出したら吊り込まれる
   stepHeads(dt);
+  stepUps(dt);
 
   const hy = innerHeight*HORIZON;
 
