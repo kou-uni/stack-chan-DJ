@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">431f53f 12:21:02</div>
+<div id="v">d0dd118 12:21:44</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -825,7 +825,7 @@ function drawInner(now){
   }
 
   // ── ② 会場の奥：3面のディスプレイ。**裏で正面から描いて、台形に貼る**
-  const TAIL = 16 + 10*heat;   // ★描画数を抑える（iPad が止まる）
+  const TAIL = 13 + 9*heat;   // ★描画数を抑える（iPad が止まる）
   const flow = (0.22 + heat*2.4 + energy*6.0) * (1 - hold*0.45) + release*14.0;
 
   frameNo++;
@@ -1061,7 +1061,7 @@ function drawInner(now){
       g.fillStyle = 'rgba(0,0,0,0.55)';
       g.fillRect(x - w/2, yTop, w, topH);
       g.fillStyle = 'rgba(70,76,88,0.16)';
-      for (let yy = yTop + M()*0.05; yy < yTop + topH; yy += Math.max(2, M()*0.018)){
+      for (let yy = yTop + M()*0.05; yy < yTop + topH; yy += Math.max(3, M()*0.032)){
         g.fillRect(x - w/2, yy, w, Math.max(1, M()*0.008));
       }
       g.restore();
