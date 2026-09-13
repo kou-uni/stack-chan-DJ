@@ -258,10 +258,13 @@ ok('柱を四角塗りで描いていない',
   sb0.__ws.onmessage({data: JSON.stringify(
     {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0,
      burst:1.0, leds: Array.from({length:12},(_,i)=>[i*20, 255-i*20, 40])})});
-  for (let i=0;i<90;i++){ frameN++; rafFn(frameN*16.7); }
-  const b0 = drawCount(); frameN++; rafFn(frameN*16.7);
-  const bper = drawCount() - b0;
-  ok('バースト全開でも描画命令が1100未満', bper < 1100, bper + '命令');
+  // ★一吹きの山を取り逃さないよう、**2周ぶん回して最大を見る**
+  let bper = 0;
+  for (let i=0;i<200;i++){
+    const b0 = drawCount(); frameN++; rafFn(frameN*16.7);
+    bper = Math.max(bper, drawCount() - b0);
+  }
+  ok('バースト全開でも描画命令が1200未満', bper < 1200, bper + '命令');
   sb0.__ws.onmessage({data: JSON.stringify(
     {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0})});
 }
@@ -538,7 +541,7 @@ ok('柱を四角塗りで描いていない',
       for (const s of D.puffs()){
         if (s.t > 0.05) continue;                 // 出たばかりの粒だけ見る
         seen++;
-        if (s.y > 900*0.40) ok1 = false;          // 上側から出ている
+        if (s.y > 900*0.22) ok1 = false;          // ★天井近くから出ている
         if (s.vy <= 0 || Math.abs(s.vy) < Math.abs(s.vx)*0.3) ok2 = false;  // 斜め下
       }
     }
@@ -578,7 +581,7 @@ ok('柱を四角塗りで描いていない',
     frameN++; rafFn(frameN*16.7);
     if (D.puffs().length > best.length) best = D.puffs().slice();
   }
-  ok('一度に重なる粒が多い', best.length >= 30, best.length + '個');
+  ok('一度に重なる粒が多い', best.length >= 60, best.length + '個');
   const uniq = (f) => new Set(best.map(f).map(v => Math.round(v*20))).size;
   ok('消え方が粒ごとに違う', uniq(s => s.fade) >= 6, uniq(s => s.fade) + '種');
   ok('大きさが粒ごとに違う', uniq(s => s.r / D.M()) >= 6, uniq(s => s.r / D.M()) + '種');

@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">b83d249 15:40:20</div>
+<div id="v">03ced98 15:44:28</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -686,7 +686,7 @@ function drawSparks(){
 const PUFFS = [];
 // ★一発の大きい塊ではなく、**細かいのが重なって「シュワわわわ」**（2026-09-13 本人の指示）。
 //   実物も1つの煙ではなく、無数の粒が入れ替わりながら塊に見えている
-const PUFF_MAX = 92;
+const PUFF_MAX = 128;
 let blastAt = 0, blastEnd = 0;
 // ★var で宣言する。layout() はこの行より先に走るので、let だと
 //   「初期化前に触った」で落ちる（2026-09-13）
@@ -706,14 +706,15 @@ function puffGrad(){
 function stepSmoke(dt, amt, now){
   if (amt > 0){
     if (now > blastAt){                       // ★次の一吹き
-      blastAt = now + 1.30;
-      blastEnd = now + 0.72;                  // ★長めに吹いて、粒を重ねる
+      // ★ほぼ吹きっぱなし。**切れ目は残す**（間があるから一吹きに見える）
+      blastAt = now + 1.20;
+      blastEnd = now + 0.98;
     }
     if (now < blastEnd){
       // ★上限は**左右で山分けする。** ループの中で残量を見ると、
       //   先に回った左が使い切って右が痩せる（花火で同じ失敗をした）
       const room = Math.max(0, PUFF_MAX - PUFFS.length);
-      const per = Math.min(7, Math.floor(room / 2));
+      const per = Math.min(9, Math.floor(room / 2));
       for (const side of [-1, 1]){
         for (let i=0;i<per;i++){
           // ★左右の**上側**から、内側へ**斜め下**に降らせる（2026-09-13 本人の指示）。
@@ -726,7 +727,7 @@ function stepSmoke(dt, amt, now){
           const down = 0.42 + Math.random()*0.50;      // 水平に対する下向きの比
           PUFFS.push({
             x: side < 0 ? -M()*0.2 : innerWidth + M()*0.2,
-            y: innerHeight*(0.20 + Math.random()*0.13),
+            y: innerHeight*(0.02 + Math.random()*0.13),   // ★もっと上から
             vx: -side * sp,
             vy: sp * down,
             r:  M()*(0.16 + Math.random()*0.26),       // ★細い
@@ -763,7 +764,8 @@ function drawSmoke(){
     // ★立ち上がりは速く、**消え方は粒ごとに違う**。揃って消えると
     //   「1枚の絵が薄くなった」に見える（2026-09-13 本人の指摘）
     const a = Math.min(1, u*7) * Math.pow(1 - u, s.fade) * s.mul;
-    if (a < 0.015) continue;
+    // ★見えない粒は描かない。**数を増やしたぶんの予算をここから出す**
+    if (a < 0.040) continue;
     g.globalAlpha = a;
     g.save();
     g.translate(s.x, s.y);
@@ -1292,7 +1294,8 @@ function drawInner(now){
       const a = st.m * depth * tw * (1 - Math.min(0.75, heat*0.75));  // 照明が強いと星は負ける
       // ★灯体を増やしたぶんの描画予算を、見えない星から回す。
       //   照明が強いときの薄い星は、そもそも目に入らない（2026-09-13）
-      if (a < 0.075) continue;
+      //   ★バースト中は会場が真っ赤で、空はほぼ見えない。ここから予算を出す
+      if (a < 0.075 + burst*0.30) continue;
       g.fillStyle = 'rgba(214,226,255,'+a+')';
       const r = Math.max(0.6, st.m*1.7);
       g.fillRect(st.x*innerWidth, y, r, r);
