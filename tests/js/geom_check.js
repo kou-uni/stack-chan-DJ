@@ -80,8 +80,9 @@ ok('下からの光は実機の外側', D.UPS[0].cx < 0.30 && D.UPS[1].cx > 0.70
   const c = 800;
   const a0 = D.lensPos(c, 0), aL = D.lensPos(c, -0.8), aR = D.lensPos(c, 0.8);
   ok('真下では支点の真下にレンズが来る', Math.abs(a0.x - c) < 1e-6);
-  ok('左右に振るとレンズも動く', aL.x < c - 1 && aR.x > c + 1,
-     'L=' + aL.x.toFixed(1) + ' R=' + aR.x.toFixed(1));
+  // ★canvas は正の角度が時計回り（y軸が下向き）。先端は**左**へ動く
+  ok('左右に振るとレンズも動く（正の角度で左へ）', aR.x < c - 1 && aL.x > c + 1,
+     '+0.8→' + aR.x.toFixed(1) + ' / -0.8→' + aL.x.toFixed(1));
   ok('振ると少し上がる（円弧を描く）', aL.y < a0.y - 0.5 && aR.y < a0.y - 0.5);
   ok('左右対称', Math.abs((c - aL.x) - (aR.x - c)) < 1e-6);
 }
