@@ -175,7 +175,7 @@ const VENUE_W = 9.0;                     // 画面の横幅が何メートルか
 function M(){ return innerWidth / VENUE_W; }          // 1メートルの画素数
 // ★トラスは**壁より手前**にある。壁と同じ縮尺で描くと小さすぎて浮く。
 //   手前のものは枠からはみ出すのが自然（2026-09-13 本人の指摘）
-const TRUSS_NEAR = 1.7;                               // 壁に対する手前ぶんの倍率
+const TRUSS_NEAR = 1.15;                               // 壁に対する手前ぶんの倍率
 function trussY(){ return Math.max(30, innerHeight*0.055); }
 function trussH(){ return M() * 0.30 * TRUSS_NEAR; }  // 箱トラス 30cm角
 function braceP(){ return M() * 0.55 * TRUSS_NEAR; }
@@ -477,24 +477,6 @@ function rig(heat){
     }
   }
   g.lineCap = 'butt';
-
-  // ── ★光っている灯体は、**自分の光に負けて輪郭が消える**（参考写真）。
-  //   暗い会場では筐体は見えず、光る円だけが残る
-  g.globalCompositeOperation = 'lighter';
-  for (const b of BEAMS){
-    const pw = b.pw || 0;
-    if (pw < 0.05) continue;
-    const LPb = lensPos(innerWidth*b.cx, b.ang);
-    const r = rigLen()*0.85*(0.6 + pw);
-    const wo = g.createRadialGradient(LPb.x, LPb.y - rigLen()*0.15, 0,
-                                      LPb.x, LPb.y - rigLen()*0.15, r);
-    wo.addColorStop(0,   'hsla('+b.hueDeg+',70%,80%,'+(0.30*pw)+')');
-    wo.addColorStop(0.5, 'hsla('+b.hueDeg+',85%,62%,'+(0.10*pw)+')');
-    wo.addColorStop(1,   'hsla('+b.hueDeg+',90%,55%,0)');
-    g.fillStyle = wo;
-    g.beginPath(); g.arc(LPb.x, LPb.y - rigLen()*0.15, r, 0, 6.2832); g.fill();
-  }
-  g.globalCompositeOperation = 'source-over';
 
   // ── ★レンズの発光。**筐体を描いたあとに乗せる。**
   //   先に描いていたので、黒い筐体に塗り潰されて「光源が黒いまま」だった
