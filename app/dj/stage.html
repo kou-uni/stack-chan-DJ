@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">03ced98 15:44:28</div>
+<div id="v">f3c0a24 15:47:19</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -706,9 +706,9 @@ function puffGrad(){
 function stepSmoke(dt, amt, now){
   if (amt > 0){
     if (now > blastAt){                       // ★次の一吹き
-      // ★ほぼ吹きっぱなし。**切れ目は残す**（間があるから一吹きに見える）
-      blastAt = now + 1.20;
-      blastEnd = now + 0.98;
+      // ★短い間隔で何度も吹く。**切れ目は残す**（間があるから一吹きに見える）
+      blastAt = now + 0.80;
+      blastEnd = now + 0.62;
     }
     if (now < blastEnd){
       // ★上限は**左右で山分けする。** ループの中で残量を見ると、
@@ -1307,9 +1307,9 @@ function drawInner(now){
   const TAIL = 13 + 9*heat;   // ★描画数を抑える（iPad が止まる）
   // ★バーストでコードが走る。**倍率で効かせる**（足すと止まっているとき変になる）
   // ★点火した時点で既に速く、満で**今までの2倍**（2026-09-13 本人の指示）。
-  //   70% で 4倍、100% で 16倍（以前は 100% で 8倍だった）
+  //   70% で 7倍、100% で 32倍（2026-09-13：もっと速く）
   const flow = ((0.22 + heat*2.4 + energy*6.0) * (1 - hold*0.45) + release*14.0)
-             * (burst > 0 ? 4.0 + 12.0*burst : 1);
+             * (burst > 0 ? 7.0 + 25.0*burst : 1);
 
   frameNo++;
   for (const pn of panels){
