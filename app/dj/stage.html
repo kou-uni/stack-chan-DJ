@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">d0dd118 12:21:44</div>
+<div id="v">43744ef 12:24:58</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -682,9 +682,39 @@ function uplights(t, p, amt, jog){
       g.beginPath(); g.arc(cx, y, half*r, 0, 6.2832); g.fill();
     }
     g.globalCompositeOperation = 'source-over';
-    // ★灯体の実体（床置きの小さな箱）。光源が宙に浮かない
-    g.fillStyle = 'rgba(4,5,9,0.95)';
-    rrect(cx - M()*0.16, y, M()*0.32, M()*0.20, M()*0.03); g.fill();
+  }
+}
+
+function uplightBodies(t, p, jog){
+  // ★実体は**常に置く。** 消えていて、こすった瞬間に現れるのはおかしい
+  //   （2026-09-13 本人の指摘）。角度に応じて筐体も傾く
+  const y = innerHeight*0.965;
+  for (const u of UPS){
+    const cx = innerWidth*u.cx;
+    const a = u.ang + jog*1.05;
+    const w = M()*0.34, h = M()*0.24;
+    g.save();
+    g.translate(cx, y);
+    g.rotate(a);                       // ★向きに合わせて傾く
+    // 台座（床に接する）
+    g.fillStyle = 'rgb(6,7,11)';
+    rrect(-w*0.62, h*0.30, w*1.24, h*0.42, M()*0.02); g.fill();
+    // 筐体
+    const face = g.createLinearGradient(-w/2, 0, w/2, 0);
+    face.addColorStop(0,    'rgb(8,9,12)');
+    face.addColorStop(0.22, 'rgb(24,27,33)');
+    face.addColorStop(0.6,  'rgb(12,14,18)');
+    face.addColorStop(1,    'rgb(4,5,8)');
+    g.fillStyle = face;
+    rrect(-w/2, -h*0.62, w, h, M()*0.03); g.fill();
+    // レンズ面（上を向く）
+    g.fillStyle = 'rgb(14,16,21)';
+    g.beginPath(); g.ellipse(0, -h*0.62, w*0.40, h*0.13, 0, 0, 6.2832); g.fill();
+    g.restore();
+    // ★当たった光を拾う
+    spill(() => { g.beginPath();
+                  rrect(cx - w*0.7, y - h*0.9, w*1.4, h*1.7, M()*0.03); },
+          cx, y - h, y + h*0.8, 1.1);
   }
 }
 
@@ -1103,6 +1133,7 @@ function drawInner(now){
 
   // ── 下からの光。★機材より**手前**（ステージ前縁に置く）
   uplights(t, p, playing ? hold : 0, S.jog || 0);
+  uplightBodies(t, p, S.jog || 0);      // ★実体は常に置く
 
   // ── ④ 実機の居場所を暗く残す（白い顔を沈ませない）
 
