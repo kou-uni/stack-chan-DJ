@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">b171ba6 13:39:13</div>
+<div id="v">8195a2a 13:44:37</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -395,17 +395,18 @@ function beams(t, p, energy, heat, dt){
 
 }
 
-// ── 柱の支柱（弦材）に這わせたテープライト ─────────────
+// ── 会場のテープライト（柱の支柱＋ディスプレイ上端の横トラス）────
 // ★**実機のテープに流しているのと同じ配列**（S.leds）をそのまま映す。
 //   画面側でパターンを再実装しない。実装が2つあると、必ずどちらかがずれる
 //   （2026-09-13 本人の要望：目の前の物理LEDと背景のスタジオLEDを連動させて
 //    リアル感と奥行きを出す）。
 //
 // 場所：★**網目（筋交い）ではなく支柱に這わせる**（2026-09-13 本人の指摘）。
-//   trussRun の弦材と同じ式で位置を出す。柱1本につき左右2本、計4本。
+//   trussRun の弦材と同じ式で位置を出す。1本の骨組みにつき左右2本。
 //
-// 並べ方：左の柱を**下から上へ** 0..h-1、右の柱を**上から下へ** h..n-1。
-//   chase / sweep が「左を昇って、右を降りる」1本の流れに見える。
+// 経路：左の柱を**下から上**、ディスプレイ上端を**左から右**、右の柱を**上から下**。
+//   ★どの区間も**テープ全体**を映す。区間ごとに切ると1区間4粒になって
+//   chase が飛び飛びに見える。全部映せば、光が会場をぐるりと回って見える
 //
 // 光り方：★1本の線で描かない（安っぽい）。**幅の違う帯を重ねる。**
 //   ・断面の山（中心が白く飛び、外へ色が出る）→ 立体感
@@ -413,50 +414,62 @@ function beams(t, p, energy, heat, dt){
 //   ビームの円錐と同じ考え方。幅と濃さを段階的に変えて縁を溶かす
 const TAPE_W = [[18.0, 0.030], [11.2, 0.048], [6.90, 0.076],
                 [4.20, 0.120], [2.55, 0.190], [1.55, 0.310], [1.00, 0.620]];
+function tapeRuns(y0, y1){
+  // ★骨組みの位置と1箇所で揃える。**テープだけ別の数字で置かない**
+  const kc = CENTER_K;
+  const hh = M()*0.30*kc*0.85;
+  const yT = y0 + hh*0.6;                     // 柱の上端＝横トラスの芯
+  const xL = innerWidth*JOINT_L, xR = innerWidth*JOINT_R;
+  return [
+    {x0: xL, y0: y1, x1: xL, y1: yT},         // 左の柱：下から上
+    {x0: xL, y0: yT, x1: xR, y1: yT},         // 上端の横：左から右
+    {x0: xR, y0: yT, x1: xR, y1: y1},         // 右の柱：上から下
+  ];
+}
 function tape(y0, y1, kc, gx){
   const c = gx || g;               // ★検算では偽の canvas を渡す
   const L = S.leds;
   if (!L || L.length < 2) return;
-  const n = L.length, half = Math.ceil(n/2);
+  const n = L.length;
   const s  = kc*0.85;                             // ★柱の trussRun と同じ縮尺
   const off = M()*0.30*s/2;                       // ★弦材の位置。同じ式から出す
   const w  = Math.max(1.2, M()*0.05*s) * 0.78;    // テープは弦材より少し細い
   const GAIN = 4.4;                               // 実機は max_brightness で絞ってある
 
-  // 下→上（左の柱）と 上→下（右の柱）。★色の並びだけが違う
-  const mk = (idx, white) => {
-    const gd = c.createLinearGradient(0, y1, 0, y0);   // u=0 が下
+  const mk = (len, white) => {
+    const gd = c.createLinearGradient(0, 0, len, 0);
     for (let i=0;i<n;i++){
-      const u = i/(n-1);
-      const v = L[Math.round(idx(u))] || [0,0,0];
+      const v = L[i] || [0,0,0];
       // ★白飛びは**そのLEDの明るさに比例**させる。
       //   消えている粒まで白く持ち上げると、テープ全体が灰色に浮く
       const lum = Math.max(v[0], v[1], v[2]) / 255;
       const f = (k) => { const b = Math.min(255, v[k]*GAIN);
                          return (b*(1 - white*lum) + 255*white*lum) | 0; };
-      gd.addColorStop(u, 'rgb('+f(0)+','+f(1)+','+f(2)+')');
+      gd.addColorStop(i/(n-1), 'rgb('+f(0)+','+f(1)+','+f(2)+')');
     }
     return gd;
   };
-  const up   = (u)=> u*(half-1);
-  const down = (u)=> (n-1) - u*(n-1-half);
-  const cols = [{x: JOINT_L, body: mk(up,   0), hot: mk(up,   0.55)},
-                {x: JOINT_R, body: mk(down, 0), hot: mk(down, 0.55)}];
 
   c.globalCompositeOperation = 'lighter';
-  for (const col of cols){
+  for (const r of tapeRuns(y0, y1)){
+    const len = Math.hypot(r.x1-r.x0, r.y1-r.y0);
+    if (len < 2) continue;
+    const body = mk(len, 0), hot = mk(len, 0.55);
+    c.save();
+    c.translate(r.x0, r.y0);
+    c.rotate(Math.atan2(r.y1-r.y0, r.x1-r.x0));
     for (const sgn of [-1, 1]){
-      const x = innerWidth*col.x + sgn*off;
-      c.fillStyle = col.body;
+      c.fillStyle = body;
       for (const [wm, am] of TAPE_W){
         c.globalAlpha = am;
-        c.fillRect(x - w*wm/2, y0, w*wm, y1-y0);
+        c.fillRect(0, sgn*off - w*wm/2, len, w*wm);
       }
       // ★芯。白く飛ぶところ。**これが無いと平らな帯に見える**
-      c.fillStyle = col.hot;
+      c.fillStyle = hot;
       c.globalAlpha = 0.85;
-      c.fillRect(x - w*0.36/2, y0, w*0.36, y1-y0);
+      c.fillRect(0, sgn*off - w*0.18, len, w*0.36);
     }
+    c.restore();
   }
   c.globalAlpha = 1;
   c.globalCompositeOperation = 'source-over';
@@ -1093,6 +1106,15 @@ function drawInner(now){
                     g.rect(x - M()*0.16*kc, cy, M()*0.32*kc, ch); },
             x, cy, cy + ch, 1.25);
     }
+    // ★ディスプレイ上端の横トラス。柱の上端どうしを繋ぐ（2026-09-13 本人の要望）
+    {
+      const hh = M()*0.30*kc*0.85, yT = cy + hh*0.6;
+      trussRun(innerWidth*JOINT_L, yT, innerWidth*JOINT_R, yT, kc*0.85, 0.85);
+      spill(() => { g.beginPath();
+                    g.rect(innerWidth*JOINT_L, yT - hh*0.8,
+                           innerWidth*(JOINT_R-JOINT_L), hh*1.6); },
+            innerWidth*(JOINT_L+JOINT_R)/2, yT - hh, yT + hh, 1.25);
+    }
     tape(cy, cy + ch, kc);
   }
 
@@ -1318,7 +1340,7 @@ window.__debug = {
   litColor: () => litColor(pal()),
   lensPos, pivotY, lensY, stepHeads, rigLen, trussY, trussH,
   litFloor, floorPanels: () => floorLit, FLOOR_COLS, FLOOR_ROWS,
-  tape, JOINT_L, JOINT_R, M, setLeds: (v)=>{ S.leds = v; },
+  tape, tapeRuns, JOINT_L, JOINT_R, M, setLeds: (v)=>{ S.leds = v; },
   blinderX: () => { const a=[]; for(let i=0;i<BEAMS.length-1;i++)
       a.push((BEAMS[i].cx+BEAMS[i+1].cx)/2);
     a.push(BEAMS[0].cx-0.14, BEAMS[BEAMS.length-1].cx+0.14);

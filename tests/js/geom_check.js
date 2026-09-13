@@ -275,17 +275,21 @@ ok('柱を四角塗りで描いていない',
      D.BEAMS.length % 2 === 1 || ms.every(m => Math.abs(m) > 1e-6));
 }
 
-// ★柱のテープライト（2026-09-13）。**実機の配列をそのまま映しているか**
+// ★会場のテープライト（2026-09-13）。**実機の配列をそのまま映しているか**
 {
-  const grads = [];
-  const rects = [];
+  const grads = [], rects = [], xf = [];
+  let cur = null;
   const gt = new Proxy({}, {get(_,k){
     const s = String(k);
     if (s === 'createLinearGradient'){
-      return () => { const cur = []; grads.push(cur);
-                     return {addColorStop(u,c2){ cur.push([u,c2]); }}; };
+      return (x0,y0,x1,y1) => { const g2 = {len: x1-x0, stops: []}; grads.push(g2);
+                                return {addColorStop(u,c2){ g2.stops.push([u,c2]); }}; };
     }
-    if (s === 'fillRect') return (x,y,w,h) => rects.push({x,y,w,h});
+    if (s === 'save')      return () => {};
+    if (s === 'restore')   return () => { cur = null; };
+    if (s === 'translate') return (x,y) => { cur = {x, y, a: 0}; };
+    if (s === 'rotate')    return (a2) => { if (cur) cur.a = a2; };
+    if (s === 'fillRect')  return (x,y,w,h) => rects.push({...cur, x,y,w,h});
     return () => {};
   }, set(){ return true; }});
   const run = (leds) => { grads.length = 0; rects.length = 0;
@@ -298,30 +302,33 @@ ok('柱を四角塗りで描いていない',
   // ② 来ていれば、その色がそのまま乗る
   const leds = Array.from({length:12}, (_,i)=> [i*20, 255-i*20, 40]);
   run(leds);
-  const [upBody, upHot, dnBody, dnHot] = grads;
-  ok('色の並びは 上り/下り × 芯 の4本', grads.length === 4, grads.length + '本');
-  ok('LEDの数だけ色を置く', grads.every(gd => gd.length === leds.length));
-  ok('左の柱は下が0番', upBody[0][0] === 0 && upBody[0][1].startsWith('rgb(0,'), upBody[0][1]);
-  ok('右の柱は下が末尾の11番',
-     dnBody[0][1] === 'rgb(255,154,176)', dnBody[0][1]);
-  ok('芯は白く飛ぶ（同じ位置で明るい）',
-     (upHot[0][1].match(/\d+/g).reduce((s2,v)=>s2+ +v,0))
-     > (upBody[0][1].match(/\d+/g).reduce((s2,v)=>s2+ +v,0)));
+  ok('区間は3つ（左の柱・上端の横・右の柱）', D.tapeRuns(100,500).length === 3);
+  ok('色の並びは 区間3 × 本体/芯 の6本', grads.length === 6, grads.length + '本');
+  ok('どの区間もLEDの数だけ色を置く', grads.every(gd => gd.stops.length === leds.length));
+  ok('どの区間も0番から末尾までを映す',
+     grads.every(gd => gd.stops[0][0] === 0 && gd.stops[gd.stops.length-1][0] === 1));
+  const body = grads[0];
+  ok('先頭は0番の色', body.stops[0][1] === 'rgb(0,255,176)', body.stops[0][1]);
+  ok('末尾は11番の色', body.stops[11][1] === 'rgb(255,154,176)', body.stops[11][1]);
+  ok('芯は白く飛ぶ',
+     grads[1].stops[0][1].match(/\d+/g).reduce((s2,v)=>s2+ +v,0)
+     > body.stops[0][1].match(/\d+/g).reduce((s2,v)=>s2+ +v,0));
 
   // ③ ★網目の真ん中ではなく、支柱（弦材）に載っていること
-  const cxs = [...new Set(rects.map(r => Math.round(r.x + r.w/2)))].sort((a2,b2)=>a2-b2);
-  ok('テープは柱1本につき2本（支柱の左右）', cxs.length === 4, cxs.join(' '));
-  const JL = 1600*D.JOINT_L, JR = 1600*D.JOINT_R;
-  const M0 = D.M();
-  const offX = M0*0.30*(0.78*0.85)/2;
-  const near = (v, w2) => Math.abs(v-w2) < 1.5;
-  ok('左の柱は継ぎ目の左右に離れて乗る',
-     near(cxs[0], JL-offX) && near(cxs[1], JL+offX), cxs[0]+' '+cxs[1]);
-  ok('右の柱も同じ', near(cxs[2], JR-offX) && near(cxs[3], JR+offX), cxs[2]+' '+cxs[3]);
-  ok('柱の真ん中には置かない', !cxs.some(v => near(v, JL) || near(v, JR)));
+  const offs = [...new Set(rects.map(r => Math.round((r.y + r.h/2)*100)/100))].sort((a2,b2)=>a2-b2);
+  ok('どの区間も骨組みの左右2本', offs.length === 2, offs.join(' '));
+  const M0 = D.M(), offX = M0*0.30*(0.78*0.85)/2;
+  ok('弦材と同じ位置に乗る',
+     Math.abs(offs[0] + offX) < 0.5 && Math.abs(offs[1] - offX) < 0.5, offs.join(' '));
+  ok('骨組みの真ん中には置かない', !offs.some(v => Math.abs(v) < offX*0.5));
 
-  // ④ ★スモークのにじみ。幅の違う帯が重なっていること（1本の線ではない）
-  const ws = [...new Set(rects.map(r => Math.round(r.w*100)))].sort((a2,b2)=>a2-b2);
+  // ④ ★向き。左の柱は上へ、上端は右へ、右の柱は下へ＝会場をぐるりと回る
+  const angs = [...new Set(rects.map(r => Math.round(r.a*1000)/1000))];
+  ok('区間の向きは3種（上・横・下）', angs.length === 3, angs.join(' '));
+  ok('上端の横は水平', angs.includes(0));
+
+  // ⑤ ★スモークのにじみ。幅の違う帯が重なっていること（1本の線ではない）
+  const ws = [...new Set(rects.map(r => Math.round(r.h*100)))].sort((a2,b2)=>a2-b2);
   ok('幅の違う帯を重ねている', ws.length >= 6, ws.length + '種');
   ok('いちばん外は芯の30倍以上に広がる', ws[ws.length-1] / ws[0] > 30,
      'x' + (ws[ws.length-1]/ws[0]).toFixed(0));
