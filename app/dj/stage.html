@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">6035a08 15:24:28</div>
+<div id="v">9b48a92 15:30:41</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -102,6 +102,7 @@ function layout(){
   g.setTransform(dpr,0,0,dpr,0,0);
   // ★引き伸ばしの品質。既定は low で、台形に貼ると文字がぼける（2026-09-13 本人の指摘）
   g.imageSmoothingQuality = 'high';
+  _pg = null;                      // ★コンテキストが変わったら作り直す
   FS = Math.max(10, Math.min(17, innerWidth/110));
   LH = FS*1.34;
   ROWS = Math.ceil(innerHeight/LH)+3;
@@ -672,6 +673,87 @@ function drawSparks(){
   }
   g.globalAlpha = 1;
   g.lineCap = 'butt';
+  g.globalCompositeOperation = 'source-over';
+}
+
+
+// ── 100% の左右のスモーク（CO2ジェット）────────────────
+// ★実物は**連続では吹かない。** ボンベの圧で1秒足らず吹いて、間を置く。
+//   出しっぱなしにすると霧が晴れず、会場が白くなるだけで迫力が出ない。
+//   ・塊は**大きく・薄く・膨らみながら**進む（気化して広がる）
+//   ・赤い照明の中なので**白ではなく赤みを拾う**。灰色の塊は嘘に見える
+//   ・グラデーションは**1つ作って使い回す。** 塊ごとに作ると予算を食う
+const PUFFS = [];
+const PUFF_MAX = 34;
+let blastAt = 0, blastEnd = 0;
+// ★var で宣言する。layout() はこの行より先に走るので、let だと
+//   「初期化前に触った」で落ちる（2026-09-13）
+var _pg = null;
+function puffGrad(){
+  if (_pg) return _pg;
+  // ★単位円（原点・半径1）で作る。描くときに translate + scale して使い回す
+  _pg = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+  // ★濃さ。**塊が重なるので、1つは薄くてよい。**
+  //   0.78 だと下半分が真っ白になって、花火もコードも消えた（2026-09-13）
+  _pg.addColorStop(0,    'rgba(255,255,255,0.34)');
+  _pg.addColorStop(0.30, 'rgba(255,240,232,0.19)');
+  _pg.addColorStop(0.66, 'rgba(255,208,192,0.07)');
+  _pg.addColorStop(1,    'rgba(255,190,175,0)');
+  return _pg;
+}
+function stepSmoke(dt, amt, now){
+  if (amt > 0){
+    if (now > blastAt){                       // ★次の一吹き
+      blastAt = now + 1.15;
+      blastEnd = now + 0.42;
+    }
+    if (now < blastEnd){
+      // ★上限は**左右で山分けする。** ループの中で残量を見ると、
+      //   先に回った左が使い切って右が痩せる（花火で同じ失敗をした）
+      const room = Math.max(0, PUFF_MAX - PUFFS.length);
+      const per = Math.min(3, Math.floor(room / 2));
+      for (const side of [-1, 1]){
+        for (let i=0;i<per;i++){
+          const sp = (0.55 + Math.random()*0.45) * innerWidth;
+          PUFFS.push({
+            x: side < 0 ? -M()*0.3 : innerWidth + M()*0.3,
+            y: innerHeight*(0.70 + Math.random()*0.16),
+            vx: -side * sp,
+            vy: -innerHeight*(0.04 + Math.random()*0.10),
+            r:  M()*(0.55 + Math.random()*0.40),
+            t: 0, life: 1.5 + Math.random()*0.9,
+          });
+        }
+      }
+    }
+  }
+  for (let i=PUFFS.length-1; i>=0; i--){
+    const s = PUFFS[i];
+    s.t += dt;
+    s.vx *= (1 - 1.9*dt);                     // 気化して急に遅くなる
+    s.vy *= (1 - 0.7*dt);
+    s.x += s.vx*dt; s.y += s.vy*dt;
+    s.r += M()*2.1*dt;                        // 膨らむ
+    if (s.t >= s.life) PUFFS.splice(i,1);
+  }
+}
+function drawSmoke(){
+  if (!PUFFS.length) return;
+  const gd = puffGrad();
+  g.globalCompositeOperation = 'lighter';
+  g.fillStyle = gd;
+  for (const s of PUFFS){
+    const u = s.t / s.life;
+    const a = Math.min(1, u*6) * (1 - u) * (1 - u);   // 立ち上がり速く、尾を引いて消える
+    if (a < 0.02) continue;
+    g.globalAlpha = a;
+    g.save();
+    g.translate(s.x, s.y);
+    g.scale(s.r, s.r * 0.78);                 // ★横に平たい。床を這って広がる
+    g.beginPath(); g.arc(0, 0, 1, 0, 6.2832); g.fill();
+    g.restore();
+  }
+  g.globalAlpha = 1;
   g.globalCompositeOperation = 'source-over';
 }
 
@@ -1562,6 +1644,9 @@ function drawInner(now){
 
   // ── ⑥ 花火。★**いちばん手前。** 実際に舞台前縁から吹き上がるので、
   //   トラスにも灯体にも隠されない（2026-09-13 本人の指示：100%で噴射）
+  // ★スモークは花火より奥（粒が霧に隠れない）
+  stepSmoke(dt, fireworkAmt(), t);
+  drawSmoke();
   stepSparks(dt, fireworkAmt());
   drawSparks();
 
@@ -1596,7 +1681,7 @@ window.__debug = {
   litFloor, floorPanels: () => floorLit, FLOOR_COLS, FLOOR_ROWS,
   tape, tapeRuns, TOP_RUN_LIFT, trussCorner, JOINT_L, JOINT_R, M,
   burstAmt, burstHue, fireworkAmt, BURST_ON, BURST_MAX, pal, BURST_PAL,
-  sparks: () => SPARKS, gerbX,
+  sparks: () => SPARKS, gerbX, puffs: () => PUFFS, PUFF_MAX,
   beamHues: () => BEAMS.map(b=>b.hueDeg), fireBeams,
   setBurst: (v)=>{ S.burst = v; },
   setLeds: (v)=>{ S.leds = v; },

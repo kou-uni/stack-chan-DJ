@@ -514,5 +514,43 @@ ok('柱を四角塗りで描いていない',
      m && (+m[1] + +m[2]));
 }
 
+// ★100%の左右のスモーク（2026-09-13 本人の指示）
+{
+  sb0.__ws.onmessage({data: JSON.stringify(
+    {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',
+     jog:0,jogw:0,burst:1.0})});
+  let sawLeft = 0, sawRight = 0, peak = 0;
+  for (let i=0;i<200;i++){
+    frameN++; rafFn(frameN*16.7);
+    for (const s of D.puffs()){
+      if (s.vx > 0) sawLeft++; else sawRight++;
+    }
+    peak = Math.max(peak, D.puffs().length);
+  }
+  ok('100%で左右からスモークが出る', sawLeft > 0 && sawRight > 0,
+     '左' + sawLeft + ' / 右' + sawRight);
+  ok('スモークは左右で同じだけ出る',
+     Math.min(sawLeft,sawRight)/Math.max(1,Math.max(sawLeft,sawRight)) > 0.75,
+     '左' + sawLeft + ' / 右' + sawRight);
+  ok('塊の数に上限がある', peak <= D.PUFF_MAX, peak + '個');
+  // ★連続では吹かない。**間が空くから迫力が出る**
+  const gaps = [];
+  let on = 0, off = 0;
+  for (let i=0;i<260;i++){
+    frameN++; rafFn(frameN*16.7);
+    if (D.puffs().length) on++; else off++;
+  }
+  ok('吹きっぱなしではない（間がある）', on > 0, 'ふいた ' + on + 'フレーム');
+
+  // 100%未満では出ない
+  sb0.__ws.onmessage({data: JSON.stringify(
+    {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',
+     jog:0,jogw:0,burst:0.9})});
+  for (let i=0;i<260;i++){ frameN++; rafFn(frameN*16.7); }
+  ok('90%ではスモークは出ない', D.puffs().length === 0, D.puffs().length + '個');
+  sb0.__ws.onmessage({data: JSON.stringify(
+    {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0})});
+}
+
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
 process.exit(bad ? 1 : 0);
