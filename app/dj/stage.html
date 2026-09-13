@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">2cf7e5c 14:57:44</div>
+<div id="v">dc87a1a 15:15:30</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -599,16 +599,18 @@ function trussCorner(x, yTop, yBot, s){
 //   ・**1本のパスにまとめて1回で描く。** 粒ごとに描くと iPad が止まる
 //   ・色は白熱→橙→赤。金属花火は温度が下がる順に色が変わる
 const SPARKS = [];
-const SPARK_MAX = 240;
+const SPARK_MAX = 460;      // ★もっと多く（2026-09-13）
+// ★噴出口は下からのスポットライトより**中央寄り**（2026-09-13 本人の指摘）。
+//   位置は同じ数字から出す。**別々に置くと、片方を直したときにずれる**
+const GERB_IN = 0.62;      // 1 でライトと同じ位置、0 で中央
 function gerbX(){
-  // ★噴出口は下からのスポットライトと同じ位置。**装置は増やさない**
-  return UPS.map(u => u.cx);
+  return UPS.map(u => 0.5 + (u.cx - 0.5) * GERB_IN);
 }
 function stepSparks(dt, amt){
   if (amt > 0){
     // ★吹き上げ。強さではなく**満で全開**。ここは段階を作らない
     for (const cx of gerbX()){
-      const n = Math.min(3 + (6*amt)|0, SPARK_MAX - SPARKS.length);
+      const n = Math.min(7 + ((11*amt)|0), SPARK_MAX - SPARKS.length);
       for (let i=0;i<n;i++){
         const a = (-Math.PI/2) + (Math.random()-0.5)*0.42;   // ほぼ真上
         const sp = (0.9 + Math.random()*0.75) * innerHeight*1.35;
@@ -1196,8 +1198,10 @@ function drawInner(now){
   // ── ② 会場の奥：3面のディスプレイ。**裏で正面から描いて、台形に貼る**
   const TAIL = 13 + 9*heat;   // ★描画数を抑える（iPad が止まる）
   // ★バーストでコードが走る。**倍率で効かせる**（足すと止まっているとき変になる）
+  // ★点火した時点で既に速く、満で**今までの2倍**（2026-09-13 本人の指示）。
+  //   70% で 4倍、100% で 16倍（以前は 100% で 8倍だった）
   const flow = ((0.22 + heat*2.4 + energy*6.0) * (1 - hold*0.45) + release*14.0)
-             * (1 + burst*7.0);
+             * (burst > 0 ? 4.0 + 12.0*burst : 1);
 
   frameNo++;
   for (const pn of panels){

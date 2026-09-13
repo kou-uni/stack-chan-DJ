@@ -462,7 +462,8 @@ ok('柱を四角塗りで描いていない',
   for (let i=0;i<90;i++){ frameN++; rafFn(frameN*16.7); }
   const n1 = D.sparks().length;
   ok('100%で花火が出る', n1 > 20, n1 + '粒');
-  ok('花火の粒に上限がある', n1 <= 240, n1 + '粒');
+  ok('花火の粒に上限がある', n1 <= 460, n1 + '粒');
+  ok('花火の量が十分', n1 > 120, n1 + '粒');
   // 90%では出ない
   sb0.__ws.onmessage({data: JSON.stringify(
     {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',
@@ -479,6 +480,28 @@ ok('柱を四角塗りで描いていない',
      D.sparks().length + '粒');
   sb0.__ws.onmessage({data: JSON.stringify(
     {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0})});
+}
+
+// ★花火の噴出口は下のライトより中央寄り（2026-09-13 本人の指摘）
+{
+  const g0 = /const GERB_IN = ([0-9.]+);/.exec(src);
+  ok('噴出口を中央へ寄せる係数がある', !!g0 && +g0[1] < 1, g0 && g0[1]);
+  const inward = +g0[1];
+  const ups = D.UPS.map(u => u.cx);
+  const gs = ups.map(u => 0.5 + (u - 0.5)*inward);
+  ok('噴出口はライトより中央寄り',
+     gs.every((v,i) => Math.abs(v-0.5) < Math.abs(ups[i]-0.5)),
+     gs.map(v=>v.toFixed(2)).join(' '));
+  ok('中央に寄せすぎない（2箇所が重ならない）',
+     Math.abs(gs[0]-gs[1]) > 0.2, Math.abs(gs[0]-gs[1]).toFixed(2));
+}
+
+// ★コードの流れ。点火で既に速く、満で倍（2026-09-13 本人の指示）
+{
+  const m = /\(burst > 0 \? ([0-9.]+) \+ ([0-9.]+)\*burst : 1\)/.exec(src);
+  ok('点火した時点で速くなる', !!m && +m[1] >= 3, m && m[1]);
+  ok('満は点火時の3倍以上', !!m && (+m[1] + +m[2]) >= (+m[1])*3,
+     m && (+m[1] + +m[2]));
 }
 
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
