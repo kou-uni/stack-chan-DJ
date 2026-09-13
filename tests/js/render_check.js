@@ -10,7 +10,22 @@ const js = html.match(/<script>([\s\S]*)<\/script>/)[1];
 
 const calls = { fillText: 0, fill: 0, stroke: 0, fillRect: 0, arc: 0 };
 function ctx() {
-  const grad = { addColorStop(){} };
+// ★本物の canvas と同じ厳しさにする。**透明度が1を超えると例外**
+//   （2026-09-13：検算は緑なのに、実機のブラウザだけ「描画で落ちました」）
+function checkColor(c){
+  if (typeof c !== 'string') throw new TypeError('色が文字列でない: ' + c);
+  const m = /^(?:hsla|rgba)\(([^)]*)\)$/.exec(c);
+  if (m){
+    const parts = m[1].split(',');
+    if (parts.length === 4){
+      const a = Number(parts[3]);
+      if (!isFinite(a) || a < 0 || a > 1) throw new Error('透明度が範囲外: ' + c);
+    }
+    for (const q of parts) if (/undefined|NaN/.test(q)) throw new Error('色に NaN: ' + c);
+  } else if (/undefined|NaN/.test(c)) throw new Error('色に NaN: ' + c);
+  return c;
+}
+  const grad = { addColorStop(_u, c){ checkColor(c); } };
   return new Proxy({}, {
     get(_, k) {
       if (k === 'createLinearGradient' || k === 'createRadialGradient') return () => grad;
@@ -18,7 +33,9 @@ function ctx() {
       if (k === 'canvas') return el();
       return () => {};
     },
-    set() { return true; },
+    set(_, k, v) { if ((k === 'fillStyle' || k === 'strokeStyle')
+                     && typeof v === 'string') checkColor(v);
+                   return true; },
   });
 }
 const el = () => ({ getContext: ctx, style: {}, width: 0, height: 0,

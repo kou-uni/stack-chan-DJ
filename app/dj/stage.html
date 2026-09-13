@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">e53224b 19:09:35</div>
+<div id="v">5918723 19:39:56</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -218,7 +218,11 @@ let bar = 0;
 // ★縮尺を決める。**画面の横幅を会場9mとみなす**（2026-09-12 本人の指摘）。
 //   30cm角のトラスが画面幅の0.7%しかなく、針金のように細かった
 const VENUE_W = 9.0;                     // 画面の横幅が何メートルか
-function M(){ return innerWidth / VENUE_W; }          // 1メートルの画素数
+function M(){ return innerWidth / VENUE_W; }
+// ★透明度は 0..1 に収める。**1を超えると addColorStop が例外を投げて、
+//   そのフレームが丸ごと描かれない**（2026-09-13：バーストで実際に落ちた）。
+//   power も energy も 1 を超える設計なので、掛けた先で必ず通すこと
+function A(v){ return v > 1 ? 1 : (v > 0 ? v : 0); }          // 1メートルの画素数
 // ★トラスは**壁より手前**にある。壁と同じ縮尺で描くと小さすぎて浮く。
 //   手前のものは枠からはみ出すのが自然（2026-09-13 本人の指摘）
 const TRUSS_NEAR = 1.06;                               // 壁に対する手前ぶんの倍率
@@ -394,7 +398,7 @@ function beams(t, p, energy, heat, dt){
       for (const s of [0, 0.06, 0.14, 0.26, 0.45, 0.70, 1.0]){
         const d = 1 + s*7.0;                       // 距離（出口を1とする）
         gg.addColorStop(s, 'hsla('+hue+','+sat+'%,'+lig+'%,'
-                      + (am*power/(d*d)) + ')');
+                      + A(am*power/(d*d)) + ')');
       }
       g.fillStyle = gg;
       g.beginPath();
@@ -408,8 +412,8 @@ function beams(t, p, energy, heat, dt){
                                    [2.2, 0.52, 70, 78],
                                    [0.9, 1.00, 25, 97]]){
       const gl = g.createRadialGradient(0,0,0, 0,0, half*r);
-      gl.addColorStop(0,   'hsla('+hue+','+s2+'%,'+l2+'%,'+(a2*power)+')');
-      gl.addColorStop(0.5, 'hsla('+hue+','+(s2+8)+'%,'+(l2-16)+'%,'+(a2*0.28*power)+')');
+      gl.addColorStop(0,   'hsla('+hue+','+s2+'%,'+l2+'%,'+A(a2*power)+')');
+      gl.addColorStop(0.5, 'hsla('+hue+','+(s2+8)+'%,'+(l2-16)+'%,'+A(a2*0.28*power)+')');
       gl.addColorStop(1,   'hsla('+hue+',95%,55%,0)');
       g.fillStyle = gl;
       g.beginPath(); g.arc(0,0, half*r, 0, 6.2832); g.fill();
@@ -575,8 +579,8 @@ function trussCorner(x, yTop, yBot, s){
       rrect(x - w/2, y0, w, y1-y0, d*0.12); g.clip();
       g.globalCompositeOperation = 'lighter';
       const sh = g.createLinearGradient(x - w/2, y0, x + w/2, y1);
-      sh.addColorStop(0,    'hsla('+L.hue+',70%,72%,'+(0.16*Math.min(1,L.pow))+')');
-      sh.addColorStop(0.45, 'hsla('+L.hue+',75%,60%,'+(0.05*Math.min(1,L.pow))+')');
+      sh.addColorStop(0,    'hsla('+L.hue+',70%,72%,'+A(0.16*Math.min(1,L.pow))+')');
+      sh.addColorStop(0.45, 'hsla('+L.hue+',75%,60%,'+A(0.05*Math.min(1,L.pow))+')');
       sh.addColorStop(1,    'hsla('+L.hue+',75%,55%,0)');
       g.fillStyle = sh;
       g.fillRect(x - w/2, y0, w, y1-y0);
@@ -594,7 +598,7 @@ function trussCorner(x, yTop, yBot, s){
       g.beginPath(); g.arc(x + px, py, br, 0, 6.2832); g.fill();
       if (L2.pow > 0.05){
         g.globalCompositeOperation = 'lighter';
-        g.fillStyle = 'hsla('+L2.hue+',60%,80%,'+(0.45*Math.min(1,L2.pow))+')';
+        g.fillStyle = 'hsla('+L2.hue+',60%,80%,'+A(0.45*Math.min(1,L2.pow))+')';
         g.beginPath(); g.arc(x + px - br*0.3, py - br*0.3, br*0.6, 0, 6.2832); g.fill();
         g.globalCompositeOperation = 'source-over';
       }
@@ -794,9 +798,9 @@ function burstGloss(amt){
   g.globalCompositeOperation = 'lighter';
   // ① 会場全体に赤が回る（下ほど強い＝床からの照り返し）
   const gv = g.createLinearGradient(0, 0, 0, innerHeight);
-  gv.addColorStop(0,   'hsla(2,95%,52%,'+(0.05*amt)+')');
-  gv.addColorStop(0.55,'hsla(6,95%,50%,'+(0.10*amt)+')');
-  gv.addColorStop(1,   'hsla(14,95%,54%,'+(0.20*amt)+')');
+  gv.addColorStop(0,   'hsla(2,95%,52%,'+A(0.05*amt)+')');
+  gv.addColorStop(0.55,'hsla(6,95%,50%,'+A(0.10*amt)+')');
+  gv.addColorStop(1,   'hsla(14,95%,54%,'+A(0.20*amt)+')');
   g.fillStyle = gv;
   g.fillRect(0, 0, innerWidth, innerHeight);
   // ② 走る光沢。★斜めに細く。**ゆっくり動かすと「艶」に見える**
@@ -804,9 +808,9 @@ function burstGloss(amt){
   const gx = g.createLinearGradient(innerWidth*(u-0.22), 0,
                                     innerWidth*(u+0.22), innerHeight);
   gx.addColorStop(0,    'hsla(10,100%,60%,0)');
-  gx.addColorStop(0.45, 'hsla(14,100%,72%,'+(0.16*amt)+')');
-  gx.addColorStop(0.5,  'hsla(30,100%,86%,'+(0.26*amt)+')');
-  gx.addColorStop(0.55, 'hsla(14,100%,72%,'+(0.16*amt)+')');
+  gx.addColorStop(0.45, 'hsla(14,100%,72%,'+A(0.16*amt)+')');
+  gx.addColorStop(0.5,  'hsla(30,100%,86%,'+A(0.26*amt)+')');
+  gx.addColorStop(0.55, 'hsla(14,100%,72%,'+A(0.16*amt)+')');
   gx.addColorStop(1,    'hsla(10,100%,60%,0)');
   g.fillStyle = gx;
   g.fillRect(0, 0, innerWidth, innerHeight);
@@ -831,8 +835,8 @@ function rig(heat){
   const ty = trussY(), L = rigLen();
   const fade = Math.min(1, heat*1.6);
   drawTruss(fade);
-  const ink = 'rgba(3,4,7,'+(0.93*fade + 0.06)+')';
-  const lit = 'rgba(120,140,175,'+(0.10*fade)+')';   // 上面がわずかに光を拾う
+  const ink = 'rgba(3,4,7,'+A(0.93*fade + 0.06)+')';
+  const lit = 'rgba(120,140,175,'+A(0.10*fade)+')';   // 上面がわずかに光を拾う
 
   for (const b of BEAMS){
     const a = b.ang;                       // ★ビームと同じ角度
@@ -921,8 +925,8 @@ function rig(heat){
                                    [0.85,0.34, 86, 68],
                                    [0.30,1.00, 45, 97]]){
       const gl = g.createRadialGradient(cx, ly, 0, cx, ly, half*r);
-      gl.addColorStop(0,   'hsla('+hue+','+s2+'%,'+l2+'%,'+(a2*pw)+')');
-      gl.addColorStop(0.5, 'hsla('+hue+','+(s2+8)+'%,'+(l2-16)+'%,'+(a2*0.28*pw)+')');
+      gl.addColorStop(0,   'hsla('+hue+','+s2+'%,'+l2+'%,'+A(a2*pw)+')');
+      gl.addColorStop(0.5, 'hsla('+hue+','+(s2+8)+'%,'+(l2-16)+'%,'+A(a2*0.28*pw)+')');
       gl.addColorStop(1,   'hsla('+hue+',95%,55%,0)');
       g.fillStyle = gl;
       g.beginPath(); g.arc(cx, ly, half*r, 0, 6.2832); g.fill();
@@ -942,8 +946,8 @@ function rig(heat){
     // ① 灯体まわりの散り。**レンズの近くがいちばん明るい**
     // ★大きな塊にしない。**いちばん明るい点は筒の先**（2026-09-13 本人の指摘）
     const sp = g.createRadialGradient(cx, ly, 0, cx, ly, L*0.42);
-    sp.addColorStop(0,   'hsla('+hue+',85%,74%,'+(0.30*pw)+')');
-    sp.addColorStop(0.4, 'hsla('+hue+',90%,60%,'+(0.18*pw)+')');
+    sp.addColorStop(0,   'hsla('+hue+',85%,74%,'+A(0.30*pw)+')');
+    sp.addColorStop(0.4, 'hsla('+hue+',90%,60%,'+A(0.18*pw)+')');
     sp.addColorStop(1,   'hsla('+hue+',90%,50%,0)');
     g.fillStyle = sp;
     g.beginPath(); g.arc(cx, ly, L*0.42, 0, 6.2832); g.fill();
@@ -955,8 +959,8 @@ function rig(heat){
     // ★自分の真上のパイプがいちばん明るい。**帯で一様に光らせない**
     for (const [cy, kk] of [[top, 0.8], [bot, 1.5]]){
       const gr = g.createRadialGradient(cx, cy, 0, cx, cy, w*0.9);
-      gr.addColorStop(0,   'hsla('+hue+',80%,84%,'+(0.40*pw*kk)+')');
-      gr.addColorStop(0.4, 'hsla('+hue+',88%,66%,'+(0.13*pw*kk)+')');
+      gr.addColorStop(0,   'hsla('+hue+',80%,84%,'+A(0.40*pw*kk)+')');
+      gr.addColorStop(0.4, 'hsla('+hue+',88%,66%,'+A(0.13*pw*kk)+')');
       gr.addColorStop(1,   'hsla('+hue+',90%,58%,0)');
       g.fillStyle = gr;
       g.fillRect(cx-w, cy-pipe*0.5, w*2, pipe);
@@ -1005,6 +1009,153 @@ function stageWell(){
   g.fillRect(0, 0, innerWidth, innerHeight);
 }
 
+// ★いま出ている光の一覧。**光源の位置と、届く先の位置の両方**を持つ。
+//   これがあると「どこに当たっているか」を計算できる（2026-09-13）
+function lightSources(){
+  const out = [];
+  for (const b of BEAMS){
+    const lp = lensPos(innerWidth*b.cx, b.ang);
+    out.push({pw: b.pw||0, hue: b.hueDeg, up: false,
+              lx: lp.x, ly: lp.y,
+              x: lp.x + Math.tan(b.ang)*(innerHeight-lensY())*0.55,
+              fy: innerHeight});
+  }
+  for (const u of UPS){
+    const ly = innerHeight*1.022;
+    out.push({pw: u.pw||0, hue: u.hueDeg||0, up: true,
+              lx: u.x||0, ly,
+              x: (u.x||0) - Math.tan(u.ang||0)*ly*0.55,
+              fy: 0});
+  }
+  return out;
+}
+
+// ★光軸が、ある x のところで何の高さを通るか。**当たっていなければ null**
+function hitHeight(b, sx, y0, y1){
+  const dx = b.x - b.lx;
+  if (Math.abs(dx) < 1e-6) {
+    // 真下（真上）へ撃っている。x が合っていれば正面に当たる
+    return Math.abs(b.lx - sx) < 1e-6 ? (y0 + y1) / 2 : null;
+  }
+  const s = (sx - b.lx) / dx;                 // 0=光源, 1=床（または天井）
+  if (s < -0.05 || s > 1.25) return null;
+  const y = b.ly + s * (b.fy - b.ly);
+  if (y < y0 - (y1-y0)*0.45 || y > y1 + (y1-y0)*0.45) return null;
+  return Math.max(y0, Math.min(y1, y));
+}
+
+// ── スピーカーへの当たり方 ────────────────────────────
+// ★上の箱と下の箱は**素材が違う。** 同じ光り方にすると嘘になる
+//   （2026-09-13 本人の指摘）。
+//
+//   上（ホーン／グリル）：目の細かいパンチングメタル。**拡散する。**
+//     てかりは出ず、代わりに**メッシュの桟が拾って縞が浮く**
+//   下（サブ）：塗装した合板の箱。**面で返す。** satin のてかりが出て、
+//     当たった側の稜線が細く光る。ウーファーは落とし込みなので
+//     **奥は暗いまま、上の縁だけがリング状に光る**
+//
+// そして、当たるのは**光軸が通ったところだけ。** 箱全体を明るくしない
+function speakerLight(x, w, yTop, topH, sw, subY, subH, wr, wy){
+  const y1 = subY + subH;
+  const hits = [];
+  for (const b of lightSources()){
+    const pw = b.pw || 0;
+    if (pw < 0.06) continue;
+    const hy = hitHeight(b, x, yTop, y1);
+    if (hy === null) continue;
+    const d = Math.abs(b.x - x) / (M()*2.2);
+    const k = pw / (1 + d*d*3.0);
+    if (k < 0.04) continue;
+    // ★lightSources() が返すのは hue。hueDeg は BEAMS 側の名前
+    //   （2026-09-13：undefined が色に入って、フレームごと落ちていた）
+    hits.push({k: Math.min(1.1, k), hy, hue: b.hue, up: b.up});
+  }
+  if (!hits.length) return;
+  // ★強い順に2つまで。**全部描くと箱が均一に光って、当たっている感じが消える**
+  hits.sort((a, b) => b.k - a.k);
+  for (const h of hits.slice(0, 2)){
+    const r = M()*(0.62 + 0.42*h.k);            // 当たる範囲は狭い
+
+    // ① 上の箱（グリル）。拡散＋桟の縞
+    if (h.hy < subY + r*0.4){
+      g.save();
+      rrect(x - w/2 + M()*0.045, yTop + M()*0.05,
+            w - M()*0.09, topH - M()*0.10, M()*0.012); g.clip();
+      g.globalCompositeOperation = 'lighter';
+      const gp = g.createRadialGradient(x, h.hy, 0, x, h.hy, r);
+      gp.addColorStop(0,   'hsla('+h.hue+',70%,70%,'+A(0.13*h.k)+')');
+      gp.addColorStop(0.5, 'hsla('+h.hue+',78%,58%,'+A(0.05*h.k)+')');
+      gp.addColorStop(1,   'hsla('+h.hue+',80%,50%,0)');
+      g.fillStyle = gp;
+      g.fillRect(x - r, h.hy - r, r*2, r*2);
+      // ★桟が拾う。**光の当たったところだけ縞が浮く**
+      //   桟は全部なぞらない。当たっている周りだけ（描画予算）
+      const step = Math.max(3, M()*0.032);
+      const y0g = yTop + M()*0.05, y1g = yTop + topH;
+      const i0 = Math.max(0, Math.ceil((h.hy - r - y0g) / step));
+      const i1 = Math.min(Math.floor((y1g - y0g) / step), i0 + 14);
+      for (let i = i0; i <= i1; i++){
+        const yy = y0g + i*step;
+        const dy = Math.abs(yy - h.hy) / r;
+        if (dy > 1) continue;
+        const f = (1 - dy) * (1 - dy);
+        g.fillStyle = 'hsla('+h.hue+',60%,82%,'+A(0.30*f*h.k)+')';
+        g.fillRect(x - w/2, yy, w, Math.max(1, M()*0.008));
+      }
+      g.globalCompositeOperation = 'source-over';
+      g.restore();
+    }
+
+    // ② 下の箱（塗装した合板）。面で返す＋稜線のてかり
+    if (h.hy > yTop + topH - r*0.4){
+      g.save();
+      rrect(x - sw/2, subY, sw, subH, M()*0.025); g.clip();
+      g.globalCompositeOperation = 'lighter';
+      const gp2 = g.createRadialGradient(x, h.hy, 0, x, h.hy, r*1.25);
+      gp2.addColorStop(0,   'hsla('+h.hue+',66%,66%,'+A(0.20*h.k)+')');
+      gp2.addColorStop(0.45,'hsla('+h.hue+',74%,54%,'+A(0.09*h.k)+')');
+      gp2.addColorStop(1,   'hsla('+h.hue+',80%,48%,0)');
+      g.fillStyle = gp2;
+      g.fillRect(x - r*1.25, h.hy - r*1.25, r*2.5, r*2.5);
+      // ★稜線。**塗装面はここだけ鋭く返す**
+      const edge = (h.hy - subY) / Math.max(1, subH);
+      const ex = x - sw/2 + sw*0.16;            // 面の変わり目（sface の 0.16）
+      const eg = g.createLinearGradient(ex - M()*0.06, 0, ex + M()*0.06, 0);
+      eg.addColorStop(0,   'hsla('+h.hue+',60%,70%,0)');
+      eg.addColorStop(0.5, 'hsla('+h.hue+',55%,88%,'+(0.26*h.k*(1-Math.abs(edge-0.5)))+')');
+      eg.addColorStop(1,   'hsla('+h.hue+',60%,70%,0)');
+      g.fillStyle = eg;
+      g.fillRect(ex - M()*0.06, subY, M()*0.12, subH);
+      g.globalCompositeOperation = 'source-over';
+      g.restore();
+
+      // ③ ウーファー。★落とし込みなので**上の縁だけ**が返る。奥は暗いまま
+      const cone = Math.abs(h.hy - wy) / (wr*2.4);
+      if (cone < 1){
+        const f = (1 - cone) * h.k;
+        g.save();
+        g.beginPath(); g.arc(x, wy, wr, 0, 6.2832); g.clip();
+        g.globalCompositeOperation = 'lighter';
+        const rg = g.createRadialGradient(x, wy - wr*0.55, wr*0.15,
+                                          x, wy - wr*0.55, wr*1.5);
+        rg.addColorStop(0,   'hsla('+h.hue+',50%,78%,'+A(0.16*f)+')');
+        rg.addColorStop(0.45,'hsla('+h.hue+',60%,60%,'+A(0.05*f)+')');
+        rg.addColorStop(1,   'hsla('+h.hue+',70%,50%,0)');
+        g.fillStyle = rg;
+        g.fillRect(x - wr, wy - wr, wr*2, wr*2);
+        g.globalCompositeOperation = 'source-over';
+        g.restore();
+        // 縁のリング。★金属枠がいちばん強く返す
+        g.globalCompositeOperation = 'lighter';
+        g.strokeStyle = 'hsla('+h.hue+',55%,86%,'+A(0.34*f)+')';
+        g.lineWidth = Math.max(1, M()*0.012);
+        g.beginPath(); g.arc(x, wy, wr*0.98, Math.PI*1.08, Math.PI*1.92); g.stroke();
+        g.globalCompositeOperation = 'source-over';
+      }
+    }
+  }
+}
+
 function spill(clip, objX, yTop, yBot, gain){
   // ★物に当たる光。**線ではなく、まだら。**
   //   光は1点から来るので、当たるのは面の一部だけ。そこから四方に落ちる
@@ -1017,14 +1168,7 @@ function spill(clip, objX, yTop, yBot, gain){
   g.clip();
   g.globalCompositeOperation = 'lighter';
   // ★下からの光も物に当たる。上だけ見ていた（2026-09-13 本人の指摘）
-  const sources = [
-    ...BEAMS.map(b => ({pw: b.pw||0, hue: b.hueDeg,
-                        x: lensPos(innerWidth*b.cx, b.ang).x
-                           + Math.tan(b.ang)*(innerHeight-lensY())*0.55,
-                        up: false})),
-    ...UPS.map(u => ({pw: u.pw||0, hue: u.hueDeg, x: u.x||0, up: true})),
-  ];
-  for (const b of sources){
+  for (const b of lightSources()){
     const pw = b.pw || 0;
     if (pw < 0.03) continue;
     const hx = b.x;
@@ -1035,8 +1179,8 @@ function spill(clip, objX, yTop, yBot, gain){
     const py = b.up ? yTop + (yBot - yTop)*0.86 : yTop + (yBot - yTop)*0.12;
     const r  = M()*1.5*(0.55 + pw);
     const gp = g.createRadialGradient(hx, py, 0, hx, py, r);
-    gp.addColorStop(0,   'hsla('+b.hue+',80%,84%,'+(0.38*k)+')');
-    gp.addColorStop(0.35,'hsla('+b.hue+',85%,66%,'+(0.14*k)+')');
+    gp.addColorStop(0,   'hsla('+b.hue+',80%,84%,'+A(0.38*k)+')');
+    gp.addColorStop(0.35,'hsla('+b.hue+',85%,66%,'+A(0.14*k)+')');
     gp.addColorStop(1,   'hsla('+b.hue+',85%,55%,0)');
     g.fillStyle = gp;
     // ★切り抜いてあるので、**グラデーションの円を丸ごと塗ってよい。**
@@ -1062,9 +1206,9 @@ function wash(p, amt){
   g.globalCompositeOperation = 'lighter';
   const gr = g.createRadialGradient(innerWidth*0.5, trussY(), 0,
                                     innerWidth*0.5, trussY(), innerHeight*1.5);
-  gr.addColorStop(0,   'hsla('+L.hue+',92%,52%,'+(0.26*amt)+')');
-  gr.addColorStop(0.45,'hsla('+L.hue+',95%,42%,'+(0.15*amt)+')');
-  gr.addColorStop(1,   'hsla('+L.hue+',95%,34%,'+(0.06*amt)+')');
+  gr.addColorStop(0,   'hsla('+L.hue+',92%,52%,'+A(0.26*amt)+')');
+  gr.addColorStop(0.45,'hsla('+L.hue+',95%,42%,'+A(0.15*amt)+')');
+  gr.addColorStop(1,   'hsla('+L.hue+',95%,34%,'+A(0.06*amt)+')');
   g.fillStyle = gr;
   g.fillRect(0, 0, innerWidth, innerHeight);
   g.globalCompositeOperation = 'source-over';
@@ -1104,7 +1248,7 @@ function uplights(t, p, amt, jog){
       const gg = g.createLinearGradient(0, 0, 0, far);
       for (const s2 of [0, 0.04, 0.09, 0.16, 0.25, 0.37, 0.52, 0.72, 1.0]){
         const d = 1 + s2*6.0;
-        gg.addColorStop(s2, 'hsla('+hue+','+sat+'%,'+lig+'%,'+(am*pw/(d*d))+')');
+        gg.addColorStop(s2, 'hsla('+hue+','+sat+'%,'+lig+'%,'+A(am*pw/(d*d))+')');
       }
       g.fillStyle = gg;
       g.beginPath();
@@ -1117,7 +1261,7 @@ function uplights(t, p, amt, jog){
     for (const [r, a2, s2, l2] of [[4.0, 0.25, 88, 58], [1.8, 0.72, 66, 82],
                                    [0.8, 1.00, 20, 99]]){
       const gl = g.createRadialGradient(cx, y, 0, cx, y, half*r);
-      gl.addColorStop(0, 'hsla('+hue+','+s2+'%,'+l2+'%,'+(a2*pw)+')');
+      gl.addColorStop(0, 'hsla('+hue+','+s2+'%,'+l2+'%,'+A(a2*pw)+')');
       gl.addColorStop(1, 'hsla('+hue+',95%,55%,0)');
       g.fillStyle = gl;
       g.beginPath(); g.arc(cx, y, half*r, 0, 6.2832); g.fill();
@@ -1378,7 +1522,7 @@ function drawInner(now){
           o.shadowColor = 'hsl('+hue+',100%,62%)';
           o.shadowBlur = (0 + 14*heat + 20*energy) * 0.34;
           o.fillStyle = 'hsla('+hue+','+(45 + 55*heat)+'%,'
-                      + (15 + 55*heat + 16*(1-d/TAIL))+'%,'+a+')';
+                      + (15 + 55*heat + 16*(1-d/TAIL))+'%,'+A(a)+')';
         }
         o.fillText(txt, c.x, r*LH);
         if (Math.random() < 0.0004 + 0.006*heat + pulse*0.06*heat){
@@ -1416,7 +1560,7 @@ function drawInner(now){
       for (let ix=0; ix<nx; ix++){
         const v = ((ix*7 + iy*13) % 11) / 11;   // 決め打ちの散らばり（毎フレーム変えない）
         if (v > 0.72){
-          o.fillStyle = 'hsla('+p.h+',60%,60%,'+(0.010 + 0.016*heat)+')';
+          o.fillStyle = 'hsla('+p.h+',60%,60%,'+A(0.010 + 0.016*heat)+')';
           o.fillRect(ix*cab, iy*cab, cab, cab);
         }
       }
@@ -1510,7 +1654,7 @@ function drawInner(now){
     g.closePath(); g.fill();
 
     // ★床の目地。**手前ほど間隔が広い**。これが遠近を確定させる
-    g.strokeStyle = 'hsla('+p.h+',60%,60%,'+(0.06 + 0.14*heat)+')';
+    g.strokeStyle = 'hsla('+p.h+',60%,60%,'+A(0.06 + 0.14*heat)+')';
     g.lineWidth = Math.max(1, M()*0.008);
     g.beginPath();
     for (let i=1; i<FLOOR_ROWS; i++){
@@ -1547,9 +1691,9 @@ function drawInner(now){
       const a0 = f.c / FLOOR_COLS, a1 = (f.c + 1) / FLOOR_COLS;
       const gp2 = g.createLinearGradient(0, y0, 0, y1);
       // ★光量を上げた（2026-09-13 本人の指示）。1.9倍、芯の明度も上げる
-      gp2.addColorStop(0,   'hsla('+f.hue+',92%,66%,'+(0.19*f.on)+')');
-      gp2.addColorStop(0.5, 'hsla('+f.hue+',88%,78%,'+(0.49*f.on)+')');
-      gp2.addColorStop(1,   'hsla('+f.hue+',92%,62%,'+(0.11*f.on)+')');
+      gp2.addColorStop(0,   'hsla('+f.hue+',92%,66%,'+A(0.19*f.on)+')');
+      gp2.addColorStop(0.5, 'hsla('+f.hue+',88%,78%,'+A(0.49*f.on)+')');
+      gp2.addColorStop(1,   'hsla('+f.hue+',92%,62%,'+A(0.11*f.on)+')');
       g.fillStyle = gp2;
       g.beginPath();
       g.moveTo(xl0 + (xr0-xl0)*a0, y0); g.lineTo(xl0 + (xr0-xl0)*a1, y0);
@@ -1571,8 +1715,8 @@ function drawInner(now){
       const rx = M()*0.85*(1 + 1.8*pw2), ry = rx*0.26;
       const gp = g.createRadialGradient(hx, innerHeight*0.93, 0,
                                         hx, innerHeight*0.93, rx);
-      gp.addColorStop(0,   'hsla('+b.hueDeg+',90%,80%,'+(0.55*pw2)+')');
-      gp.addColorStop(0.5, 'hsla('+b.hueDeg+',95%,62%,'+(0.18*pw2)+')');
+      gp.addColorStop(0,   'hsla('+b.hueDeg+',90%,80%,'+A(0.55*pw2)+')');
+      gp.addColorStop(0.5, 'hsla('+b.hueDeg+',95%,62%,'+A(0.18*pw2)+')');
       gp.addColorStop(1,   'hsla('+b.hueDeg+',95%,50%,0)');
       g.fillStyle = gp;
       g.save(); g.translate(hx, innerHeight*0.93); g.scale(1, ry/rx);
@@ -1583,7 +1727,7 @@ function drawInner(now){
     // 壁と床の境目が、いちばん光を拾う
     const gr = g.createLinearGradient(0, backY - M()*0.12, 0, backY + M()*0.10);
     gr.addColorStop(0, 'hsla('+p.h+',80%,62%,0)');
-    gr.addColorStop(0.6, 'hsla('+p.h+',80%,68%,'+(0.10 + 0.22*heat)+')');
+    gr.addColorStop(0.6, 'hsla('+p.h+',80%,68%,'+A(0.10 + 0.22*heat)+')');
     gr.addColorStop(1, 'hsla('+p.h+',80%,62%,0)');
     g.fillStyle = gr;
     g.fillRect(innerWidth*(WALL_L-0.015), backY - M()*0.12, innerWidth*(WALL_R-WALL_L+0.03), M()*0.22);
@@ -1650,12 +1794,8 @@ function drawInner(now){
       g.lineWidth = Math.max(1, M()*0.010);
       g.beginPath(); g.arc(x, wy, wr*0.98, 0, 6.2832); g.stroke();
 
-      // ★光は面の一部にしか当たらない。線で光らせない
-      spill(() => {
-        g.beginPath();
-        rrect(x - w/2, yTop, w, topH, M()*0.025);
-        rrect(x - sw/2, subY, sw, subH, M()*0.025);
-      }, x, yTop, yTop + hgt, 1.0);
+      // ★スポットが当たったところだけ、素材ごとの返し方で光る
+      speakerLight(x, w, yTop, topH, sw, subY, subH, wr, wy);
     }
   }
 
@@ -1698,7 +1838,7 @@ function drawInner(now){
 
 
   if (flash > 0.01){
-    g.fillStyle = 'rgba(255,255,255,'+(flash*0.16)+')';
+    g.fillStyle = 'rgba(255,255,255,'+A(flash*0.16)+')';
     g.fillRect(0,0,innerWidth,innerHeight);
   }
 }
@@ -1726,7 +1866,7 @@ window.__debug = {
   lensPos, pivotY, lensY, stepHeads, rigLen, trussY, trussH,
   litFloor, floorPanels: () => floorLit, FLOOR_COLS, FLOOR_ROWS,
   tape, tapeRuns, TOP_RUN_LIFT, trussCorner, JOINT_L, JOINT_R, M,
-  heat: () => heat, burstAmt, burstHue, fireworkAmt, BURST_ON, BURST_MAX, pal, BURST_PAL,
+  heat: () => heat, speakerLight, lightSources, hitHeight, burstAmt, burstHue, fireworkAmt, BURST_ON, BURST_MAX, pal, BURST_PAL,
   sparks: () => SPARKS, gerbX, puffs: () => PUFFS, PUFF_MAX,
   beamHues: () => BEAMS.map(b=>b.hueDeg), fireBeams,
   setBurst: (v)=>{ S.burst = v; },

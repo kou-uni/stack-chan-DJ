@@ -5,12 +5,32 @@ const js = html.match(/<script>([\s\S]*)<\/script>/)[1];
 
 const calls = {fillText:0, fill:0, stroke:0, fillRect:0, arc:0, drawImage:0, ellipse:0};
 const drawCount = () => Object.values(calls).reduce((a,b)=>a+b,0);
-const grad = { addColorStop(){} };
+// ★本物の canvas と同じ厳しさにする。**透明度が1を超えると例外**。
+//   ここを緩くしていたので、検算は緑なのに実機のブラウザだけ落ちていた
+//   （2026-09-13：バーストで「描画で落ちました」）
+function checkColor(c){
+  if (typeof c !== 'string') throw new TypeError('色が文字列でない: ' + c);
+  const m = /^(?:hsla|rgba)\(([^)]*)\)$/.exec(c);
+  if (m){
+    const parts = m[1].split(',');
+    if (parts.length === 4){
+      const a = Number(parts[3]);
+      if (!isFinite(a) || a < 0 || a > 1)
+        throw new Error('透明度が範囲外: ' + c);
+    }
+    for (const q of parts)
+      if (/undefined|NaN/.test(q)) throw new Error('色に NaN: ' + c);
+  } else if (/undefined|NaN/.test(c)) {
+    throw new Error('色に NaN: ' + c);
+  }
+  return c;
+}
+const grad = { addColorStop(_u, c){ checkColor(c); } };
 const ctx = () => new Proxy({}, { get(_,k){
   if (k==='createLinearGradient'||k==='createRadialGradient') return () => grad;
   if (typeof k === 'string' && k in calls) return () => { calls[k]++; };
   return () => {};
-}, set(){ return true; }});
+}, set(_, k, v){ if (k === 'fillStyle' || k === 'strokeStyle') { if (typeof v === 'string') checkColor(v); } return true; }});
 const el = () => ({ getContext: ctx, style:{}, width:0, height:0, textContent:'',
                     classList:{add(){},remove(){},toggle(){}} });
 let raf = null;
@@ -481,7 +501,7 @@ ok('柱を四角塗りで描いていない',
   sb0.__ws.onmessage({data: JSON.stringify(
     {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',
      jog:0,jogw:0,burst:0.9})});
-  for (let i=0;i<180;i++){ frameN++; rafFn(frameN*16.7); }
+  for (let i=0;i<300;i++){ frameN++; rafFn(frameN*16.7); }
   ok('90%では花火は出ない（消えきる）', D.sparks().length === 0,
      D.sparks().length + '粒');
   // ★フェーダーが127に届かなくても出ること。**「上げたのに出ない」を作らない**
@@ -565,7 +585,8 @@ ok('柱を四角塗りで描いていない',
   sb0.__ws.onmessage({data: JSON.stringify(
     {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',
      jog:0,jogw:0,burst:0.9})});
-  for (let i=0;i<260;i++){ frameN++; rafFn(frameN*16.7); }
+  // ★粒は寿命が最大2.8秒。**消えきるまで待つ**（240フレームでは残っていた）
+  for (let i=0;i<420;i++){ frameN++; rafFn(frameN*16.7); }
   ok('90%ではスモークは出ない', D.puffs().length === 0, D.puffs().length + '個');
   sb0.__ws.onmessage({data: JSON.stringify(
     {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0})});
@@ -630,6 +651,43 @@ ok('柱を四角塗りで描いていない',
   ok('光だまりは切り抜いてから塗る', /clip\(\);\s*\n\s*g\.clip\(\);/.test(s2));
   ok('矩形でグラデーションを切らない',
      !/fillRect\(objX/.test(s2) && /fillRect\(hx - r, py - r, r\*2, r\*2\)/.test(s2));
+}
+
+// ★スピーカーは「当たったところだけ」光る（2026-09-13 本人の指示）
+{
+  const s2 = D.speakerLight.toString();
+  ok('上と下で返し方を分けている', /グリル/.test(s2) && /合板/.test(s2));
+  ok('当たった場所を計算している', /hitHeight/.test(s2));
+  ok('全部の光源で光らせない（強い順に絞る）', /slice\(0, 2\)/.test(s2));
+
+  // ★**実際に描かせる。** 文字列を見るだけでは、色に undefined が入っていても
+  //   気づけない（2026-09-13：実機のブラウザだけフレームごと落ちていた）
+  {
+    const keep = D.BEAMS.map(b => ({ang: b.ang, on: b.on, pw: b.pw, hueDeg: b.hueDeg}));
+    D.BEAMS.forEach((b,i) => { b.ang = i < 2 ? -0.62 : 0.62; b.on = 1; b.pw = 0.9;
+                               b.hueDeg = 200; });
+    let threw = null;
+    try {
+      const M0 = D.M();
+      const x = 1600*0.115, w = M0*0.60, hgt = M0*2.05;
+      const yTop = 900*0.99 - hgt, topH = hgt*0.62;
+      D.speakerLight(x, w, yTop, topH, w*1.30, yTop+topH, hgt*0.38,
+                     M0*0.21, yTop+topH+hgt*0.38*0.52);
+    } catch (e) { threw = e.message; }
+    ok('スピーカーの反射が実際に描ける', !threw, threw || '');
+    D.BEAMS.forEach((b,i) => Object.assign(b, keep[i]));
+  }
+
+  // 光軸が通っていなければ当たらない
+  const far = {pw: 1, hue: 0, up: false, lx: 100, ly: 0, x: 120, fy: 900};
+  ok('光軸から外れた箱は光らない', D.hitHeight(far, 1400, 400, 800) === null);
+  // 通っていれば、通った高さで当たる
+  const thru = {pw: 1, hue: 0, up: false, lx: 100, ly: 0, x: 900, fy: 900};
+  const hy = D.hitHeight(thru, 500, 400, 800);
+  ok('通った高さで当たる', hy !== null && Math.abs(hy - 450) < 1, String(hy));
+  // 箱より上を通り過ぎるなら当たらない
+  const over = {pw: 1, hue: 0, up: false, lx: 100, ly: 0, x: 3000, fy: 900};
+  ok('高いところを通り過ぎたら当たらない', D.hitHeight(over, 500, 700, 800) === null);
 }
 
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
