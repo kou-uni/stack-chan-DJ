@@ -193,13 +193,13 @@ ok('どの型も振り幅を超えない',
 // ★途中から塗る矩形は、端の色を0にしないと**横線（段差）が出る**（2026-09-13）
 ok('中央下の落とし込みを画面全体に塗る',
    /画面全体に塗る/.test(src) && !/fillRect\(0, innerHeight\*0\.35/.test(src));
-ok('床の映り込みの境目が0から始まる', /rgba\(3,4,8,0\)/.test(src));
+// 床の映り込みは 2026-09-13 に削除（重く、境目に帯が出た）
 
 // ── 構造材の統一（2026-09-13 本人の指摘）────────────
 // ★横も縦も**同じ素材・同じ粒度・同じ太さ**で描く。別々に描くと柱だけ浮く
 ok('トラスは1つの関数で描く', /function trussRun\(/.test(src));
 const calls = (src.match(/trussRun\(/g) || []).length - 1;   // 定義を除く
-ok('横と縦の両方に使っている（3箇所以上）', calls >= 3, calls + '箇所');
+ok('横と縦の両方に使っている（2箇所以上）', calls >= 2, calls + '箇所');
 // ★箱トラスは骨組み。**中を塗り潰すと板になる**（2026-09-13 本人の指摘）
 // ★筒の先と光の出口が一致しているか（2026-09-13：ずれていて光が離れていた）
 ok('筒の長さを HEAD_H で描いている', /const HL = L\*HEAD_H/.test(src));
@@ -216,6 +216,24 @@ ok('明るさは光だまりから来る（素材を光らせない）',
 ok('角に継ぎ手がある', /function trussCorner\(/.test(src));
 ok('柱を四角塗りで描いていない',
    !/g\.fillRect\(x, cy, pw2, ch\)/.test(src));
+
+// ★1フレームの描画命令。**多すぎると iPad が止まる**（2026-09-13 実地）
+{
+  let n = 0;
+  const g2 = new Proxy({}, {get(_,k){
+    if (String(k).startsWith('create')) { n++; return () => ({addColorStop(){}}); }
+    if (['fill','stroke','fillRect','fillText','drawImage','arc','ellipse'].includes(k))
+      return () => { n++; };
+    return () => {};
+  }, set(){ return true; }});
+  // 5フレーム回してから1フレームぶん数える
+  sb0.__ws.onmessage({data: JSON.stringify(
+    {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0})});
+  for (let i=0;i<5;i++){ frameN++; rafFn(frameN*16.7); }
+  const before = drawCount(); frameN++; rafFn(frameN*16.7);
+  const per = drawCount() - before;
+  ok('1フレームの描画命令が1000未満', per < 1000, per + '命令');
+}
 
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
 process.exit(bad ? 1 : 0);

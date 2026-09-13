@@ -74,13 +74,13 @@ function layout(){
   cv.width = innerWidth*dpr; cv.height = innerHeight*dpr;
   g.setTransform(dpr,0,0,dpr,0,0);
   FS = Math.max(10, Math.min(17, innerWidth/110));
-  LH = FS*1.22;
+  LH = FS*1.34;
   ROWS = Math.ceil(innerHeight/LH)+3;
   panels = PANELS.map(pn => {
     const pw = innerWidth*pn.w;
     // ★裏キャンバスは「実寸のパネル」。奥のパネルは実際にはもっと横に長い
     const bw = pn.side ? pw/pn.farScale : pw;
-    const n = Math.max(3, Math.floor(bw/(FS*6.4)));
+    const n = Math.max(3, Math.floor(bw/(FS*9.0)));
     const cw = bw/n;
     // ★裏キャンバスは半分の解像度。**毎フレーム実寸で描くと iPad が止まる**
     //   （2026-09-13：画面が固まった）。貼るときに引き伸ばすので見た目は変わらない
@@ -455,27 +455,8 @@ function rig(heat){
       g.beginPath(); g.arc(s2*AX, PY, L*0.024, 0, 6.2832); g.fill();   // シャフト端
     }
   }
-  // ★ムービングヘッドの**間**に入れる。位置を決め打ちしていたので、
-  //   中央のヘッドと完全に重なっていた（2026-09-13 本人の指摘）
-  const blinderX = [];
-  for (let i=0; i<BEAMS.length-1; i++){
-    blinderX.push((BEAMS[i].cx + BEAMS[i+1].cx)/2);
-  }
-  blinderX.push(BEAMS[0].cx - 0.14, BEAMS[BEAMS.length-1].cx + 0.14);
-  for (const bx of blinderX){
-    if (bx < 0.02 || bx > 0.98) continue;
-    const x = innerWidth*bx, w = L*0.9, h = L*0.30;
-    g.fillStyle = 'rgba(4,5,9,'+(0.92*fade+0.06)+')';
-    rrect(x - w/2, ty + trussH()*0.42, w, h, L*0.05); g.fill();
-    // 4灯のレンズ
-    g.fillStyle = 'rgba(20,24,32,'+(0.8*fade)+')';
-    for (let i=0; i<4; i++){
-      g.beginPath();
-      g.ellipse(x - w*0.33 + i*w*0.22, ty + trussH()*0.42 + h*0.5,
-                w*0.075, h*0.28, 0, 0, 6.2832);
-      g.fill();
-    }
-  }
+  // ★ブラインダーをやめた（2026-09-13：足しすぎて壊れたので引いた）
+
   g.lineCap = 'butt';
 
   // ── ★レンズの発光。**筐体を描いたあとに乗せる。**
@@ -787,7 +768,7 @@ function draw(now){
   }
 
   // ── ② 会場の奥：3面のディスプレイ。**裏で正面から描いて、台形に貼る**
-  const TAIL = 26 + 14*heat;
+  const TAIL = 16 + 10*heat;   // ★描画数を抑える（iPad が止まる）
   const flow = (0.22 + heat*2.4 + energy*6.0) * (1 - hold*0.45) + release*14.0;
 
   frameNo++;
@@ -927,32 +908,7 @@ function draw(now){
     }
   }
 
-  // ── ★ウォールの上端の横トラス。**袖の上にも通す。枠として一周させる**
-  //   （2026-09-13 本人の指摘：横のディスプレイの上に支柱が無かった）
-  {
-    const hh = M()*0.30*kc*0.85;
-    // 中央（正面）
-    trussRun(innerWidth*JOINT_L + hh*0.6, cy,
-             innerWidth*JOINT_R - hh*0.6, cy, kc*0.85, 0.85);
-    trussCorner(innerWidth*JOINT_L, cy, kc*0.85, 0.85);
-    trussCorner(innerWidth*JOINT_R, cy, kc*0.85, 0.85);
-
-    // 袖。★上端は傾いている（外が手前で高い）。段に分けて縮尺を変える
-    const K = CENTER_K, N = 3;
-    for (const side of ['left', 'right']){
-      const pn = side === 'left' ? PANELS[0] : PANELS[2];
-      for (let i=0; i<N; i++){
-        const u0 = i/N, u1 = (i+1)/N;               // 0=外（手前）, 1=中央寄り（奥）
-        const s0 = K/(K + u0*(1-K)), s1 = K/(K + u1*(1-K));
-        const y0 = hy - hy*s0, y1 = hy - hy*s1;
-        const xa = side === 'left'
-          ? innerWidth*(pn.x0 + pn.w*u0) : innerWidth*(pn.x0 + pn.w*(1-u0));
-        const xb = side === 'left'
-          ? innerWidth*(pn.x0 + pn.w*u1) : innerWidth*(pn.x0 + pn.w*(1-u1));
-        trussRun(xa, y0, xb, y1, ((s0+s1)/2)*0.85, 0.85);
-      }
-    }
-  }
+  // ★ウォール上端の横トラスと袖のトラスをやめた（2026-09-13：足しすぎて壊れたので引いた）
 
   // ── 床。★奥行きの手がかりで**いちばん強いのは床の収束線**（2026-09-13）。
   //   これが無いと、パネルが宙に浮いて部屋に見えない
@@ -986,28 +942,7 @@ function draw(now){
     }
     g.stroke();
 
-    // ★床は艶がある。**奥の壁が映り込む。** これが無いと塗り潰した黒に見える
-    const cen = panels[1];
-    if (cen){
-      g.save();
-      g.beginPath();
-      g.moveTo(0, innerHeight); g.lineTo(innerWidth, innerHeight);
-      g.lineTo(innerWidth*WALL_R, backY); g.lineTo(innerWidth*WALL_L, backY);
-      g.closePath(); g.clip();
-      g.globalAlpha = 0.16 + 0.14*heat;
-      g.scale(1, -1);                            // 上下を反転して映す
-      g.drawImage(cen.off, 0, 0, cen.bw, innerHeight,
-                  cen.px, -(backY + innerHeight*kc), cen.pw, innerHeight*kc);
-      g.globalAlpha = 1;
-      g.restore();
-      // 遠いほど映り込みが消える
-      const fade = g.createLinearGradient(0, backY, 0, innerHeight);
-      fade.addColorStop(0,   'rgba(3,4,8,0)');    // ★境目で0から。段差を作らない
-      fade.addColorStop(0.45,'rgba(3,4,8,0.62)');
-      fade.addColorStop(1,   'rgba(3,4,8,0.92)');
-      g.fillStyle = fade;
-      g.fillRect(0, backY, innerWidth, innerHeight-backY);
-    }
+  // ★床の映り込みをやめた（2026-09-13：足しすぎて壊れたので引いた）
 
     // ★ビームが床に落ちる。**当たったところが光の色になる**
     const L2 = litColor(p);
@@ -1045,104 +980,12 @@ function draw(now){
   // ── ③ 部屋全体が染まる
   wash(p, heat);
 
-  // ── 機材。★手前にあるので、**部屋の色を乗せたあとに描く。**
-  //   先に描くと wash で一様に染まって、のっぺりした板になる（2026-09-13）
-  {
-    const LC2 = litColor(p);
-    for (const [cx, dir] of [[0.115, 1], [0.885, -1]]){
-      const x = innerWidth*cx, w = M()*0.60, hgt = M()*2.05;
-      const yTop = innerHeight*0.99 - hgt;
-      const topH = hgt*0.62, subY = yTop + topH, subH = hgt*0.38;
-      const sw = w*1.30;
-
-      // ── トップ。**箱なので、面ごとに明るさが違う**
-      const face = g.createLinearGradient(x - w/2, 0, x + w/2, 0);
-      face.addColorStop(0,    'rgb(9,10,13)');
-      face.addColorStop(0.18, 'rgb(26,28,33)');   // 角のハイライト
-      face.addColorStop(0.55, 'rgb(14,15,19)');
-      face.addColorStop(1,    'rgb(5,6,8)');
-      g.fillStyle = face;
-      rrect(x - w/2, yTop, w, topH, M()*0.025); g.fill();
-
-      // グリル。★細かいメッシュ。太いスリットだとおもちゃに見える
-      g.save();
-      rrect(x - w/2 + M()*0.045, yTop + M()*0.05,
-            w - M()*0.09, topH - M()*0.10, M()*0.012); g.clip();
-      g.fillStyle = 'rgba(0,0,0,0.55)';
-      g.fillRect(x - w/2, yTop, w, topH);
-      g.fillStyle = 'rgba(70,76,88,0.16)';
-      for (let yy = yTop + M()*0.05; yy < yTop + topH; yy += Math.max(2, M()*0.018)){
-        g.fillRect(x - w/2, yy, w, Math.max(1, M()*0.008));
-      }
-      g.restore();
-
-      // ── サブ。**床に置くので、上面が見える**（消失点より下）
-      const sface = g.createLinearGradient(x - sw/2, 0, x + sw/2, 0);
-      sface.addColorStop(0,    'rgb(7,8,11)');
-      sface.addColorStop(0.16, 'rgb(22,24,29)');
-      sface.addColorStop(0.6,  'rgb(11,12,16)');
-      sface.addColorStop(1,    'rgb(4,5,7)');
-      g.fillStyle = sface;
-      rrect(x - sw/2, subY, sw, subH, M()*0.025); g.fill();
-      // 上面（薄く見える）
-      g.fillStyle = 'rgba(40,45,55,0.35)';
-      g.beginPath();
-      g.moveTo(x - sw/2, subY); g.lineTo(x + sw/2, subY);
-      g.lineTo(x + sw/2 - M()*0.05, subY - M()*0.05);
-      g.lineTo(x - sw/2 + M()*0.05, subY - M()*0.05);
-      g.closePath(); g.fill();
-      // ウーファー。**落とし込みなので、縁に影がつく**
-      const wr = M()*0.21, wy = subY + subH*0.52;
-      const wg = g.createRadialGradient(x, wy - wr*0.25, wr*0.1, x, wy, wr);
-      wg.addColorStop(0,   'rgb(24,26,31)');
-      wg.addColorStop(0.6, 'rgb(10,11,14)');
-      wg.addColorStop(1,   'rgb(2,3,5)');
-      g.fillStyle = wg;
-      g.beginPath(); g.arc(x, wy, wr, 0, 6.2832); g.fill();
-      g.strokeStyle = 'rgba(70,78,92,0.30)';
-      g.lineWidth = Math.max(1, M()*0.010);
-      g.beginPath(); g.arc(x, wy, wr*0.98, 0, 6.2832); g.stroke();
-
-      // ── ★光は面の一部にしか当たらない。**線で光らせない**
-      spill(() => {
-        g.beginPath();
-        rrect(x - w/2, yTop, w, topH, M()*0.025);
-        rrect(x - sw/2, subY, sw, subH, M()*0.025);
-      }, x, yTop, yTop + hgt, 1.0);
-    }
-  }
-
-  // ── ★ビームの根元。**灯体より手前に描く。**
-  //   先に描いていたので、黒い筐体に隠れて「光と灯体が会っていない」
-  if (heat > 0.06){
-    g.globalCompositeOperation = 'lighter';
-    for (const b of BEAMS){
-      const pw = b.pw || 0;
-      if (pw < 0.03) continue;
-      const LP = lensPos(innerWidth*b.cx, b.ang);
-      const half = M()*0.115, near = M()*2.2;
-      g.save();
-      g.translate(LP.x, LP.y);
-      g.rotate(b.ang);
-      const gg = g.createLinearGradient(0, 0, 0, near);
-      gg.addColorStop(0,   'hsla('+b.hueDeg+',60%,92%,'+(0.34*pw)+')');
-      gg.addColorStop(0.35,'hsla('+b.hueDeg+',85%,70%,'+(0.12*pw)+')');
-      gg.addColorStop(1,   'hsla('+b.hueDeg+',90%,58%,0)');
-      g.fillStyle = gg;
-      g.beginPath();
-      g.moveTo(-half*0.75, 0); g.lineTo(half*0.75, 0);
-      g.lineTo(near*0.10, near); g.lineTo(-near*0.10, near);
-      g.closePath(); g.fill();
-      g.restore();
-    }
-    g.globalCompositeOperation = 'source-over';
-  }
+  // ★スピーカーとサブをやめた（2026-09-13：足しすぎて壊れたので引いた）
 
   // ── 下からの光。★機材より**手前**（ステージ前縁に置く）
   uplights(t, p, playing ? hold : 0, S.jog || 0);
 
   // ── ④ 実機の居場所を暗く残す（白い顔を沈ませない）
-  stageWell();
 
   // ── トラスの吊り。★空に浮かない
   {
