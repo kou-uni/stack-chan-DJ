@@ -255,7 +255,16 @@ ok('柱を四角塗りで描いていない',
   ok('拍で床のパネルが光る', after > before, after + '枚');
   const cells = D.floorPanels();
   ok('光るのはマス目の中', cells.every(f => f.c >= 0 && f.c < D.FLOOR_COLS && f.r >= 0 && f.r < D.FLOOR_ROWS));
-  ok('同時に光りすぎない', cells.length <= 24, cells.length + '枚');
+  ok('同時に光りすぎない', cells.length <= 14, cells.length + '枚');
+}
+
+// ★台数が変わっても左右対称で、真ん中で止まる灯体が無いこと（2026-09-13）
+{
+  const ms = D.BEAMS.map(b => b.mirror);
+  ok('灯体は左右対称に並ぶ',
+     ms.every((m,i) => Math.abs(m + ms[ms.length-1-i]) < 1e-9), ms.map(v=>v.toFixed(2)).join(' '));
+  ok('どの灯体も対称の型で動く（mirror=0が無い）',
+     D.BEAMS.length % 2 === 1 || ms.every(m => Math.abs(m) > 1e-6));
 }
 
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
