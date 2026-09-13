@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">4ba86da 20:04:19</div>
+<div id="v">62ce1dc 22:03:18</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -596,7 +596,8 @@ function trussCorner(x, yTop, yBot, s){
     for (const py of [y0 + d*0.22, y1 - d*0.22]){
       g.fillStyle = 'rgb(38,44,54)';
       g.beginPath(); g.arc(x + px, py, br, 0, 6.2832); g.fill();
-      if (L2.pow > 0.05){
+      // ★ボルトのてかりは上の2本だけ。下は影になっていて、ほぼ見えない
+      if (L2.pow > 0.05 && py < y0 + d*0.5){
         g.globalCompositeOperation = 'lighter';
         g.fillStyle = 'hsla('+L2.hue+',60%,80%,'+A(0.45*Math.min(1,L2.pow))+')';
         g.beginPath(); g.arc(x + px - br*0.3, py - br*0.3, br*0.6, 0, 6.2832); g.fill();
@@ -1141,11 +1142,14 @@ function wooferRing(x, wy, wr, dir, gx){
   gc.fillRect(x - wr*1.6, wy - wr*1.6, wr*3.2, wr*3.2);
   // ② ★粒を円周に並べる。**テープの並びがそのままリングになる。**
   //   平均を採ると、虹のときに真っ白になって色が消える（2026-09-13 実際にそうなった）
-  const r = wr*0.98, step = 6.2832/n, ov = step*0.35;
+  // ★実機は30粒。**そのまま円に並べると描画命令を食う**（2026-09-13）。
+  //   10に間引く。円周ではこれ以上細かくしても見分けがつかない
+  const seg = Math.min(n, 10);
+  const r = wr*0.98, step = 6.2832/seg, ov = step*0.35;
   gc.lineWidth = Math.max(2.5, M()*0.032);
   gc.lineCap = 'round';
-  for (let i = 0; i < n; i++){
-    const c = L[i] || [0,0,0];
+  for (let i = 0; i < seg; i++){
+    const c = L[Math.round(i * (n - 1) / (seg - 1))] || [0,0,0];
     const v = Math.max(c[0], c[1], c[2]);
     if (v < 4) continue;
     const a0 = -1.5708 + dir*(i*step);
@@ -1582,7 +1586,7 @@ function drawInner(now){
       // ★灯体を増やしたぶんの描画予算を、見えない星から回す。
       //   照明が強いときの薄い星は、そもそも目に入らない（2026-09-13）
       //   ★バースト中は会場が真っ赤で、空はほぼ見えない。ここから予算を出す
-      if (a < 0.100 + burst*0.30) continue;
+      if (a < 0.220 + burst*0.20) continue;
       g.fillStyle = 'rgba(214,226,255,'+a+')';
       const r = Math.max(0.6, st.m*1.7);
       g.fillRect(st.x*innerWidth, y, r, r);

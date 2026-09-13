@@ -3,6 +3,22 @@
 // ★HTTP 200 は「配れた」だけで「描けた」ではない（2026-09-12、真っ暗を何度も出した）。
 //   canvas を偽物にして、draw() を何度か回す。**落ちれば分かる。**
 const fs = require('fs');
+// ★乱数を固定する。**落ちたときに同じ条件で再現できないと直せない。**
+//   2026-09-13、full run で1回だけ落ちて、単体では21回通った。
+//   種を渡せば毎回同じ絵になる（SEED=... で変えて別の並びも試せる）
+function seededMath(seed){
+  let s = seed >>> 0;
+  return new Proxy(Math, {get(t, k){
+    if (k === 'random') return () => {
+      s = (s * 1664525 + 1013904223) >>> 0;
+      return s / 4294967296;
+    };
+    const v = t[k];
+    return typeof v === 'function' ? v.bind(t) : v;
+  }});
+}
+const SEEDED = seededMath(Number(process.env.SEED || 20260913));
+
 const vm = require('vm');
 const path = process.argv[2];
 const html = fs.readFileSync(path, 'utf8');
@@ -52,7 +68,7 @@ const sandbox = {
   //   VM の中の `let S` は外から差し替えられない（最初これで嘘の結果を出した）
   WebSocket: function(){ this.close = ()=>{}; sandbox.__ws = this; },
   location: { host: 'x', protocol: 'http:', search: '', pathname: '/' },
-  Math, JSON, console, setTimeout(){}, setInterval(){},
+  Math: SEEDED, JSON, console, setTimeout(){}, setInterval(){},
 };
 sandbox.window = sandbox;
 vm.createContext(sandbox);

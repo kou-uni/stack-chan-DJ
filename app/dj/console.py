@@ -172,6 +172,9 @@ class Console(ExpressionMixin, MidiMixin, AudioMixin, TouchMixin, VisionMixin):
         self._knob_was = False
         self._cc_seen: dict[tuple[int, int], float] = {}
         self._nod: asyncio.Task | None = None
+        # ★バーに出すつまみは1つに絞る。全部拾うとバーが暴れる
+        from meter import MeterPicker
+        self.meter_pick = MeterPicker()
         self._last_check = 0.0
         self.mode = MODE_IDLE
         self._silent_since = None

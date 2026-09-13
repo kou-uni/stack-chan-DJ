@@ -65,6 +65,13 @@ class MidiMixin:
                 print(f"⚠ MIDI が切れました（{exc}）。挿し直しを待ちます")
                 await asyncio.sleep(2.0)
 
+    def _meter(self, msg, mapped: bool) -> None:
+        """つまみの値をバーに出す。**出すつまみは1つに絞る**（meter.py）。"""
+        v = self.meter_pick.feed(msg.channel, msg.control, msg.value,
+                                 time.time(), mapped=mapped)
+        if v is not None:
+            self.led.show_meter(v)
+
     async def _handle(self, msg):
         if msg.type == "control_change":
             slot = self.cc.get((msg.channel, msg.control))
@@ -73,7 +80,7 @@ class MidiMixin:
                 self.pose.touch()
                 # ★つまみの値を点灯本数で出す。**手元を見ずに分かるのが価値**
                 #   （2026-09-13 docs/ideas.md ②）
-                self.led.show_meter(msg.value / 127.0)
+                self._meter(msg, mapped=True)
                 await self.wake_servos()
                 self._show_pose("yaw")
             elif slot == "jog_r":
@@ -92,7 +99,7 @@ class MidiMixin:
             elif slot == "pitch":
                 self.pose.pitch = _scale(msg.value, PITCH_REL_MIN, PITCH_REL_MAX)
                 self.pose.touch()
-                self.led.show_meter(msg.value / 127.0)
+                self._meter(msg, mapped=True)
                 await self.wake_servos()
                 self._show_pose("pitch")
             elif slot == "burst_lsb":
@@ -104,7 +111,7 @@ class MidiMixin:
                 key = (msg.channel, msg.control)
                 # ★割り当てていなくても、**必ず何か起きる**
                 #   （2026-09-13 docs/ideas.md ④）。無反応は「壊れている」に見える
-                self.led.show_meter(msg.value / 127.0)
+                self._meter(msg, mapped=False)
                 if now - self._cc_seen.get(key, 0.0) > 2.0:
                     self._cc_seen[key] = now
                     print(f"  ? 未割当のつまみ: CC ch{msg.channel} #{msg.control}"

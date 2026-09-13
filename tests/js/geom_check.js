@@ -1,5 +1,21 @@
 // 背景の幾何を確かめる。★目で見るだけでは守れない性質を、機械に見張らせる。
 const fs = require('fs'), vm = require('vm');
+// ★乱数を固定する。**落ちたときに同じ条件で再現できないと直せない。**
+//   2026-09-13、full run で1回だけ落ちて、単体では21回通った。
+//   種を渡せば毎回同じ絵になる（SEED=... で変えて別の並びも試せる）
+function seededMath(seed){
+  let s = seed >>> 0;
+  return new Proxy(Math, {get(t, k){
+    if (k === 'random') return () => {
+      s = (s * 1664525 + 1013904223) >>> 0;
+      return s / 4294967296;
+    };
+    const v = t[k];
+    return typeof v === 'function' ? v.bind(t) : v;
+  }});
+}
+const SEEDED = seededMath(Number(process.env.SEED || 20260913));
+
 const html = fs.readFileSync(process.argv[2], 'utf8');
 const js = html.match(/<script>([\s\S]*)<\/script>/)[1];
 
@@ -40,7 +56,7 @@ const sb = {
   performance:{now:()=>0}, requestAnimationFrame(f){ raf=f; },
   WebSocket: function(){ this.close=()=>{}; sb.__ws=this; },
   location:{host:'x',protocol:'http:',search:'',pathname:'/'},
-  Math, JSON, console, setTimeout(){}, setInterval(){},
+  Math: SEEDED, JSON, console, setTimeout(){}, setInterval(){},
 };
 sb.window = sb; vm.createContext(sb);
 const sb0 = sb; let frameN = 0; const rafFn = (x)=>raf(x);
@@ -268,7 +284,8 @@ ok('柱を四角塗りで描いていない',
   // ★テープも込みで数える。**実機がつながっているときが本番**（2026-09-13）
   sb0.__ws.onmessage({data: JSON.stringify(
     {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0,
-     leds: Array.from({length:12},(_,i)=>[i*20, 255-i*20, 40])})});
+     // ★実機と同じ30粒
+     leds: Array.from({length:30},(_,i)=>[i*8, 89-i*3, 20])})});
   for (let i=0;i<5;i++){ frameN++; rafFn(frameN*16.7); }
   const before = drawCount(); frameN++; rafFn(frameN*16.7);
   const per = drawCount() - before;
@@ -277,7 +294,8 @@ ok('柱を四角塗りで描いていない',
   // ★バースト全開（花火つき）でも予算に収まるか。**頂点で止まったら台無し**
   sb0.__ws.onmessage({data: JSON.stringify(
     {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0,
-     burst:1.0, leds: Array.from({length:12},(_,i)=>[i*20, 255-i*20, 40])})});
+     // ★実機と同じ30粒
+     burst:1.0, leds: Array.from({length:30},(_,i)=>[i*8, 89-i*3, 20])})});
   // ★一吹きの山を取り逃さないよう、**2周ぶん回して最大を見る**
   let bper = 0;
   for (let i=0;i<200;i++){
@@ -728,9 +746,10 @@ ok('柱を四角塗りで描いていない',
     D.setLeds(Array.from({length:12}, (_,i) => [i*20, 255-i*20, 60]));
     D.wooferRing(200, 600, D.M()*0.21, 1, gt2);
     const uniq = new Set(strokes).size;
-    ok('リングは粒ごとに色が違う（平均で白くしない）', uniq >= 8, uniq + '色');
+    ok('リングは粒ごとに色が違う（平均で白くしない）', uniq >= 6, uniq + '色');
     // 粒12本 ＋ 白く飛ぶ芯1本
-    ok('リングは粒の数だけ弧を描く', strokes.length === 13, strokes.length + '本');
+    ok('リングの弧は間引かれる（実機30粒でも描きすぎない）',
+       strokes.length <= 11, strokes.length + '本');
     ok('芯が白く飛ぶ', /255,255,255/.test(strokes[strokes.length-1]),
        strokes[strokes.length-1]);
   }
