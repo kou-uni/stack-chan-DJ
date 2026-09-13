@@ -86,6 +86,8 @@ class MidiMixin:
                 self.pose.touch()
                 await self.wake_servos()
                 self._show_pose("pitch")
+            elif slot == "burst_lsb":
+                pass                    # ★14bit の下位。MSB だけで足りる
             elif slot is None:
                 # ★未割当のつまみ。**番号を調べるのはここでしかできない。**
                 #   ボタンには出ていたのに、つまみには出していなかった

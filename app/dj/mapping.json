@@ -178,6 +178,29 @@
       "center": 64,
       "note": "中心64の相対値。実測 63〜66。スポットライトの向きに使う",
       "confirmed": "2026-09-12"
+    },
+    "burst": {
+      "kind": "cc",
+      "ch": 1,
+      "num": 19,
+      "label": "右の音量ゲージ（バースト）",
+      "type": "absolute",
+      "value_range_observed": [
+        0,
+        127
+      ],
+      "confirmed": "2026-09-13",
+      "note": "右の音量ゲージ。14bit で送ってくる（MSB=#19 / LSB=#51）。MSB だけ見れば128段階あり、バーストには十分。実測で確定（推測しない）"
+    },
+    "burst_lsb": {
+      "kind": "cc",
+      "ch": 1,
+      "num": 51,
+      "label": "右の音量ゲージ（下位ビット・使わない）",
+      "type": "absolute",
+      "ignore": true,
+      "note": "MSB #19 と対。割り当てておかないと『未割当のつまみ』が出続ける",
+      "confirmed": "2026-09-13"
     }
   },
   "ready_command": "./.venv/bin/python app/dj/console.py --beat --sensitivity 0.3 --led-pattern strobe --led-brightness 0.8 --sway-deg 24 --play-ch 0 --play-note 11",
