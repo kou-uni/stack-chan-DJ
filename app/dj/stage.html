@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">b3f9cf6 12:50:06</div>
+<div id="v">ce64f9c 12:57:33</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -193,8 +193,8 @@ const VENUE_W = 9.0;                     // 画面の横幅が何メートルか
 function M(){ return innerWidth / VENUE_W; }          // 1メートルの画素数
 // ★トラスは**壁より手前**にある。壁と同じ縮尺で描くと小さすぎて浮く。
 //   手前のものは枠からはみ出すのが自然（2026-09-13 本人の指摘）
-const TRUSS_NEAR = 1.15;                               // 壁に対する手前ぶんの倍率
-function trussY(){ return Math.max(30, innerHeight*0.055); }
+const TRUSS_NEAR = 0.98;                               // 壁に対する手前ぶんの倍率
+function trussY(){ return Math.max(18, innerHeight*0.028); }   // ★上へ寄せる
 function trussH(){ return M() * 0.30 * TRUSS_NEAR; }  // 箱トラス 30cm角
 function braceP(){ return M() * 0.55 * TRUSS_NEAR; }
 function rigLen(){ return M() * 0.55 * TRUSS_NEAR; }  // ムービングヘッド 約55cm
