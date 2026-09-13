@@ -529,6 +529,22 @@ ok('柱を四角塗りで描いていない',
   }
   ok('100%で左右からスモークが出る', sawLeft > 0 && sawRight > 0,
      '左' + sawLeft + ' / 右' + sawRight);
+  // ★上側から斜め上へ（2026-09-13 本人の指示）
+  {
+    let ok1 = true, ok2 = true, seen = 0;
+    // ★一吹きは1.15秒ごとなので、2周ぶん回さないと0粒になる
+    for (let i=0;i<160;i++){
+      frameN++; rafFn(frameN*16.7);
+      for (const s of D.puffs()){
+        if (s.t > 0.05) continue;                 // 出たばかりの粒だけ見る
+        seen++;
+        if (s.y > 900*0.55) ok1 = false;          // 上側から出ている
+        if (s.vy >= 0 || Math.abs(s.vy) < Math.abs(s.vx)*0.4) ok2 = false;  // 斜め上
+      }
+    }
+    ok('スモークは上側から出る', ok1 && seen > 0, seen + '粒');
+    ok('スモークは斜め上へ吹く', ok2 && seen > 0);
+  }
   ok('スモークは左右で同じだけ出る',
      Math.min(sawLeft,sawRight)/Math.max(1,Math.max(sawLeft,sawRight)) > 0.75,
      '左' + sawLeft + ' / 右' + sawRight);
@@ -550,6 +566,26 @@ ok('柱を四角塗りで描いていない',
   ok('90%ではスモークは出ない', D.puffs().length === 0, D.puffs().length + '個');
   sb0.__ws.onmessage({data: JSON.stringify(
     {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0})});
+}
+
+// ★粒がばらけていること（2026-09-13 本人の指摘：ワンショットが1回に見える）
+{
+  sb0.__ws.onmessage({data: JSON.stringify(
+    {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',
+     jog:0,jogw:0,burst:1.0})});
+  let best = [];
+  for (let i=0;i<200;i++){
+    frameN++; rafFn(frameN*16.7);
+    if (D.puffs().length > best.length) best = D.puffs().slice();
+  }
+  ok('一度に重なる粒が多い', best.length >= 12, best.length + '個');
+  const uniq = (f) => new Set(best.map(f).map(v => Math.round(v*20))).size;
+  ok('消え方が粒ごとに違う', uniq(s => s.fade) >= 6, uniq(s => s.fade) + '種');
+  ok('大きさが粒ごとに違う', uniq(s => s.r / D.M()) >= 6, uniq(s => s.r / D.M()) + '種');
+  ok('濃さが粒ごとに違う', uniq(s => s.mul) >= 6, uniq(s => s.mul) + '種');
+  sb0.__ws.onmessage({data: JSON.stringify(
+    {bpm:124,n:4,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0})});
+  for (let i=0;i<200;i++){ frameN++; rafFn(frameN*16.7); }
 }
 
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');

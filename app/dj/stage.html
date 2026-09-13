@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">9b48a92 15:30:41</div>
+<div id="v">3683bd8 15:36:45</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -684,7 +684,9 @@ function drawSparks(){
 //   ・赤い照明の中なので**白ではなく赤みを拾う**。灰色の塊は嘘に見える
 //   ・グラデーションは**1つ作って使い回す。** 塊ごとに作ると予算を食う
 const PUFFS = [];
-const PUFF_MAX = 34;
+// ★一発の大きい塊ではなく、**細かいのが重なって「シュワわわわ」**（2026-09-13 本人の指示）。
+//   実物も1つの煙ではなく、無数の粒が入れ替わりながら塊に見えている
+const PUFF_MAX = 56;
 let blastAt = 0, blastEnd = 0;
 // ★var で宣言する。layout() はこの行より先に走るので、let だと
 //   「初期化前に触った」で落ちる（2026-09-13）
@@ -704,24 +706,35 @@ function puffGrad(){
 function stepSmoke(dt, amt, now){
   if (amt > 0){
     if (now > blastAt){                       // ★次の一吹き
-      blastAt = now + 1.15;
-      blastEnd = now + 0.42;
+      blastAt = now + 1.30;
+      blastEnd = now + 0.72;                  // ★長めに吹いて、粒を重ねる
     }
     if (now < blastEnd){
       // ★上限は**左右で山分けする。** ループの中で残量を見ると、
       //   先に回った左が使い切って右が痩せる（花火で同じ失敗をした）
       const room = Math.max(0, PUFF_MAX - PUFFS.length);
-      const per = Math.min(3, Math.floor(room / 2));
+      const per = Math.min(4, Math.floor(room / 2));
       for (const side of [-1, 1]){
         for (let i=0;i<per;i++){
-          const sp = (0.55 + Math.random()*0.45) * innerWidth;
+          // ★左右の**上側**から、内側へ斜め上に吹く（2026-09-13 本人の指示）。
+          //   実物のCO2ジェットは客席側の上手・下手に据えて、上へ向けて撃つ
+          // ★粒ごとに速さ・向き・寿命・消え方を散らす。
+          //   揃っていると「1つの塊が動いた」に見えて、噴き出しに見えない
+          // ★速すぎると画面を横切って、真ん中に一本の帯ができる。
+          //   噴き出し口の近くで**斜めに立ち上がる**のが実物（2026-09-13）
+          const sp = (0.26 + Math.random()*0.34) * innerWidth;
+          const up = 0.50 + Math.random()*0.55;        // 水平に対する上向きの比
           PUFFS.push({
-            x: side < 0 ? -M()*0.3 : innerWidth + M()*0.3,
-            y: innerHeight*(0.70 + Math.random()*0.16),
+            x: side < 0 ? -M()*0.2 : innerWidth + M()*0.2,
+            y: innerHeight*(0.38 + Math.random()*0.14),
             vx: -side * sp,
-            vy: -innerHeight*(0.04 + Math.random()*0.10),
-            r:  M()*(0.55 + Math.random()*0.40),
-            t: 0, life: 1.5 + Math.random()*0.9,
+            vy: -sp * up,
+            r:  M()*(0.16 + Math.random()*0.26),       // ★細い
+            grow: 0.42 + Math.random()*0.75,           // ★細いまま伸びる
+            wob: Math.random()*6.283,                  // ゆらぎの位相
+            fade: 1.3 + Math.random()*2.2,             // ★消え方を粒ごとに変える
+            mul: 0.55 + Math.random()*0.65,            // 濃さも散らす
+            t: 0, life: 1.3 + Math.random()*1.5,
           });
         }
       }
@@ -731,9 +744,12 @@ function stepSmoke(dt, amt, now){
     const s = PUFFS[i];
     s.t += dt;
     s.vx *= (1 - 1.9*dt);                     // 気化して急に遅くなる
-    s.vy *= (1 - 0.7*dt);
-    s.x += s.vx*dt; s.y += s.vy*dt;
-    s.r += M()*2.1*dt;                        // 膨らむ
+    s.vy *= (1 - 1.1*dt);
+    s.vy += innerHeight*0.18*dt;              // ★わずかに重力。頂点で寝る
+    // ★ゆらぎ。**まっすぐ飛ぶと煙に見えない**
+    const w = Math.sin(s.t*3.1 + s.wob) * M()*0.42;
+    s.x += (s.vx + w)*dt; s.y += (s.vy + w*0.4)*dt;
+    s.r += M()*s.grow*dt;                     // 膨らむ
     if (s.t >= s.life) PUFFS.splice(i,1);
   }
 }
@@ -744,12 +760,14 @@ function drawSmoke(){
   g.fillStyle = gd;
   for (const s of PUFFS){
     const u = s.t / s.life;
-    const a = Math.min(1, u*6) * (1 - u) * (1 - u);   // 立ち上がり速く、尾を引いて消える
-    if (a < 0.02) continue;
+    // ★立ち上がりは速く、**消え方は粒ごとに違う**。揃って消えると
+    //   「1枚の絵が薄くなった」に見える（2026-09-13 本人の指摘）
+    const a = Math.min(1, u*7) * Math.pow(1 - u, s.fade) * s.mul;
+    if (a < 0.015) continue;
     g.globalAlpha = a;
     g.save();
     g.translate(s.x, s.y);
-    g.scale(s.r, s.r * 0.78);                 // ★横に平たい。床を這って広がる
+    g.scale(s.r, s.r * 0.86);                 // ★わずかに横長
     g.beginPath(); g.arc(0, 0, 1, 0, 6.2832); g.fill();
     g.restore();
   }
