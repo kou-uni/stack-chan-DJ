@@ -5,7 +5,7 @@
 <style>
 html,body{margin:0;background:#000;overflow:hidden;height:100%}
 canvas{display:block;width:100vw;height:100vh}
-#hud{position:fixed;left:10px;top:8px;color:#7fe3ff;font:12px ui-monospace,monospace;background:#0009;padding:4px 8px;border-radius:6px;white-space:pre}
+#hud{position:fixed;left:50%;top:44%;transform:translate(-50%,-50%);color:#7fe3ff;font:20px/1.6 ui-monospace,monospace;background:#000c;padding:14px 22px;border-radius:12px;white-space:pre;border:1px solid #7fe3ff55;text-align:center;z-index:9}
 #v{position:fixed;right:10px;bottom:8px;color:#3c4a63;font:11px ui-monospace,monospace}
 #s{position:fixed;left:12px;bottom:10px;color:#5a6b86;
    font:12px/1 -apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">91846d9 12:04:00</div>
+<div id="v">ed95a66 12:05:29</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -714,17 +714,26 @@ let heat = 0;
 //   解放  → 全灯・白フラッシュ・コードが走り出す
 let hold = 0, prevHand = 0, release = 0;
 let drawFails = 0;
-const fps = {n:0, at:0};
+const fps = {n:0, at:0, last:0};
+// ★フレームが来なくなったら知らせる。**黙って止まるのがいちばん困る**
+setInterval(() => {
+  const el = document.getElementById('hud');
+  if (!el) return;
+  if (performance.now() - fps.last > 1500){
+    el.style.color = '#ff6b8a';
+    el.textContent = '描画が止まっています\nfps=0';
+  }
+}, 1000);
 let wsOpen = false;
 function draw(now){
   // ★状態を画面に出す。**こちらからは端末の中が見えない**
-  fps.n++;
+  fps.n++; fps.last = now;
   if (now - fps.at > 500){
     const el = document.getElementById('hud');
-    if (el) el.textContent =
+    if (el){ el.style.color = '#7fe3ff'; el.textContent =
       Math.round(fps.n*1000/(now-fps.at)) + ' fps  mode=' + (S.mode||'?')
       + '  heat=' + heat.toFixed(2) + '  ws=' + (wsOpen ? 'ON' : 'OFF')
-      + '  n=' + S.n;
+      + '  n=' + S.n; }
     fps.n = 0; fps.at = now;
   }
   try { drawInner(now); }
