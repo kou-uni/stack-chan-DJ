@@ -591,5 +591,12 @@ ok('柱を四角塗りで描いていない',
   for (let i=0;i<200;i++){ frameN++; rafFn(frameN*16.7); }
 }
 
+// ★客席から見える画面に作り手の情報は出さない（2026-09-13 本人の指示）
+{
+  ok('デバッグ表示は既定で出ない', /#hud\{display:none;/.test(src));
+  ok('確かめたいときだけ出せる（?hud=1 と d キー）',
+     /hud=1/.test(src) && /keydown/.test(src));
+}
+
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
 process.exit(bad ? 1 : 0);

@@ -5,7 +5,7 @@
 <style>
 html,body{margin:0;background:#000;overflow:hidden;height:100%}
 canvas{display:block;width:100vw;height:100vh}
-#hud{position:fixed;left:50%;top:44%;transform:translate(-50%,-50%);color:#7fe3ff;font:20px/1.6 ui-monospace,monospace;background:#000c;padding:14px 22px;border-radius:12px;white-space:pre;border:1px solid #7fe3ff55;text-align:center;z-index:9}
+#hud{display:none;position:fixed;left:50%;top:44%;transform:translate(-50%,-50%);color:#7fe3ff;font:20px/1.6 ui-monospace,monospace;background:#000c;padding:14px 22px;border-radius:12px;white-space:pre;border:1px solid #7fe3ff55;text-align:center;z-index:9}
 #v{position:fixed;right:10px;bottom:8px;color:#3c4a63;font:11px ui-monospace,monospace}
 #s{position:fixed;left:12px;bottom:10px;color:#5a6b86;
    font:12px/1 -apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
@@ -14,11 +14,20 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">f3c0a24 15:47:19</div>
+<div id="v">11ef1e6 15:49:39</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
 const VERSION = (document.getElementById('v')||{}).textContent || '?';
+// ★本番・リハでは出さない。**客席から見える画面に作り手の情報は要らない**
+//   （2026-09-13 本人の指示）。確かめたいときだけ ?hud=1 か d キーで出す
+const HUD_ON = /(\?|&)hud=1\b/.test(location.search);
+if (HUD_ON){ const h = document.getElementById('hud'); if (h) h.style.display = 'block'; }
+addEventListener('keydown', e => {
+  if (e.key !== 'd' && e.key !== 'D') return;
+  const h = document.getElementById('hud');
+  if (h) h.style.display = (h.style.display === 'block') ? 'none' : 'block';
+});
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
 (function(){
@@ -1202,7 +1211,7 @@ function draw(now){
   fps.n++; fps.last = now;
   if (now - fps.at > 500){
     const el = document.getElementById('hud');
-    if (el){ el.style.color = '#7fe3ff'; el.textContent =
+    if (el && el.style.display === 'block'){ el.style.color = '#7fe3ff'; el.textContent =
       Math.round(fps.n*1000/(now-fps.at)) + ' fps  mode=' + (S.mode||'?')
       + '  heat=' + heat.toFixed(2) + '  ws=' + (wsOpen ? 'ON' : 'OFF')
       + '  beat=' + localN
