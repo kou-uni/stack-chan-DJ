@@ -335,5 +335,15 @@ ok('柱を四角塗りで描いていない',
   D.setLeds(null);
 }
 
+// ★上端の横トラスがディスプレイに乗り上げない（2026-09-13 本人の指摘）
+{
+  const hy = 900*D.HORIZON, cy = hy - hy*D.CENTER_K;   // ディスプレイの上端
+  const bottom = D.trussTopY(cy) + D.trussDepth()/2;    // トラスの下弦
+  ok('上端の横トラスは画面の上に乗り上げない', bottom <= cy + 0.5,
+     '下弦 ' + bottom.toFixed(1) + ' / 画面上端 ' + cy.toFixed(1));
+  ok('横トラスは画面から離れすぎない', cy - bottom < D.trussDepth()*0.6,
+     '隙間 ' + (cy - bottom).toFixed(1) + 'px');
+}
+
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
 process.exit(bad ? 1 : 0);
