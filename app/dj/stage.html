@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">19f75cd 13:22:54</div>
+<div id="v">b4e942c 13:24:01</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -1080,9 +1080,10 @@ function drawInner(now){
       const xl1 = lerp(s1, WALL_L, 0),         xr1 = lerp(s1, WALL_R, innerWidth);
       const a0 = f.c / FLOOR_COLS, a1 = (f.c + 1) / FLOOR_COLS;
       const gp2 = g.createLinearGradient(0, y0, 0, y1);
-      gp2.addColorStop(0,   'hsla('+f.hue+',92%,64%,'+(0.10*f.on)+')');
-      gp2.addColorStop(0.5, 'hsla('+f.hue+',90%,72%,'+(0.26*f.on)+')');
-      gp2.addColorStop(1,   'hsla('+f.hue+',92%,60%,'+(0.06*f.on)+')');
+      // ★光量を上げた（2026-09-13 本人の指示）。1.9倍、芯の明度も上げる
+      gp2.addColorStop(0,   'hsla('+f.hue+',92%,66%,'+(0.19*f.on)+')');
+      gp2.addColorStop(0.5, 'hsla('+f.hue+',88%,78%,'+(0.49*f.on)+')');
+      gp2.addColorStop(1,   'hsla('+f.hue+',92%,62%,'+(0.11*f.on)+')');
       g.fillStyle = gp2;
       g.beginPath();
       g.moveTo(xl0 + (xr0-xl0)*a0, y0); g.lineTo(xl0 + (xr0-xl0)*a1, y0);
