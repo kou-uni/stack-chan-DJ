@@ -538,12 +538,12 @@ ok('柱を四角塗りで描いていない',
       for (const s of D.puffs()){
         if (s.t > 0.05) continue;                 // 出たばかりの粒だけ見る
         seen++;
-        if (s.y > 900*0.55) ok1 = false;          // 上側から出ている
-        if (s.vy >= 0 || Math.abs(s.vy) < Math.abs(s.vx)*0.4) ok2 = false;  // 斜め上
+        if (s.y > 900*0.40) ok1 = false;          // 上側から出ている
+        if (s.vy <= 0 || Math.abs(s.vy) < Math.abs(s.vx)*0.3) ok2 = false;  // 斜め下
       }
     }
     ok('スモークは上側から出る', ok1 && seen > 0, seen + '粒');
-    ok('スモークは斜め上へ吹く', ok2 && seen > 0);
+    ok('スモークは斜め下へ降る', ok2 && seen > 0);
   }
   ok('スモークは左右で同じだけ出る',
      Math.min(sawLeft,sawRight)/Math.max(1,Math.max(sawLeft,sawRight)) > 0.75,
@@ -578,7 +578,7 @@ ok('柱を四角塗りで描いていない',
     frameN++; rafFn(frameN*16.7);
     if (D.puffs().length > best.length) best = D.puffs().slice();
   }
-  ok('一度に重なる粒が多い', best.length >= 12, best.length + '個');
+  ok('一度に重なる粒が多い', best.length >= 30, best.length + '個');
   const uniq = (f) => new Set(best.map(f).map(v => Math.round(v*20))).size;
   ok('消え方が粒ごとに違う', uniq(s => s.fade) >= 6, uniq(s => s.fade) + '種');
   ok('大きさが粒ごとに違う', uniq(s => s.r / D.M()) >= 6, uniq(s => s.r / D.M()) + '種');

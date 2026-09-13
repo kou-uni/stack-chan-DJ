@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">3683bd8 15:36:45</div>
+<div id="v">b83d249 15:40:20</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -686,7 +686,7 @@ function drawSparks(){
 const PUFFS = [];
 // ★一発の大きい塊ではなく、**細かいのが重なって「シュワわわわ」**（2026-09-13 本人の指示）。
 //   実物も1つの煙ではなく、無数の粒が入れ替わりながら塊に見えている
-const PUFF_MAX = 56;
+const PUFF_MAX = 92;
 let blastAt = 0, blastEnd = 0;
 // ★var で宣言する。layout() はこの行より先に走るので、let だと
 //   「初期化前に触った」で落ちる（2026-09-13）
@@ -713,22 +713,22 @@ function stepSmoke(dt, amt, now){
       // ★上限は**左右で山分けする。** ループの中で残量を見ると、
       //   先に回った左が使い切って右が痩せる（花火で同じ失敗をした）
       const room = Math.max(0, PUFF_MAX - PUFFS.length);
-      const per = Math.min(4, Math.floor(room / 2));
+      const per = Math.min(7, Math.floor(room / 2));
       for (const side of [-1, 1]){
         for (let i=0;i<per;i++){
-          // ★左右の**上側**から、内側へ斜め上に吹く（2026-09-13 本人の指示）。
-          //   実物のCO2ジェットは客席側の上手・下手に据えて、上へ向けて撃つ
+          // ★左右の**上側**から、内側へ**斜め下**に降らせる（2026-09-13 本人の指示）。
+          //   上手・下手の高い位置に据えて、客席へ向けて撃ち下ろす形
           // ★粒ごとに速さ・向き・寿命・消え方を散らす。
           //   揃っていると「1つの塊が動いた」に見えて、噴き出しに見えない
           // ★速すぎると画面を横切って、真ん中に一本の帯ができる。
           //   噴き出し口の近くで**斜めに立ち上がる**のが実物（2026-09-13）
           const sp = (0.26 + Math.random()*0.34) * innerWidth;
-          const up = 0.50 + Math.random()*0.55;        // 水平に対する上向きの比
+          const down = 0.42 + Math.random()*0.50;      // 水平に対する下向きの比
           PUFFS.push({
             x: side < 0 ? -M()*0.2 : innerWidth + M()*0.2,
-            y: innerHeight*(0.38 + Math.random()*0.14),
+            y: innerHeight*(0.20 + Math.random()*0.13),
             vx: -side * sp,
-            vy: -sp * up,
+            vy: sp * down,
             r:  M()*(0.16 + Math.random()*0.26),       // ★細い
             grow: 0.42 + Math.random()*0.75,           // ★細いまま伸びる
             wob: Math.random()*6.283,                  // ゆらぎの位相
@@ -745,7 +745,7 @@ function stepSmoke(dt, amt, now){
     s.t += dt;
     s.vx *= (1 - 1.9*dt);                     // 気化して急に遅くなる
     s.vy *= (1 - 1.1*dt);
-    s.vy += innerHeight*0.18*dt;              // ★わずかに重力。頂点で寝る
+    s.vy += innerHeight*0.30*dt;              // ★重力。降りながら落ちていく
     // ★ゆらぎ。**まっすぐ飛ぶと煙に見えない**
     const w = Math.sin(s.t*3.1 + s.wob) * M()*0.42;
     s.x += (s.vx + w)*dt; s.y += (s.vy + w*0.4)*dt;
