@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">962c86b 12:10:46</div>
+<div id="v">042e8db 12:13:00</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -309,21 +309,23 @@ function drawTruss(a){
   trussRun(-OVER, y, innerWidth+OVER, y, TRUSS_NEAR, a);
 }
 
-function beams(t, p, energy, heat){
+function beams(t, p, energy, heat, dt){
   const ty = trussY(), L = rigLen();
 
   // ── 光の筋（加算）。★揺らさない。太さも色も、点いている間は動かさない
   g.globalCompositeOperation = 'lighter';
   for (const b of BEAMS){
     // ★シャッター。**灯体は止まったまま、光だけが刻む。** これが派手さの正体
-    b.on = Math.max(0, b.on - 0.055);
+    // ★減衰は**時間基準**。フレーム基準だと fps で点灯時間が変わる
+    //   （2026-09-13：12fps と 60fps で全く違う見え方になっていた）
+    b.on = Math.max(0, b.on - dt*2.2);
     b.pw = 0;
     // ★シャッターで刻む。**灯体は止まったまま、光だけがチカチカする。**
     //   これが DJ の現場の派手さの正体（2026-09-12 本人の指摘）
     const rate = 12 + 10*heat;                  // 1秒あたりの開閉
     const ph16 = (t*rate + b.phase*0.5) % 1;
-    const shut = 0.30 + 0.70*Math.pow(1 - ph16, 1.6);
-    const power = b.on*b.on * (0.55 + energy) * (0.35 + 0.65*shut);
+    const shut = 0.55 + 0.45*Math.pow(1 - ph16, 1.6);
+    const power = b.on * (0.55 + energy) * (0.45 + 0.55*shut);
     b.pw = power;                    // ★反射を描くために残す
     if (power < 0.012) continue;
 
@@ -697,9 +699,8 @@ function fireBeams(n){
     b.tgt = clampPan(LOOKS[look](b, BEAMS.indexOf(b), BEAMS.length) + swing);
     // ★色は点けるときに決める。**光っている最中に色が回るのは嘘**
     b.hueDeg = (pl.h + b.hue*70 + ((Math.random()*3)|0)*40) % 360;
-    if (heavy) { b.on = 1; continue; }
-    if (b.phase === bar) b.on = Math.max(b.on, 0.9);
-    else if (Math.random() < 0.25) b.on = Math.max(b.on, 0.7);
+    // ★毎拍、全部が点く。強弱で表情をつける。**消えている時間が長いと「光らない」**
+    b.on = heavy ? 1 : (b.phase === bar ? 1 : 0.72);
   }
 }
 
@@ -1030,7 +1031,7 @@ function drawInner(now){
   }
 
   // ── ② 空気中の光。パネルの手前を通る
-  if (heat > 0.06) beams(t, p, energy, heat);
+  if (heat > 0.06) beams(t, p, energy, heat, dt);
 
   // ── ③ 部屋全体が染まる
   wash(p, heat);
