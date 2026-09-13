@@ -403,5 +403,14 @@ ok('柱を四角塗りで描いていない',
   ok('反射は板の形で切り抜く（はみ出さない）', /clip\(\)/.test(s2));
 }
 
+// ★文字の解像度（2026-09-13 本人の指摘：左右のコードが滲む）
+{
+  ok('裏キャンバスは実寸で描く', /const RS = 1\.0;/.test(src));
+  ok('引き伸ばしの品質を上げている',
+     (src.match(/imageSmoothingQuality = 'high'/g) || []).length >= 2);
+  const dw = src.match(/const dw = pn\.pw\/N \+ ([0-9.]+);/);
+  ok('台形の帯の重なりが小さい（二重写りしない）', dw && +dw[1] <= 0.6, dw && dw[1]);
+}
+
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
 process.exit(bad ? 1 : 0);

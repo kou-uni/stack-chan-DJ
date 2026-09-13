@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">626b245 14:29:54</div>
+<div id="v">8062e64 14:33:53</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -94,6 +94,8 @@ function layout(){
   const dpr = Math.min(devicePixelRatio||1, 2);
   cv.width = innerWidth*dpr; cv.height = innerHeight*dpr;
   g.setTransform(dpr,0,0,dpr,0,0);
+  // ★引き伸ばしの品質。既定は low で、台形に貼ると文字がぼける（2026-09-13 本人の指摘）
+  g.imageSmoothingQuality = 'high';
   FS = Math.max(10, Math.min(17, innerWidth/110));
   LH = FS*1.34;
   ROWS = Math.ceil(innerHeight/LH)+3;
@@ -105,11 +107,15 @@ function layout(){
     const cw = bw/n;
     // ★裏キャンバスの解像度。半分だと**貼るときに引き伸ばして文字が滲む**
     //   （2026-09-13 本人の指摘）。読ませたい中央だけ実寸で描く。
-    //   袖は斜めに潰れていて暗いので、低いままでよい（iPad が止まる）
-    const RS = pn.side ? 0.55 : 1.0;
+    //   袖も実寸にした（2026-09-13 本人の指摘：左右の文字が滲む）。
+    //   袖の裏キャンバスは 349x900 で、中央 1040x900 の1/3。**2フレームに1回**しか
+    //   描き直さないので、実寸にしても iPad の予算に収まる
+    const RS = 1.0;
     const off = document.createElement('canvas');
     off.width = Math.ceil(bw*RS); off.height = Math.ceil(innerHeight*RS);
-    return {...pn, px: innerWidth*pn.x0, pw, bw, rs: RS, off, octx: off.getContext('2d'),
+    const oc = off.getContext('2d');
+    oc.imageSmoothingQuality = 'high';
+    return {...pn, px: innerWidth*pn.x0, pw, bw, rs: RS, off, octx: oc,
       cols: Array.from({length:n}, (_,i)=>({
         x: i*cw,
         off: Math.random()*ROWS,
@@ -1160,7 +1166,8 @@ function drawInner(now){
         const sx = (mirror ? t0 : 1-t1) * pn.bw * pn.rs;
         const sw = Math.max(1, (t1-t0) * pn.bw * pn.rs);
         const dx = pn.px + (mirror ? u0 : (1-u1)) * pn.pw;
-        const dw = pn.pw/N + 1;
+        // ★+1 は隙間埋め。**大きくすると隣と二重に写って滲む**
+      const dw = pn.pw/N + 0.6;
         const dh = innerHeight * s0;
         const dy = hy - hy * s0;
         g.globalAlpha = pn.dim * (1 - 0.34*u0);      // 奥ほど暗い
