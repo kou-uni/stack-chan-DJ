@@ -624,5 +624,13 @@ ok('柱を四角塗りで描いていない',
   for (let i=0;i<60;i++){ frameN++; rafFn(frameN*16.7); }
 }
 
+// ★光だまりは**物の形で切り抜く**（2026-09-13 本人の指摘：空間上に線が見える）
+{
+  const s2 = /function spill\(([\s\S]*?)\n}/.exec(src)[1];
+  ok('光だまりは切り抜いてから塗る', /clip\(\);\s*\n\s*g\.clip\(\);/.test(s2));
+  ok('矩形でグラデーションを切らない',
+     !/fillRect\(objX/.test(s2) && /fillRect\(hx - r, py - r, r\*2, r\*2\)/.test(s2));
+}
+
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
 process.exit(bad ? 1 : 0);

@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">803a5df 15:53:06</div>
+<div id="v">e53224b 19:09:35</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -1009,7 +1009,12 @@ function spill(clip, objX, yTop, yBot, gain){
   // ★物に当たる光。**線ではなく、まだら。**
   //   光は1点から来るので、当たるのは面の一部だけ。そこから四方に落ちる
   g.save();
+  // ★物の形で切り抜く。**ここで clip していなかった。**
+  //   代わりに矩形（objX±r*1.6, yTop..yBot）が境界になっていて、
+  //   まだ明るいグラデーションを直線でぶった切っていた＝空間上のボーダー。
+  //   光を強くするほど目立つ（2026-09-13 本人の指摘：真ん中らへんの線）
   clip();
+  g.clip();
   g.globalCompositeOperation = 'lighter';
   // ★下からの光も物に当たる。上だけ見ていた（2026-09-13 本人の指摘）
   const sources = [
@@ -1034,7 +1039,9 @@ function spill(clip, objX, yTop, yBot, gain){
     gp.addColorStop(0.35,'hsla('+b.hue+',85%,66%,'+(0.14*k)+')');
     gp.addColorStop(1,   'hsla('+b.hue+',85%,55%,0)');
     g.fillStyle = gp;
-    g.fillRect(objX - r*1.6, yTop, r*3.2, yBot - yTop);
+    // ★切り抜いてあるので、**グラデーションの円を丸ごと塗ってよい。**
+    //   矩形で切ると、その縁が線になる
+    g.fillRect(hx - r, py - r, r*2, r*2);
   }
   g.globalCompositeOperation = 'source-over';
   g.restore();
