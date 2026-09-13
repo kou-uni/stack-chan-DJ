@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">909393f 12:15:12</div>
+<div id="v">431f53f 12:21:02</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -1037,7 +1037,69 @@ function drawInner(now){
   // ── ③ 部屋全体が染まる
   wash(p, heat);
 
-  // ★スピーカーとサブをやめた（2026-09-13：足しすぎて壊れたので引いた）
+  // ── 機材（スピーカースタックとサブ）。★手前にあるので、部屋の色を乗せたあとに描く
+  {
+    for (const [cx, dir] of [[0.115, 1], [0.885, -1]]){
+      const x = innerWidth*cx, w = M()*0.60, hgt = M()*2.05;
+      const yTop = innerHeight*0.99 - hgt;
+      const topH = hgt*0.62, subY = yTop + topH, subH = hgt*0.38;
+      const sw = w*1.30;
+
+      // トップ。★箱なので面ごとに明るさが違う
+      const face = g.createLinearGradient(x - w/2, 0, x + w/2, 0);
+      face.addColorStop(0,    'rgb(9,10,13)');
+      face.addColorStop(0.18, 'rgb(26,28,33)');
+      face.addColorStop(0.55, 'rgb(14,15,19)');
+      face.addColorStop(1,    'rgb(5,6,8)');
+      g.fillStyle = face;
+      rrect(x - w/2, yTop, w, topH, M()*0.025); g.fill();
+
+      // グリル。★細かいメッシュ
+      g.save();
+      rrect(x - w/2 + M()*0.045, yTop + M()*0.05,
+            w - M()*0.09, topH - M()*0.10, M()*0.012); g.clip();
+      g.fillStyle = 'rgba(0,0,0,0.55)';
+      g.fillRect(x - w/2, yTop, w, topH);
+      g.fillStyle = 'rgba(70,76,88,0.16)';
+      for (let yy = yTop + M()*0.05; yy < yTop + topH; yy += Math.max(2, M()*0.018)){
+        g.fillRect(x - w/2, yy, w, Math.max(1, M()*0.008));
+      }
+      g.restore();
+
+      // サブ。★床置きなので上面が見える
+      const sface = g.createLinearGradient(x - sw/2, 0, x + sw/2, 0);
+      sface.addColorStop(0,    'rgb(7,8,11)');
+      sface.addColorStop(0.16, 'rgb(22,24,29)');
+      sface.addColorStop(0.6,  'rgb(11,12,16)');
+      sface.addColorStop(1,    'rgb(4,5,7)');
+      g.fillStyle = sface;
+      rrect(x - sw/2, subY, sw, subH, M()*0.025); g.fill();
+      g.fillStyle = 'rgba(40,45,55,0.35)';
+      g.beginPath();
+      g.moveTo(x - sw/2, subY); g.lineTo(x + sw/2, subY);
+      g.lineTo(x + sw/2 - M()*0.05, subY - M()*0.05);
+      g.lineTo(x - sw/2 + M()*0.05, subY - M()*0.05);
+      g.closePath(); g.fill();
+      // ウーファー。★落とし込みなので縁に影
+      const wr = M()*0.21, wy = subY + subH*0.52;
+      const wg = g.createRadialGradient(x, wy - wr*0.25, wr*0.1, x, wy, wr);
+      wg.addColorStop(0,   'rgb(24,26,31)');
+      wg.addColorStop(0.6, 'rgb(10,11,14)');
+      wg.addColorStop(1,   'rgb(2,3,5)');
+      g.fillStyle = wg;
+      g.beginPath(); g.arc(x, wy, wr, 0, 6.2832); g.fill();
+      g.strokeStyle = 'rgba(70,78,92,0.30)';
+      g.lineWidth = Math.max(1, M()*0.010);
+      g.beginPath(); g.arc(x, wy, wr*0.98, 0, 6.2832); g.stroke();
+
+      // ★光は面の一部にしか当たらない。線で光らせない
+      spill(() => {
+        g.beginPath();
+        rrect(x - w/2, yTop, w, topH, M()*0.025);
+        rrect(x - sw/2, subY, sw, subH, M()*0.025);
+      }, x, yTop, yTop + hgt, 1.0);
+    }
+  }
 
   // ── 下からの光。★機材より**手前**（ステージ前縁に置く）
   uplights(t, p, playing ? hold : 0, S.jog || 0);
