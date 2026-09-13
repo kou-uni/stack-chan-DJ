@@ -554,7 +554,8 @@ function stageWell(){
   gr.addColorStop(0.55,'rgba(0,0,0,0.55)');
   gr.addColorStop(1,   'rgba(0,0,0,0)');
   g.fillStyle = gr;
-  g.fillRect(0, innerHeight*0.35, innerWidth, innerHeight*0.65);
+  // ★途中から塗ると、その境目に横線が出る。**画面全体に塗る**
+  g.fillRect(0, 0, innerWidth, innerHeight);
 }
 
 function spill(clip, objX, yTop, yBot, gain){
@@ -962,7 +963,7 @@ function draw(now){
       g.restore();
       // 遠いほど映り込みが消える
       const fade = g.createLinearGradient(0, backY, 0, innerHeight);
-      fade.addColorStop(0,   'rgba(3,4,8,0.05)');
+      fade.addColorStop(0,   'rgba(3,4,8,0)');    // ★境目で0から。段差を作らない
       fade.addColorStop(0.45,'rgba(3,4,8,0.62)');
       fade.addColorStop(1,   'rgba(3,4,8,0.92)');
       g.fillStyle = fade;
