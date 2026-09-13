@@ -79,12 +79,15 @@ function layout(){
   panels = PANELS.map(pn => {
     const pw = innerWidth*pn.w;
     // ★裏キャンバスは「実寸のパネル」。奥のパネルは実際にはもっと横に長い
-    const bw = pn.far ? pw/pn.farScale : pw;
+    const bw = pn.side ? pw/pn.farScale : pw;
     const n = Math.max(3, Math.floor(bw/(FS*6.4)));
     const cw = bw/n;
+    // ★裏キャンバスは半分の解像度。**毎フレーム実寸で描くと iPad が止まる**
+    //   （2026-09-13：画面が固まった）。貼るときに引き伸ばすので見た目は変わらない
+    const RS = 0.5;
     const off = document.createElement('canvas');
-    off.width = Math.ceil(bw); off.height = Math.ceil(innerHeight);
-    return {...pn, px: innerWidth*pn.x0, pw, bw, off, octx: off.getContext('2d'),
+    off.width = Math.ceil(bw*RS); off.height = Math.ceil(innerHeight*RS);
+    return {...pn, px: innerWidth*pn.x0, pw, bw, rs: RS, off, octx: off.getContext('2d'),
       cols: Array.from({length:n}, (_,i)=>({
         x: i*cw,
         off: Math.random()*ROWS,
@@ -701,7 +704,7 @@ function fireBeams(n){
   }
 }
 
-let prev = performance.now(), t = 0, freeBeat = 0, freeN = 0;
+let prev = performance.now(), t = 0, freeBeat = 0, freeN = 0, frameNo = 0;
 // ★動いていないときは静かに、動いた瞬間に爆発する。**差が無いと見せ場が無い**
 //   （2026-09-12 本人の指摘）。急に切り替えず、少しだけ滑らせる
 let heat = 0;
@@ -787,9 +790,13 @@ function draw(now){
   const TAIL = 26 + 14*heat;
   const flow = (0.22 + heat*2.4 + energy*6.0) * (1 - hold*0.45) + release*14.0;
 
+  frameNo++;
   for (const pn of panels){
+    // ★袖は暗いので、2フレームに1回でよい。**中央だけ毎フレーム**
+    if (pn.side && (frameNo % 2)) { /* 前のフレームの絵をそのまま貼る */ }
+    else {
     const o = pn.octx;
-    o.setTransform(1,0,0,1,0,0);
+    o.setTransform(pn.rs,0,0,pn.rs,0,0);
     o.globalCompositeOperation = 'source-over';
     const bgv = o.createLinearGradient(0, 0, 0, innerHeight);
     const bl = 1.5 + 3.5*heat;
@@ -866,6 +873,7 @@ function draw(now){
       }
     }
     o.globalCompositeOperation = 'source-over';
+    }
 
     // ★**射影変換**で貼る。等間隔に切って高さだけ縮めるのはアフィンで、遠近ではない
     //   （2026-09-13：垂れ幕に見えていた原因）。
@@ -878,11 +886,11 @@ function draw(now){
       // ★中央は正面かつ**最奥**。一様に縮める（傾いていないので歪まない）
       const dh = innerHeight * k, dy = hy - hy * k;
       g.globalAlpha = pn.dim;
-      g.drawImage(pn.off, 0, 0, pn.bw, innerHeight, pn.px, dy, pn.pw, dh);
+      g.drawImage(pn.off, 0, 0, pn.bw*pn.rs, innerHeight*pn.rs, pn.px, dy, pn.pw, dh);
       g.globalAlpha = 1;
     } else {
       // ★左右は**外側が手前**。u=0 が外（手前・高さ1）、u=1 が中央寄り（奥・高さk）
-      const N = 96;
+      const N = 40;
       const su = (a)=> k*a / (1 - a*(1-k));
       const mirror = pn.side === 'left';   // 左は画面の左端が手前
       for (let i=0; i<N; i++){
@@ -891,14 +899,14 @@ function draw(now){
         //   前は 1/k になっていて、**奥へ行くほど広がっていた**（2026-09-13）
         const s0 = k / (k + u0*(1-k));
         const t0 = su(u0), t1 = su(u1);
-        const sx = (mirror ? t0 : 1-t1) * pn.bw;
-        const sw = Math.max(1, (t1-t0) * pn.bw);
+        const sx = (mirror ? t0 : 1-t1) * pn.bw * pn.rs;
+        const sw = Math.max(1, (t1-t0) * pn.bw * pn.rs);
         const dx = pn.px + (mirror ? u0 : (1-u1)) * pn.pw;
         const dw = pn.pw/N + 1;
         const dh = innerHeight * s0;
         const dy = hy - hy * s0;
         g.globalAlpha = pn.dim * (1 - 0.34*u0);      // 奥ほど暗い
-        g.drawImage(pn.off, sx, 0, sw, innerHeight, dx, dy, dw, dh);
+        g.drawImage(pn.off, sx, 0, sw, innerHeight*pn.rs, dx, dy, dw, dh);
       }
       g.globalAlpha = 1;
     }
