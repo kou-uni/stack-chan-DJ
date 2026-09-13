@@ -690,5 +690,61 @@ ok('柱を四角塗りで描いていない',
   ok('高いところを通り過ぎたら当たらない', D.hitHeight(over, 500, 700, 800) === null);
 }
 
+// ★ウーファーの縁のLEDリング（2026-09-13 本人の指示：LEDと連動）
+{
+  const M0 = D.M();
+  const calls = {stroke: 0, fill: 0};
+  const gt = new Proxy({}, {get(_,k){
+    const s = String(k);
+    if (s === 'createRadialGradient') return () => ({addColorStop(){}});
+    if (s === 'stroke' || s === 'fill' || s === 'fillRect')
+      return () => { calls[s === 'fillRect' ? 'fill' : s]++; };
+    return () => {};
+  }, set(){ return true; }});
+
+  // 消えていればリングも消える
+  D.setLeds(null);
+  ok('LEDが消えていればリングも出ない', D.ledRing() === null);
+  D.setLeds(Array.from({length:12}, () => [0,0,0]));
+  ok('全部黒ならリングは出ない', D.ledRing() === null);
+
+  // 色は実機のテープから採る
+  D.setLeds(Array.from({length:12}, (_,i) => i === 3 ? [0,90,0] : [0,0,0]));
+  const r1 = D.ledRing();
+  ok('リングの色はテープの色', r1 && r1.g > r1.r && r1.g > r1.b,
+     r1 && [r1.r,r1.g,r1.b].join(','));
+  ok('明るい粒の位置を持つ', r1 && Math.abs(r1.at - 3/12) < 1e-9, r1 && r1.at);
+  // ★リングは**粒ごとに色を置く**。平均だと虹が白くなる（2026-09-13 実際にそうなった）
+  {
+    const strokes = [];
+    const gt2 = new Proxy({}, {get(_,k){
+      const s = String(k);
+      if (s === 'createRadialGradient') return () => ({addColorStop(){}});
+      if (s === 'stroke') return () => strokes.push(cur);
+      return () => {};
+    }, set(_,k,v){ if (k === 'strokeStyle') cur = v; return true; }});
+    let cur = null;
+    // 虹（粒ごとに違う色）
+    D.setLeds(Array.from({length:12}, (_,i) => [i*20, 255-i*20, 60]));
+    D.wooferRing(200, 600, D.M()*0.21, 1, gt2);
+    const uniq = new Set(strokes).size;
+    ok('リングは粒ごとに色が違う（平均で白くしない）', uniq >= 8, uniq + '色');
+    // 粒12本 ＋ 白く飛ぶ芯1本
+    ok('リングは粒の数だけ弧を描く', strokes.length === 13, strokes.length + '本');
+    ok('芯が白く飛ぶ', /255,255,255/.test(strokes[strokes.length-1]),
+       strokes[strokes.length-1]);
+  }
+  D.setLeds(Array.from({length:12}, (_,i) => i === 9 ? [90,0,0] : [0,0,0]));
+  const r2 = D.ledRing();
+  ok('色が変われば追従する', r2 && r2.r > r2.g, r2 && [r2.r,r2.g,r2.b].join(','));
+  ok('位置も追従する', r2 && Math.abs(r2.at - 9/12) < 1e-9, r2 && r2.at);
+
+  // 実際に描ける（色に undefined が入らない）
+  let threw = null;
+  try { D.wooferRing(200, 600, M0*0.21, 1); } catch (e) { threw = e.message; }
+  ok('リングが実際に描ける', !threw, threw || '');
+  D.setLeds(null);
+}
+
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
 process.exit(bad ? 1 : 0);
