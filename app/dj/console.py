@@ -333,16 +333,40 @@ async def _check(gw, tool: str, **args) -> bool:
     return True
 
 
+async def _as_bool(gw, name: str, key: str) -> bool:
+    """道具を呼んで、真偽値を1つ取り出す。**取れなければ False。**"""
+    r = await gw.call(name)
+    for b in getattr(r, "content", []) or []:
+        txt = getattr(b, "text", None)
+        if not txt:
+            continue
+        try:
+            return bool(json.loads(txt).get(key))
+        except Exception:
+            return False
+    return False
+
+
 async def init_device(gw, con, args, why: str = "起動") -> None:
     """実機に対する初期化。**起動時と、実機が戻ってきたときの両方で使う。**
 
     ★順番に意味がある。ここが唯一の置き場所。
       ① 表情を読み込む   — 電源で消えるので毎回
-      ② ストリームを購読 — 首とLEDの通り道
-      ③ beat mode 開始   — motion/led を有効にして始まる
-      ④ モードを確定     — ③に上書きされないよう、必ず最後
+      ② タッチを有効化   — **電源で false に戻る**
+      ③ ストリームを購読 — 首とLEDの通り道
+      ④ beat mode 開始   — motion/led を有効にして始まる
+      ⑤ モードを確定     — ④に上書きされないよう、必ず最後
     """
     await load_avatar(gw, args)
+
+    # ★タッチセンサは**電源を入れ直すと false に戻る。**
+    #   2026-09-13、撫でても何も起きなくなった。実機は繋がっていて
+    #   LEDも首も動いていたので、いちばん疑いにくい場所だった。
+    #   `get_touch_sensor_enabled` を見るまで分からない＝**沈黙は故障と見分けがつかない。**
+    #   毎回ここで入れ直し、入ったかどうかを画面に出す
+    await _check(gw, "set_touch_sensor_enabled", enabled=True)
+    on = await _as_bool(gw, "get_touch_sensor_enabled", "enabled")
+    print("頭なで: " + ("有効" if on else "★入らなかった（撫でても反応しません）"))
 
     # ★会場は騒がしい。スピーカーは上限まで上げておく（実機の設定）
     await _check(gw, "set_volume", volume=args.volume)

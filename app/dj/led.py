@@ -109,8 +109,10 @@ class LedState:
         #   期限のない割り込みは消し忘れが起きる
         self.poke_kind: str | None = None
         self.poke_until = 0.0
-        self.meter: float | None = None      # つまみの値 0..1
+        self.meter: float | None = None      # つまみの値 0..1（目標）
         self.meter_until = 0.0
+        self._meter_now = 0.0                # 実際に出している値（追いつく）
+        self._meter_at = 0.0                 # 最後に計算した時刻
         # ★時計を外から差し替えられるようにする。
         #   サビの点滅は時刻で決まるので、これが無いと試験で測れない
         self.now = time.time
@@ -241,14 +243,33 @@ class LedState:
         return out
 
     def _meter_colors(self, v: float):
-        """点灯本数で値を出す。★端は赤、真ん中は緑。**音量計と同じ読み方**"""
+        """点灯本数で値を出す。★端は赤、真ん中は緑。**音量計と同じ読み方**
+
+        ★12個しかないので、そのまま出すと**カクカク動く**（2026-09-13 本人の指摘）。
+          2つ手当てする:
+          ① 目標へ**滑らかに追いつく**（つまみを飛ばしてもバーは滑る）
+          ② 先端の1個は**半端な明るさ**で出し、その先にも薄い尾を残す
+             ＝粒の間が埋まって、連続して動いて見える
+        """
         n = self.count
-        lit = v * n
+        t = time.time()
+        dt = min(0.2, max(0.0, t - self._meter_at))
+        self._meter_at = t
+        # 追いつく速さ。**速すぎるとカクつき、遅すぎると置いていかれる**
+        a = 1.0 - math.exp(-dt / 0.055)
+        self._meter_now += (v - self._meter_now) * a
+        lit = self._meter_now * n
         k = self.max_brightness * 1.5
         out = []
         for i in range(n):
-            f = max(0.0, min(1.0, lit - i))            # 端の1つは半端に光る
-            if f <= 0:
+            d = lit - i
+            if d >= 1.0:
+                f = 1.0
+            elif d > 0.0:
+                f = d                                   # 先端は半端に光る
+            elif d > -1.0:
+                f = (1.0 + d) * 0.22                    # ★尾。粒の間を埋める
+            else:
                 out.append([0, 0, 0]); continue
             u = i / max(1, n - 1)
             c = (int(60 + 195 * u), int(255 - 165 * u), 40)   # 緑→橙→赤

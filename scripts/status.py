@@ -31,6 +31,13 @@ async def main() -> int:
             head = await j("get_head_angles")
             print(f"○ 実機         繋がっている  首 yaw={head['yaw']} pitch={head['pitch']}")
 
+            # ★タッチは電源で false に戻る。**見えないと故障と区別がつかない**
+            #   （2026-09-13：撫でても無反応。ここを見るまで分からなかった）
+            tz = await j("get_touch_sensor_enabled")
+            print(f"{_mark(tz['enabled'])} 頭なで        "
+                  + ("有効" if tz["enabled"] else
+                     "無効 ← 撫でても反応しません。console を立ち上げ直すと入ります"))
+
             b = await j("beat_meta_snapshot")
             print(f"{_mark(b['capture_healthy'])} 音の取り込み  {b['capture_state']}  "
                   f"音量={b['level']:.5f}  BPM={b['bpm']}  beat={'ON' if b['active'] else 'OFF'}")

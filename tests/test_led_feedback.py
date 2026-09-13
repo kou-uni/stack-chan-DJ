@@ -77,13 +77,40 @@ def test_バーストは入力より強い():
 
 def test_つまみは点灯本数で出る():
     led = _led()
+    led._meter_now = 0.5                      # 追いつきを飛ばして見る
     led.show_meter(0.5, now=0.0)
     led.now = lambda: 0.2
     cols = led.colors()
-    lit = sum(1 for c in cols if any(c))
-    assert 5 <= lit <= 7, lit
-    # 上のほうは消えている
-    assert not any(cols[-1])
+    # 先端の1つは半端、その先に薄い尾が1つ残る
+    bright = sum(1 for c in cols if max(c) > 40)
+    assert 5 <= bright <= 7, [max(c) for c in cols]
+    assert not any(cols[-1])                  # 上のほうは消えている
+
+
+def test_つまみのバーは滑らかに追いつく():
+    """★12個しかないので、そのまま出すとカクカク動く（2026-09-13 本人の指摘）。"""
+    led = _led()
+    led._meter_now = 0.0
+    led.show_meter(1.0, now=0.0)
+    led.now = lambda: 0.05
+    seen = []
+    for _ in range(4):
+        led.colors()
+        seen.append(led._meter_now)
+    assert seen == sorted(seen), seen          # 単調に近づく
+    assert seen[0] < 1.0, seen                 # 一足飛びにならない
+    assert seen[-1] > seen[0], seen
+
+
+def test_バーの先には薄い尾が残る():
+    """★粒の間を埋めないと、飛び飛びに見える。"""
+    led = _led()
+    led._meter_now = 0.5
+    led.show_meter(0.5, now=0.0)
+    led.now = lambda: 0.2
+    cols = led.colors()
+    tail = [max(c) for c in cols]
+    assert 0 < tail[6] < tail[5], tail
 
 
 def test_つまみを回しきると全部点く():
