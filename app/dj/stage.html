@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">1b3d8c2 13:13:32</div>
+<div id="v">19f75cd 13:22:54</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -100,9 +100,10 @@ function layout(){
     const bw = pn.side ? pw/pn.farScale : pw;
     const n = Math.max(3, Math.floor(bw/(FS*9.0)));
     const cw = bw/n;
-    // ★裏キャンバスは半分の解像度。**毎フレーム実寸で描くと iPad が止まる**
-    //   （2026-09-13：画面が固まった）。貼るときに引き伸ばすので見た目は変わらない
-    const RS = 0.5;
+    // ★裏キャンバスの解像度。半分だと**貼るときに引き伸ばして文字が滲む**
+    //   （2026-09-13 本人の指摘）。読ませたい中央だけ実寸で描く。
+    //   袖は斜めに潰れていて暗いので、低いままでよい（iPad が止まる）
+    const RS = pn.side ? 0.55 : 1.0;
     const off = document.createElement('canvas');
     off.width = Math.ceil(bw*RS); off.height = Math.ceil(innerHeight*RS);
     return {...pn, px: innerWidth*pn.x0, pw, bw, rs: RS, off, octx: off.getContext('2d'),
@@ -354,14 +355,15 @@ function beams(t, p, energy, heat, dt){
     //   （2026-09-13 本人の指摘：各光のボーダーが見えていた）
     // ★灯体を4台に増やしたので、1台あたりの層を10→8枚に。
     //   幅と濃さの比を取り直して、**溶け具合と明るさの合計は変えない**（2026-09-13）
-    for (const [wm, am, sat, lig] of [[6.40, 0.0146, 58, 40],
-                                      [4.57, 0.0243, 70, 45],
-                                      [3.27, 0.0403, 82, 51],
-                                      [2.34, 0.0669, 89, 58],
-                                      [1.67, 0.1111, 92, 66],
-                                      [1.19, 0.1845, 90, 76],
-                                      [0.85, 0.3064, 84, 87],
-                                      [0.61, 0.5089, 76, 98]]){
+    // ★光量を上げた（2026-09-13 本人の指示）。層ごとの比は保ったまま 1.5 倍
+    for (const [wm, am, sat, lig] of [[6.40, 0.0219, 58, 40],
+                                      [4.57, 0.0365, 70, 45],
+                                      [3.27, 0.0605, 82, 51],
+                                      [2.34, 0.1004, 89, 58],
+                                      [1.67, 0.1667, 92, 66],
+                                      [1.19, 0.2768, 90, 76],
+                                      [0.85, 0.4596, 84, 87],
+                                      [0.61, 0.7634, 76, 98]]){
       const gg = g.createLinearGradient(0, 0, 0, far);
       // ★逆二乗を階段で近似する。d0 は「光源からこの距離で半分」の目安
       for (const s of [0, 0.06, 0.14, 0.26, 0.45, 0.70, 1.0]){
@@ -377,9 +379,9 @@ function beams(t, p, energy, heat, dt){
     }
 
     // レンズ。★明るい点は目でも滲む（ブルーム）。芯は白、外へ色が出る
-    for (const [r, a2, s2, l2] of [[5.0, 0.10, 90, 55],
-                                   [2.2, 0.35, 70, 78],
-                                   [0.9, 0.85, 25, 97]]){
+    for (const [r, a2, s2, l2] of [[5.0, 0.16, 90, 55],
+                                   [2.2, 0.52, 70, 78],
+                                   [0.9, 1.00, 25, 97]]){
       const gl = g.createRadialGradient(0,0,0, 0,0, half*r);
       gl.addColorStop(0,   'hsla('+hue+','+s2+'%,'+l2+'%,'+(a2*power)+')');
       gl.addColorStop(0.5, 'hsla('+hue+','+(s2+8)+'%,'+(l2-16)+'%,'+(a2*0.28*power)+')');
@@ -664,15 +666,16 @@ function uplights(t, p, amt, jog){
     g.rotate(Math.PI + a);                    // 上へ向ける
     // ★層を重ねて縁を溶かす。逆二乗で落とす
     // ★上と同じ滑らかさに。境目を作らない
-    for (const [wm, am, sat, lig] of [[5.40, 0.0110, 58, 44],
-                                      [4.38, 0.0169, 68, 47],
-                                      [3.38, 0.0261, 77, 52],
-                                      [2.56, 0.0401, 84, 58],
-                                      [1.92, 0.0617, 89, 64],
-                                      [1.41, 0.0950, 90, 72],
-                                      [1.03, 0.1463, 88, 79],
-                                      [0.75, 0.2251, 83, 87],
-                                      [0.54, 0.3465, 75, 96]]){
+    // ★光量を上げた（2026-09-13）。上の灯体と同じ倍率
+    for (const [wm, am, sat, lig] of [[5.40, 0.0165, 58, 44],
+                                      [4.38, 0.0254, 68, 47],
+                                      [3.38, 0.0392, 77, 52],
+                                      [2.56, 0.0602, 84, 58],
+                                      [1.92, 0.0926, 89, 64],
+                                      [1.41, 0.1425, 90, 72],
+                                      [1.03, 0.2195, 88, 79],
+                                      [0.75, 0.3377, 83, 87],
+                                      [0.54, 0.5198, 75, 96]]){
       const gg = g.createLinearGradient(0, 0, 0, far);
       for (const s2 of [0, 0.04, 0.09, 0.16, 0.25, 0.37, 0.52, 0.72, 1.0]){
         const d = 1 + s2*6.0;
@@ -686,7 +689,7 @@ function uplights(t, p, amt, jog){
     }
     g.restore();
     // レンズのブルーム
-    for (const [r, a2, s2, l2] of [[4.0, 0.16, 88, 58], [1.8, 0.48, 66, 82],
+    for (const [r, a2, s2, l2] of [[4.0, 0.25, 88, 58], [1.8, 0.72, 66, 82],
                                    [0.8, 1.00, 20, 99]]){
       const gl = g.createRadialGradient(cx, y, 0, cx, y, half*r);
       gl.addColorStop(0, 'hsla('+hue+','+s2+'%,'+l2+'%,'+(a2*pw)+')');
@@ -920,12 +923,12 @@ function drawInner(now){
                 * (1 - hold*0.25) * (1 + release*0.9);
         if (d < 0.9){
           o.shadowColor = 'hsl('+hue+',100%,72%)';
-          o.shadowBlur = 0 + 30*heat + 34*energy;
+          o.shadowBlur = (0 + 30*heat + 34*energy) * 0.34;   // ★芯を潰さない
           o.fillStyle = heat > 0.35 ? p.core
                       : 'hsla('+hue+',45%,'+(26 + 56*heat)+'%,0.42)';
         } else {
           o.shadowColor = 'hsl('+hue+',100%,62%)';
-          o.shadowBlur = 0 + 14*heat + 20*energy;
+          o.shadowBlur = (0 + 14*heat + 20*energy) * 0.34;
           o.fillStyle = 'hsla('+hue+','+(45 + 55*heat)+'%,'
                       + (15 + 55*heat + 16*(1-d/TAIL))+'%,'+a+')';
         }

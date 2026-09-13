@@ -97,10 +97,16 @@ ok('下からの光は実機の外側', D.UPS[0].cx < 0.30 && D.UPS[1].cx > 0.70
     {bpm:0,n:0,series:'blue',dancing:true,drop:false,talk:null,mode:'dj',jog:0,jogw:0})});
   for (let i=0;i<300;i++){ frameN++; rafFn(frameN*16.7);
     D.BEAMS.forEach((b,j)=>hist[j].push(b.ang)); }
+  // ★実際に回した結果は**キューの引き当てが乱数**なので、これは「止まっていない」だけ見る
   hist.forEach((h,j)=>{
     const sw = Math.max(...h) - Math.min(...h);
-    // ★中央は左右対称の型で0になりがち。0.35rad(20度)以上動いていればよい
-    ok('灯体' + (j+1) + ' が動く', sw > 0.35, '振れ幅 ' + sw.toFixed(2));
+    ok('灯体' + (j+1) + ' が止まっていない', sw > 0.05, '振れ幅 ' + sw.toFixed(2));
+  });
+  // ★振れ幅そのものは**型の集合**で判定する。乱数に左右されない（2026-09-13）
+  D.BEAMS.forEach((b,j)=>{
+    const vs = D.LOOKS.map(f => f(b, j, D.BEAMS.length));
+    const sw = Math.max(...vs) - Math.min(...vs);
+    ok('灯体' + (j+1) + ' はキュー全体で20度以上振れる', sw > 0.35, '振れ幅 ' + sw.toFixed(2));
   });
 }
 
