@@ -165,3 +165,29 @@ def test_触っていなければ消えたまま():
     led = _led()
     led.enabled = False
     assert all(c == [0, 0, 0] for c in json.loads(led.frame())["colors"])
+
+
+def test_バーの明るさは端から端まで均一():
+    """★RGBを直に混ぜると明るさが波打ち、点いているのに凹んで見える。
+
+    2026-09-13：真ん中が 162 まで落ちて、端が 248。
+    「もう振り切れている」ように見える原因になっていた。
+    """
+    led = LedState(count=30, target="port_b", max_brightness=0.35)
+    led._meter_now = 1.0
+    led.show_meter(1.0, now=0.0)
+    led.now = lambda: 0.01
+    peaks = [max(c) for c in led.colors()]
+    assert max(peaks) - min(peaks) <= 2, peaks
+
+
+def test_30粒でも0で全消灯_1で全点灯():
+    """★実機は30粒（config.toml）。12粒でしか試していないと気づけない。"""
+    led = LedState(count=30, target="port_b", max_brightness=0.35)
+    led._meter_now = 0.0
+    led.show_meter(0.0, now=0.0)
+    led.now = lambda: 0.01
+    assert all(max(c) == 0 for c in led.colors())
+    led._meter_now = 1.0
+    led.show_meter(1.0, now=0.0)
+    assert all(max(c) > 0 for c in led.colors())

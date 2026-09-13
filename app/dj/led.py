@@ -275,8 +275,10 @@ class LedState:
                 f = d                                   # 先端は半端に光る
             else:
                 out.append([0, 0, 0]); continue
+            # ★色相だけ動かす（緑→橙→赤）。RGBを直に混ぜると**明るさが波打ち**、
+            #   点いているのに凹んで見える（2026-09-13：真ん中が暗かった）
             u = i / max(1, n - 1)
-            c = (int(60 + 195 * u), int(255 - 165 * u), 40)   # 緑→橙→赤
+            c = self._hsv((1.0 - u) * 0.33, 1.0, 1.0)
             out.append([min(255, int(c[0] * k * f)),
                         min(255, int(c[1] * k * f)),
                         min(255, int(c[2] * k * f))])
