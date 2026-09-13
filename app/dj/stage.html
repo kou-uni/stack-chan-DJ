@@ -762,11 +762,15 @@ function drawInner(now){
   release = Math.max(0, release - dt*1.6);
   const live = playing || hand > 0.15;
   // ★立ち上がりは速く、落ちるのはゆっくり。**盛り上がりは急に、余韻は残す**
-  heat += ((live ? 1 : 0) - heat) * dt * (live ? 6.5 : 0.9);
+  // ★モードは**強さ**を変えるだけ。止まって見える状態を作らない
+  //   （2026-09-13：OFF が暗く遅すぎて「壊れている」と見えた）
+  const floor0 = 0.30;                       // 静かなときの下限
+  heat += ((live ? 1 : floor0) - heat) * dt * (live ? 6.5 : 1.6);
+  heat = Math.max(heat, floor0);
   heat = Math.max(heat, hand*0.85);      // ★手の分は即座に効かせる
 
   // 音が来ていないときの自走。**静かなときは叩かない**
-  if ((!S.bpm || S.bpm < 1) && heat > 0.25){
+  if (!S.bpm || S.bpm < 1){          // ★音が無くても常に打つ
     freeBeat += dt;
     if (freeBeat >= 0.5){ freeBeat -= 0.5; pulse = 1; fireBeams(++freeN); }
   }
