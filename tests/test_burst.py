@@ -146,9 +146,14 @@ def test_OFFのときテープは消えている():
     assert all(c == [0, 0, 0] for c in s["leds"])
 
 
-def test_踊っていればテープは光る():
+def test_踊っていればテープは模様どおり():
+    """★点いているときは colors() をそのまま返す。
+
+    「光っているか」を瞬間の値で見ないこと。strobe は拍の谷で真っ黒になるので、
+    たまたま落ちるテストになる（2026-09-13 実際に落ちた）。
+    """
     led = LedState(count=12, target="base_ring")
     led.enabled = True
     led.bpm = 124
     led.groove = 1.0
-    assert any(any(c) for c in led.emitted())
+    assert led.emitted() == led.colors()
