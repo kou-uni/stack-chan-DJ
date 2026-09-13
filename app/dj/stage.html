@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">43744ef 12:24:58</div>
+<div id="v">fcedafb 12:27:45</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -639,7 +639,7 @@ function uplights(t, p, amt, jog){
   // ★ステージ前縁に置いた**アップライト**。こすっている間だけ立ち上がる。
   //   上の吊り灯体と同じ質にする（層を重ねて縁を溶かす・逆二乗・揺らさない）
   if (amt < 0.02) return;
-  const y = innerHeight*0.965;
+  const y = innerHeight*1.045;      // ★実体と同じ高さ
   const far = innerHeight*1.5;
   for (const u of UPS){
     const cx = innerWidth*u.cx;
@@ -688,7 +688,8 @@ function uplights(t, p, amt, jog){
 function uplightBodies(t, p, jog){
   // ★実体は**常に置く。** 消えていて、こすった瞬間に現れるのはおかしい
   //   （2026-09-13 本人の指摘）。角度に応じて筐体も傾く
-  const y = innerHeight*0.965;
+  // ★床に沈める。**筒の上が僅かに覗くくらい**（2026-09-13 本人の指摘）
+  const y = innerHeight*1.045;
   for (const u of UPS){
     const cx = innerWidth*u.cx;
     const a = u.ang + jog*1.05;
