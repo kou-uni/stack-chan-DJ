@@ -74,8 +74,12 @@ class TouchReactor:
                   + (f" 「{line}」" if line and gw and not busy else ""))
         self.presence.overlay("touch", r.face, self.face_s)
         # ★顔と同時に光る。**遅れて光ると別の出来事に見える**
+        # ★★時刻を渡さない。**ここの now はイベントループの時計**（loop.time）で、
+        #   LED は time.time() で動いている。混ぜると期限が桁違いになって、
+        #   点いた瞬間に消える（2026-09-13：撫でてもLEDが光らなかった）。
+        #   **時計をまたぐときは、相手の時計で測らせる。**
         if self.led is not None:
-            self.led.poke("touch", now)
+            self.led.poke("touch")
         if gw is not None and not busy and line:
             self._last_line = line
             # ★待たない。**返事より先に体が動くほうが自然**

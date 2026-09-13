@@ -191,3 +191,34 @@ def test_30粒でも0で全消灯_1で全点灯():
     led._meter_now = 1.0
     led.show_meter(1.0, now=0.0)
     assert all(max(c) > 0 for c in led.colors())
+
+
+class _FakeLed:
+    """LED の代わり。**何を渡されたかを覚えるだけ。**"""
+
+    def __init__(self):
+        self.calls = []
+
+    def poke(self, kind, now=None):
+        self.calls.append((kind, now))
+
+
+def test_撫での返事に時刻を渡さない():
+    """★時計をまたぐときは、相手の時計で測らせる。
+
+    撫での now は `loop.time()`（起動からの秒）、LED は `time.time()`。
+    混ぜると期限が桁違いになって、**点いた瞬間に消える**（2026-09-13）。
+    """
+    import asyncio
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent
+                           / "app" / "dj"))
+    from touch import TouchReactor
+    from presence import Presence
+
+    class _Pose:
+        hold = None
+
+    led = _FakeLed()
+    r = TouchReactor(Presence(), _Pose(), quiet=True, led=led)
+    asyncio.run(r.handle({"duration_ms": 800}, now=12345.0))   # 別の時計
+    assert led.calls == [("touch", None)], led.calls

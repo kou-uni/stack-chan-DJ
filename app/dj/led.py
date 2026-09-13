@@ -184,7 +184,12 @@ class LedState:
     POKE_S = {"touch": 2.6, "scratch": 0.9, "button": 0.7}
 
     def poke(self, kind: str, now: float | None = None) -> None:
-        """入力に返事をする。**期限は種類ごとに決め打ち。**"""
+        """入力に返事をする。**期限は種類ごとに決め打ち。**
+
+        ★`now` を渡すのは試験のときだけ。**呼ぶ側の時計を渡さない。**
+          呼ぶ側が `loop.time()`（起動からの秒）で、こちらが `time.time()` だと、
+          期限が桁違いになって点いた瞬間に消える（2026-09-13 実際に起きた）。
+        """
         if kind not in self.POKE_S:
             raise ValueError(f"知らない返事: {kind}（POKE_S に足すこと）")
         now = self.now() if now is None else now
