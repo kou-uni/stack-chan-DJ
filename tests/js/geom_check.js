@@ -147,7 +147,8 @@ ok('どの型も振り幅を超えない',
   const BASE_Y = +src.match(/BASE_Y = ([0-9.]+)/)[1];
   const BASE_H = +src.match(/BASE_H = ([0-9.]+)/)[1];
   const YOKE_H = +src.match(/YOKE_H = ([0-9.]+)/)[1];
-  const L = (1600/9)*0.55*D.TRUSS_NEAR;
+  // ★実装から取る。手で写すと、片方だけ変えたときにずれる（2026-09-13）
+  const L = D.rigLen();
   let worst = 0;
   for (const a of [0, -0.8, 0.8, D.PAN_MAX, -D.PAN_MAX]){
     const lp = D.lensPos(800, a);

@@ -1198,7 +1198,7 @@ window.__debug = {
   // 元画像の位置（射影）
   tex:   (k, u) => k*u / (1 - u*(1-k)),
   litColor: () => litColor(pal()),
-  lensPos, pivotY, lensY, stepHeads,
+  lensPos, pivotY, lensY, stepHeads, rigLen, trussY, trussH,
   blinderX: () => { const a=[]; for(let i=0;i<BEAMS.length-1;i++)
       a.push((BEAMS[i].cx+BEAMS[i+1].cx)/2);
     a.push(BEAMS[0].cx-0.14, BEAMS[BEAMS.length-1].cx+0.14);
