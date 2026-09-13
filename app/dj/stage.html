@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">d5b3653 13:56:34</div>
+<div id="v">e4cd01f 13:58:48</div>
 <script>
 // ★画面が真っ黒になったとき、**原因を画面に出す。**
 //   端末側の例外は、こちらからは見えない（2026-09-13：iPad だけ黒かった）
@@ -412,22 +412,23 @@ function beams(t, p, energy, heat, dt){
 //   ・断面の山（中心が白く飛び、外へ色が出る）→ 立体感
 //   ・**スモークが焚いてあるので、テープからじんわり外まで薄く光る**
 //   ビームの円錐と同じ考え方。幅と濃さを段階的に変えて縁を溶かす
-// ★骨組みの上端の高さ。ディスプレイ上端からトラスの奥行き何個ぶんか。
-//   + が下、− が上。**両端が重なって見えたので上へ逃がした**（2026-09-13 本人の指摘）
-const TRUSS_TOP_OFF = -0.55;
-function trussDepth(){ return M()*0.30*CENTER_K*0.85; }
-function trussTopY(cy){ return cy + trussDepth()*TRUSS_TOP_OFF; }
+// ★上端の横トラスだけを上へ逃がす量（トラスの奥行き何個ぶんか）。
+//   **柱は動かさない。** 両端が重なって見えたのは横トラスだけ（2026-09-13 本人の指摘）
+const TOP_RUN_LIFT = 1.15;
 
 const TAPE_W = [[18.0, 0.030], [11.2, 0.048], [6.90, 0.076],
                 [4.20, 0.120], [2.55, 0.190], [1.55, 0.310], [1.00, 0.620]];
 function tapeRuns(y0, y1){
   // ★骨組みの位置と1箇所で揃える。**テープだけ別の数字で置かない**
-  const yT = trussTopY(y0);                   // 柱の上端＝横トラスの芯
+  const kc = CENTER_K;
+  const hh = M()*0.30*kc*0.85;
+  const yP = y0 + hh*0.6;                     // 柱の上端（★動かさない）
+  const yT = yP - hh*TOP_RUN_LIFT;            // ★上の横トラスだけ上げる
   const xL = innerWidth*JOINT_L, xR = innerWidth*JOINT_R;
   return [
-    {x0: xL, y0: y1, x1: xL, y1: yT},         // 左の柱：下から上
+    {x0: xL, y0: y1, x1: xL, y1: yP},         // 左の柱：下から上
     {x0: xL, y0: yT, x1: xR, y1: yT},         // 上端の横：左から右
-    {x0: xR, y0: yT, x1: xR, y1: y1},         // 右の柱：上から下
+    {x0: xR, y0: yP, x1: xR, y1: y1},         // 右の柱：上から下
   ];
 }
 function tape(y0, y1, kc, gx){
@@ -1103,16 +1104,16 @@ function drawInner(now){
   {
     for (const x0 of [JOINT_L, JOINT_R]){
       const x = innerWidth*x0;
-      trussRun(x, trussTopY(cy), x, cy + ch, kc*0.85, 0.85);
+      const hh = M()*0.30*kc*0.85;
+      trussRun(x, cy + hh*0.6, x, cy + ch, kc*0.85, 0.85);   // 角の分だけ下から
       // ★光だまり。線ではなく、当たった高さから四方へ落ちる
       spill(() => { g.beginPath();
-                    g.rect(x - M()*0.16*kc, trussTopY(cy),
-                           M()*0.32*kc, cy + ch - trussTopY(cy)); },
-            x, trussTopY(cy), cy + ch, 1.25);
+                    g.rect(x - M()*0.16*kc, cy, M()*0.32*kc, ch); },
+            x, cy, cy + ch, 1.25);
     }
     // ★ディスプレイ上端の横トラス。柱の上端どうしを繋ぐ（2026-09-13 本人の要望）
     {
-      const hh = trussDepth(), yT = trussTopY(cy);
+      const hh = M()*0.30*kc*0.85, yT = cy + hh*0.6 - hh*TOP_RUN_LIFT;
       trussRun(innerWidth*JOINT_L, yT, innerWidth*JOINT_R, yT, kc*0.85, 0.85);
       spill(() => { g.beginPath();
                     g.rect(innerWidth*JOINT_L, yT - hh*0.8,
@@ -1344,7 +1345,7 @@ window.__debug = {
   litColor: () => litColor(pal()),
   lensPos, pivotY, lensY, stepHeads, rigLen, trussY, trussH,
   litFloor, floorPanels: () => floorLit, FLOOR_COLS, FLOOR_ROWS,
-  tape, tapeRuns, trussTopY, trussDepth, JOINT_L, JOINT_R, M,
+  tape, tapeRuns, TOP_RUN_LIFT, JOINT_L, JOINT_R, M,
   setLeds: (v)=>{ S.leds = v; },
   blinderX: () => { const a=[]; for(let i=0;i<BEAMS.length-1;i++)
       a.push((BEAMS[i].cx+BEAMS[i+1].cx)/2);
