@@ -3,9 +3,12 @@ const fs = require('fs'), vm = require('vm');
 const html = fs.readFileSync(process.argv[2], 'utf8');
 const js = html.match(/<script>([\s\S]*)<\/script>/)[1];
 
+const calls = {fillText:0, fill:0, stroke:0, fillRect:0, arc:0, drawImage:0, ellipse:0};
+const drawCount = () => Object.values(calls).reduce((a,b)=>a+b,0);
 const grad = { addColorStop(){} };
 const ctx = () => new Proxy({}, { get(_,k){
   if (k==='createLinearGradient'||k==='createRadialGradient') return () => grad;
+  if (typeof k === 'string' && k in calls) return () => { calls[k]++; };
   return () => {};
 }, set(){ return true; }});
 const el = () => ({ getContext: ctx, style:{}, width:0, height:0, textContent:'',
