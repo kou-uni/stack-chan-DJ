@@ -18,6 +18,9 @@ async def main(out, script=None, wait=6.0):
                     if d.get("id") == i[0]:
                         return d.get("result", {})
             await call("Runtime.enable")
+            await call("Page.enable")
+            # ★必ず読み直す。**古い版を撮って「直った」と言うのがいちばん危ない**
+            await call("Page.reload", {"ignoreCache": True})
             await asyncio.sleep(wait)
             if script:
                 r2 = await call("Runtime.evaluate",

@@ -14,7 +14,7 @@ canvas{display:block;width:100vw;height:100vh}
 <canvas id="c"></canvas>
 <div id="s">connecting…</div>
 <div id="hud"></div>
-<div id="v">fa7e74f 14:24:17</div>
+<div id="v">626b245 14:29:54</div>
 <script>
 // ★版番号は div から読む。**2箇所に書くと必ず食い違う**
 //   （2026-09-13：真ん中のHUDだけ2時間前の版を表示していた）
@@ -513,12 +513,42 @@ function trussCorner(x, yTop, yBot, s){
   gr.addColorStop(1,    'rgb(4,5,7)');
   g.fillStyle = gr;
   rrect(x - w/2, y0, w, y1-y0, d*0.12); g.fill();
+  // ★光だまり。**周りの骨組みと同じ関数で受ける。**
+  //   ここだけ反射が無いと、同じ素材に見えず浮く（2026-09-13 本人の指摘）
+  //   板なので、はみ出さないように**板の形で切り抜く**
+  spill(() => { rrect(x - w/2, y0, w, y1-y0, d*0.12); g.clip(); },
+        x, y0, y1, 1.35);
+  // ★面のてかり。板は平らなので、当たった光が**面ごと**返る
+  {
+    const L = litColor(pal());
+    if (L.pow > 0.05){
+      g.save();
+      rrect(x - w/2, y0, w, y1-y0, d*0.12); g.clip();
+      g.globalCompositeOperation = 'lighter';
+      const sh = g.createLinearGradient(x - w/2, y0, x + w/2, y1);
+      sh.addColorStop(0,    'hsla('+L.hue+',70%,72%,'+(0.16*Math.min(1,L.pow))+')');
+      sh.addColorStop(0.45, 'hsla('+L.hue+',75%,60%,'+(0.05*Math.min(1,L.pow))+')');
+      sh.addColorStop(1,    'hsla('+L.hue+',75%,55%,0)');
+      g.fillStyle = sh;
+      g.fillRect(x - w/2, y0, w, y1-y0);
+      g.globalCompositeOperation = 'source-over';
+      g.restore();
+    }
+  }
   // ボルト。★4隅に小さく。**大きく描くと玩具に見える**
-  g.fillStyle = 'rgb(38,44,54)';
+  //   頭は金属なので、いちばん強く光を返す
+  const L2 = litColor(pal());
   const br = Math.max(0.8, d*0.055);
   for (const px of [-w*0.33, w*0.33])
     for (const py of [y0 + d*0.22, y1 - d*0.22]){
+      g.fillStyle = 'rgb(38,44,54)';
       g.beginPath(); g.arc(x + px, py, br, 0, 6.2832); g.fill();
+      if (L2.pow > 0.05){
+        g.globalCompositeOperation = 'lighter';
+        g.fillStyle = 'hsla('+L2.hue+',60%,80%,'+(0.45*Math.min(1,L2.pow))+')';
+        g.beginPath(); g.arc(x + px - br*0.3, py - br*0.3, br*0.6, 0, 6.2832); g.fill();
+        g.globalCompositeOperation = 'source-over';
+      }
     }
 }
 
@@ -1006,7 +1036,7 @@ function drawInner(now){
       const a = st.m * depth * tw * (1 - Math.min(0.75, heat*0.75));  // 照明が強いと星は負ける
       // ★灯体を増やしたぶんの描画予算を、見えない星から回す。
       //   照明が強いときの薄い星は、そもそも目に入らない（2026-09-13）
-      if (a < 0.055) continue;
+      if (a < 0.075) continue;
       g.fillStyle = 'rgba(214,226,255,'+a+')';
       const r = Math.max(0.6, st.m*1.7);
       g.fillRect(st.x*innerWidth, y, r, r);

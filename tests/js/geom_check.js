@@ -395,5 +395,13 @@ ok('柱を四角塗りで描いていない',
   ok('版番号はファイル中1箇所だけ', n === 1, n + '箇所');
 }
 
+// ★連結部も周りと同じ関数で光を受ける（2026-09-13 本人の指摘：ここだけ浮いていた）
+{
+  const s2 = D.trussCorner.toString();
+  ok('連結部は spill で光を受ける', /spill\(/.test(s2));
+  ok('連結部は litColor で光の色を拾う', /litColor\(/.test(s2));
+  ok('反射は板の形で切り抜く（はみ出さない）', /clip\(\)/.test(s2));
+}
+
 console.log(bad ? '\n★ ' + bad + ' 件おかしい' : '\n幾何OK');
 process.exit(bad ? 1 : 0);
