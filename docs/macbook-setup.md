@@ -74,6 +74,16 @@ MacBook にも Claude Code を入れるなら、clone したあと、そのま�
 
 **3 から先は実機が要る。** 1と2は実機なしで確かめられるので、先にそこまで通す。
 
+そのあとは、**実機に読み上げさせながら**1つずつ確かめる。
+
+```bash
+./.venv/bin/python scripts/acceptance.py            # 全部（28項目）
+./.venv/bin/python scripts/acceptance.py --block A  # 触るところだけ
+```
+
+**頭をタップすると「はい」**。手も目も実機に向いたまま進められる。
+結果は `event/acceptance-log/` に残り、落ちた項目が持ち越しになる。
+
 ## 詰まりどころ
 
 - **`vendor/stackchan-mcp` の改変が当たらない** … 版がずれている。
