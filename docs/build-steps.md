@@ -40,6 +40,28 @@
 
 ---
 
+## Step 0-4. MacBook を一から立ち上げる　★当日ここに全部載る
+
+**残り日数がいちばん効くのはここ。** 通したことがない。
+
+```bash
+git clone https://github.com/kou-uni/stack-chan-DJ.git
+# ★GitHubに入っていないものを Mac Studio からコピー（合計2GB強）
+#   vendor/           gateway本体・VOICEVOX・顔の素材
+#   .env.gateway      ポートなどの設定
+#   app/avatar/*.raw  表情データ
+./scripts/setup.sh
+./scripts/service.sh install
+./.venv/bin/python scripts/doctor.py
+```
+
+さらに MacBook にだけ要るもの:
+
+- **Ollama + `gemma3:4b`**（3.3GB）… 頭脳。16GBなら余裕
+- **VOICEVOX**（`127.0.0.1:50021`）… 声。gateway と同じ機械に要る
+
+- **DoD**：`doctor.py` が全部○。実機が MacBook に繋がって、踊って、喋る
+
 # 第1段　身体を自分のコードで動かす（会話なし）
 
 **ゴール：自分の書いたコードで首が回る。**
@@ -147,11 +169,13 @@
 - ⚠️ **踊りと会話はマイクを取り合う。** 進行表で時間帯を分けてあるので、
   切り替えは**ブロックの切れ目に進行役が1回**だけ
 
-## Step 9. 頭脳を自宅に置いたまま会場で動かす
+## Step 9. 頭脳を MacBook に載せる　★2026-09-14 決定
 
-- `config.toml` の `[think] think-url` を自宅の Mac Studio に向ける（**設定1行**）
-- 「いま自宅まで往復しています」がそのまま説明になる
-- ⚠️ 経路（Tailscale / cloudflared）を**当日までに1本に決める**
+- MacBook に Ollama を入れて `gemma3:4b`（3.3GB）を置く。**16GBなら余裕**
+- `config.toml` は **`127.0.0.1` のまま**。行き先を変える必要がない
+- **ネットに一切依存しない。** 会場はテザリングなので、これがいちばん強い
+- 自宅の Mac Studio は**退避先**。`think-url` を向け替えれば1行で切り替わる
+  → **当日その場で実演できる**（往復の話は演出側に回す）
 
 ## Step 10. 遅さと不気味さを潰す
 

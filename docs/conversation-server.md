@@ -28,7 +28,7 @@
 |---|---|---|
 | 音声区間検出 | SileroVAD | ローカル |
 | 音声認識 | FunASR / SenseVoiceSmall | **ローカル**（`models/` に893MB） |
-| 頭脳 | Ollama `qwen2.5:3b` | **ローカル**（localhost:11434） |
+| 頭脳 | Ollama `gemma3:4b` | **ローカル**（localhost:11434。当日は MacBook） |
 | 音声合成 | **VOICEVOX 話者14（冥鳴ひまり）** | **ローカル**（127.0.0.1:50021） |
 | 記憶 | mem_local_short | **ローカル** |
 
