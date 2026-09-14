@@ -4,6 +4,16 @@
 
 ## 更新し続けるもの
 
+### いちばん上の2本（役割を混ぜない）
+
+| 文書 | 書くこと | 書かないこと |
+|---|---|---|
+| [../ROADMAP.md](../ROADMAP.md) | **いつ・どの順で・どこで切るか。** 日程とカットラインと現状 | 手順の中身 |
+| [build-steps.md](build-steps.md) | **どうやるか。** 手順とDoDと詰まりどころ | 日程 |
+
+★2026-09-14、この2本が二重管理になっていたので役割を分けた。
+**同じことを2箇所に書かない。** ROADMAP からは手順へリンクするだけ。
+
 ### 決めごと・設計
 
 | 文書 | 役割 | いつ直すか |
@@ -34,7 +44,7 @@
 | [ideas.md](ideas.md) | まだ決まっていない思いつき |
 | [textbook.md](textbook.md) | 当日の教材 |
 | [persona.md](persona.md) / [ux-conversation.md](ux-conversation.md) | 人格と会話のUX |
-| [build-steps.md](build-steps.md) | フェーズの手順。⚠️ **ROADMAP と二重管理になりつつある** |
+
 
 ## 更新しないもの
 
