@@ -60,7 +60,7 @@
 **いきなり自前構成にしない。** 先に「本来どう動くのか」を体で知っておく。
 あとで自作と比べる基準になる。
 
-初期設定は本体の Wi-Fi 設定 UI から。詳細は [setup-day1.md](setup-day1.md)。
+初期設定は本体の Wi-Fi 設定 UI から。詳細は [archive/setup-day1.md](archive/setup-day1.md)。
 
 ### ここで測っておくこと（後で必ず効く）
 

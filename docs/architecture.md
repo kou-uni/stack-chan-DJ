@@ -2,7 +2,7 @@
 
 > **役割：アーキテクト**
 >
-> 与件は [requirements.md](requirements.md)。計画は [project-plan.md](project-plan.md)。
+> 与件は [requirements.md](requirements.md)。計画は [archive/project-plan.md](archive/project-plan.md)。
 > **ここは規範。** コードがこの文書に従う。破ったら `tests/test_architecture.py` が落ちる。
 
 ## 0. 全体像 — 3つの系統
