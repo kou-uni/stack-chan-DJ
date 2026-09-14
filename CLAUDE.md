@@ -3,6 +3,21 @@
 自宅の Mac Studio を頭脳にして、外に持ち出したスタックチャンをネット越しに動かす。
 成果を **Crypto Cafe and Bar のハンズオンイベント（2026-09-29 火）** で使う。
 
+## この機械が MacBook なら、まず立ち上げ
+
+**当日は MacBook に全部載る**（gateway・console・背景・VOICEVOX・Ollama）。
+新しい機械で最初にやることは1つ。
+
+```bash
+./scripts/bootstrap.sh
+```
+
+手で運ぶものは無い。止まったら理由が日本語で出る。詳細は
+[docs/macbook-setup.md](docs/macbook-setup.md)。
+
+**vendor/ に手を入れたら `./scripts/pack-patches.sh` を走らせて commit すること。**
+改変は vendor/ に置いたままだと、別の機械で復元できない。
+
 ## このリポジトリで作業するときの決まり
 
 ### ★★ 作る前に、テストを書く

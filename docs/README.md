@@ -27,6 +27,7 @@
 
 | 文書 | 役割 |
 |---|---|
+| [macbook-setup.md](macbook-setup.md) | **新しい Mac を当日の形にする**（bootstrap.sh） |
 | [runbook.md](runbook.md) | 動かす・止める・確かめる |
 | [firmware-flash.md](firmware-flash.md) | ファームを焼く |
 | [wiring.md](wiring.md) | 物理の配線 |
