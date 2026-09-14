@@ -1,0 +1,283 @@
+diff --git a/gateway/stackchan_mcp/beat/mode.py b/gateway/stackchan_mcp/beat/mode.py
+index 1406cb1..1f54bd2 100644
+--- a/gateway/stackchan_mcp/beat/mode.py
++++ b/gateway/stackchan_mcp/beat/mode.py
+@@ -36,7 +36,14 @@ LISTEN_STOP_TIMEOUT_S = 3.0
+ LISTEN_RESTART_AFTER_S = 2.5
+ LISTEN_RESTART_INITIAL_BACKOFF_S = 1.0
+ LISTEN_RESTART_MAX_BACKOFF_S = 8.0
+-MIN_MOTION_CONFIDENCE = 0.35
++# --- stackchan-lab のローカル改変 ---------------------------------------
++# 既定の 0.35 は「BPMが安定していること」を強く要求する。
++# 実機のマイクで拾った音は、拍は取れてもBPMが揺れやすく（99→84→79）、
++# 安定度が0に近くなって確信度が0.35に届かない＝一度も踊らない。
++# 環境変数で下げられるようにする。既定値は変えない。
++#   例: STACKCHAN_BEAT_MIN_CONFIDENCE=0.12
++MIN_MOTION_CONFIDENCE = float(os.environ.get("STACKCHAN_BEAT_MIN_CONFIDENCE", "0.35"))
++# -----------------------------------------------------------------------
+ SERVO_YAW_MIN, SERVO_YAW_MAX = -90, 90
+ SERVO_PITCH_MIN, SERVO_PITCH_MAX = 5, 85
+ DEFAULT_SENSITIVITY = 0.5
+@@ -414,6 +421,7 @@ class BeatMode:
+             "active": self._active,
+             "bpm": beat.bpm,
+             "confidence": beat.confidence,
++            "level": round(getattr(beat, "level", 0.0), 5),   # stackchan-lab の追加
+             "last_beat_at_ms": last_beat_at_ms,
+             "last_beat_age_ms": last_beat_age_ms,
+             "onsets": beat.onset_count,
+diff --git a/gateway/stackchan_mcp/beat/tracker.py b/gateway/stackchan_mcp/beat/tracker.py
+index 14cb967..9cf607a 100644
+--- a/gateway/stackchan_mcp/beat/tracker.py
++++ b/gateway/stackchan_mcp/beat/tracker.py
+@@ -17,6 +17,10 @@ class BeatSnapshot:
+     confidence: float
+     last_beat_at: float | None
+     onset_count: int
++    # --- stackchan-lab のローカル追加 ---
++    # 直近のRMS（0..1）。**「静かになった」と「ブレイク中（音はあるが拍が無い）」を
++    # 区別するのに要る。** オンセットだけ見ていると両者が同じに見えてしまう。
++    level: float = 0.0
+ 
+ 
+ class BeatTracker:
+@@ -191,6 +195,7 @@ class BeatTracker:
+         return BeatSnapshot(
+             bpm=self._bpm,
+             confidence=self._confidence,
++            level=float(self._last_rms or 0.0),
+             last_beat_at=self._last_beat_at,
+             onset_count=self._onset_count,
+         )
+diff --git a/gateway/stackchan_mcp/esp32_client.py b/gateway/stackchan_mcp/esp32_client.py
+index f473e56..a0ef4d6 100644
+--- a/gateway/stackchan_mcp/esp32_client.py
++++ b/gateway/stackchan_mcp/esp32_client.py
+@@ -905,6 +905,9 @@ class ESP32Manager:
+             )
+ 
+     async def _emit_stackchan_event(self, payload: dict[str, Any]) -> None:
++        # ★切り分け用（STACKCHAN_TRACE_FRAMES=1）。実機から何が来ているかを見る
++        if os.environ.get("STACKCHAN_TRACE_FRAMES") == "1":
++            logger.info("★device-event: %s", payload)
+         """Forward a firmware-originated stackchan event to the MCP client."""
+         event_type = payload.get("event_type")
+         subtype = payload.get("subtype")
+diff --git a/gateway/stackchan_mcp/stt/faster_whisper.py b/gateway/stackchan_mcp/stt/faster_whisper.py
+index f7b6533..a90dd1b 100644
+--- a/gateway/stackchan_mcp/stt/faster_whisper.py
++++ b/gateway/stackchan_mcp/stt/faster_whisper.py
+@@ -150,6 +150,26 @@ class FasterWhisperEngine(STTEngine):
+             )
+             return self._model
+ 
++    @staticmethod
++    def _normalize_pcm(pcm: bytes, target: float = 0.85, max_gain: float = 12.0) -> bytes:
++        """小さい音を持ち上げる。★実機のマイクは遠いので、そのままでは足りない。"""
++        import array
++        a = array.array("h")
++        a.frombytes(pcm[:len(pcm) // 2 * 2])
++        if not a:
++            return pcm
++        peak = max(abs(x) for x in a)
++        if peak <= 0:
++            return pcm
++        gain = min(max_gain, target * 32767 / peak)
++        if gain <= 1.05:
++            return pcm
++        lim = 32767
++        for i, x in enumerate(a):
++            v = int(x * gain)
++            a[i] = lim if v > lim else (-lim if v < -lim else v)
++        return a.tobytes()
++
+     async def transcribe(self, pcm: bytes, **opts: Any) -> dict[str, Any]:
+         """Transcribe PCM via faster-whisper.
+ 
+@@ -189,18 +209,46 @@ class FasterWhisperEngine(STTEngine):
+         else:
+             language = "ja"
+ 
++        # ★ローカル改変（2026-09-12 / stackchan-lab）
++        #   実測：実機のマイクは声でもピーク 0.055 しかない。振り切れまで
++        #   余裕がありすぎて Whisper には小さすぎ、日本語が崩れていた。
++        #   **渡す前に持ち上げる。** 8倍で「ファームってなんですか」が通った。
++        if os.environ.get("STACKCHAN_STT_NORMALIZE", "1") != "0":
++            pcm = self._normalize_pcm(pcm)
+         wav_bytes = _pcm_to_wav_bytes(pcm, DEVICE_SAMPLE_RATE)
+ 
+         def _run() -> dict[str, Any]:
++            # ★ローカル改変（2026-09-12 / stackchan-lab）
++            #   既定は vad_filter=False / beam_size=1 だが、実測で日本語が崩れた。
++            #     「ファームってなんですか」→「パー持って何ですか今 本性 手措置が」
++            #   8秒録って実際に喋っているのは2秒ほど。残りの無音に対して
++            #   Whisper が幻聴を出していた。**無音を捨てるだけで直る。**
++            #   環境変数で変えられるようにして、上流に追従できる形にしておく。
+             segments, info = model.transcribe(
+                 BytesIO(wav_bytes),
+                 language=language,
+-                beam_size=1,
+-                vad_filter=False,
++                beam_size=int(os.environ.get("STACKCHAN_STT_BEAM", "5")),
++                # ★当日の語彙は決まっている。先に教えると精度が跳ねる
++                #   （「あー塗ってなんですか」→「ファームってなんですか」）
++                initial_prompt=os.environ.get("STACKCHAN_STT_PROMPT") or None,
++                condition_on_previous_text=False,
++                temperature=0.0,
++                # ★無音のときに initial_prompt をそのまま読み上げる幻聴が出た
++                #   （「ファームウェアのゲートウェア」＝教えた語彙そのもの）。
++                #   「喋っていない確率」が高い区間は捨てる
++                no_speech_threshold=float(
++                    os.environ.get("STACKCHAN_STT_NO_SPEECH", "0.5")),
++                vad_filter=os.environ.get("STACKCHAN_STT_VAD", "1") != "0",
+             )
+             # ``segments`` is a generator; materialising it concatenates
+             # all chunks of the transcription.
+-            text = "".join(seg.text for seg in segments).strip()
++            # ★「喋っていない確率」が高い区間は捨てる。
++            #   無音のとき、教えた語彙をそのまま読み上げる幻聴が出ていた
++            _cut = float(os.environ.get("STACKCHAN_STT_NO_SPEECH", "0.5"))
++            text = "".join(
++                seg.text for seg in segments
++                if getattr(seg, "no_speech_prob", 0.0) < _cut
++            ).strip()
+             return {
+                 "text": text,
+                 "language": info.language or (language or ""),
+diff --git a/gateway/stackchan_mcp/stt/orchestrator.py b/gateway/stackchan_mcp/stt/orchestrator.py
+index 2eb66be..0f30c17 100644
+--- a/gateway/stackchan_mcp/stt/orchestrator.py
++++ b/gateway/stackchan_mcp/stt/orchestrator.py
+@@ -32,6 +32,11 @@ same protocol-v1 gate.
+ from __future__ import annotations
+ 
+ import asyncio
++from pathlib import Path
++import contextlib
++import time
++import sys
++import os
+ import json
+ import logging
+ from contextlib import nullcontext
+@@ -286,6 +291,61 @@ async def _finish_listen_motion(
+         await _set_avatar(gateway, IDLE_FACE)
+ 
+ 
++def _make_endpointer(duration_ms: int):
++    """話し終わり検出。環境変数で切れる（STACKCHAN_STT_ENDPOINT=0）。"""
++    if os.environ.get("STACKCHAN_STT_ENDPOINT", "1") == "0":
++        return None
++    # ★パスを数えない。**探す。**
++    #   最初 parents[4] と数えて1つずれ、黙って無効になっていた（2026-09-12）。
++    #   しかも失敗を握りつぶしていたので、丸一手番気づけなかった。
++    here = Path(__file__).resolve()
++    root = next((a for a in here.parents
++                 if (a / "app" / "dj" / "endpoint.py").exists()), None)
++    if root is None:
++        logger.warning("endpointer: app/dj/endpoint.py が見つからない。"
++                       "話し終わり検出は無効（時間で切ります）")
++        return None
++    try:
++        sys.path.insert(0, str(root / "app" / "dj"))
++        from endpoint import Endpointer
++    except Exception as exc:
++        logger.warning("endpointer を読み込めない: %s（時間で切ります）", exc)
++        return None
++    return Endpointer(
++        silence_s=float(os.environ.get("STACKCHAN_STT_SILENCE_S", "0.8")),
++        min_speech_s=float(os.environ.get("STACKCHAN_STT_MIN_SPEECH_S", "0.3")),
++        max_s=duration_ms / 1000.0,
++        # ★合図から話し出すまで待つ。ここが短いと、余韻で切れて何も録れない
++        min_total_s=float(os.environ.get("STACKCHAN_STT_MIN_TOTAL_S", "2.5")),
++    )
++
++
++_LEVEL_DECODER = None
++
++
++def _frame_level(frame: bytes) -> float:
++    """Opus 1フレームの音量（RMS 0..1）。
++
++    ★最初「圧縮後の長さ」で推測しようとしたが、**根拠が無い**（可変ビットレート
++      とは限らない）。ちゃんとデコードして測る。1フレーム60ms＝960サンプルなので、
++      毎秒16回デコードしても負荷は無視できる。
++    ★閾値（endpoint.SPEECH_LEVEL）は実測の RMS から決めてある。単位を揃える。
++    """
++    global _LEVEL_DECODER
++    import array
++    import opuslib
++
++    if _LEVEL_DECODER is None:
++        _LEVEL_DECODER = opuslib.Decoder(DEVICE_SAMPLE_RATE, 1)
++    pcm = _LEVEL_DECODER.decode(frame, int(DEVICE_SAMPLE_RATE
++                                           * DEVICE_FRAME_DURATION_MS / 1000))
++    a = array.array("h")
++    a.frombytes(pcm)
++    if not a:
++        return 0.0
++    return (sum(x * x for x in a) / len(a)) ** 0.5 / 32768.0
++
++
+ async def listen_and_transcribe(
+     arguments: dict[str, Any],
+     *,
+@@ -444,7 +504,25 @@ async def listen_and_transcribe(
+             # Switch the audio_stream module into recording mode BEFORE
+             # sending listen.start so we don't drop the first frame the
+             # device emits the moment it lands in kDeviceStateListening.
+-            start_recording(session_id)
++            # ★ローカル改変（2026-09-12 / stackchan-lab）
++            #   **話し終わりで切る。**5秒固定で待つのが一番不自然だった。
++            #   フレームが来るたびに音量を見て、無音が続いたら窓を閉じる。
++            #   誤爆すると質問が半分になるので、条件は endpoint.py に分けて試験した。
++            _ep = _make_endpointer(duration_ms)
++            _done = asyncio.Event()
++            _t0 = time.monotonic()
++
++            def _watch(frame: bytes) -> None:
++                if _ep is None or _done.is_set():
++                    return
++                try:
++                    lvl = _frame_level(frame)
++                except Exception:
++                    return
++                if _ep.feed(lvl, time.monotonic() - _t0):
++                    _done.set()
++
++            start_recording(session_id, frame_hook=_watch)
+             listen_start_sent = False
+             try:
+                 try:
+@@ -461,7 +539,12 @@ async def listen_and_transcribe(
+                 # ``TTS_START_TRANSITION_DELAY_S``).
+                 await asyncio.sleep(LISTEN_START_TRANSITION_DELAY_S)
+ 
+-                await asyncio.sleep(duration_ms / 1000.0)
++                # ★話し終わりを待つ。検出できなければ従来通り時間で切る
++                if _ep is not None:
++                    with contextlib.suppress(TimeoutError, asyncio.TimeoutError):
++                        await asyncio.wait_for(_done.wait(), duration_ms / 1000.0)
++                else:
++                    await asyncio.sleep(duration_ms / 1000.0)
+             finally:
+                 # Cancellation-safe listen.stop. If the request is
+                 # cancelled mid-capture (or any exception unwinds here)
+@@ -512,6 +595,17 @@ async def listen_and_transcribe(
+ 
+             try:
+                 pcm = decode_opus_frames(frames)
++                # ★録れた音を保存できるようにする（STACKCHAN_STT_DEBUG_WAV=1）。
++                #   「頭が落ちている」のか「早く切りすぎ」なのかは、
++                #   **現物を見るまで分からない**。推測で直さない
++                if os.environ.get("STACKCHAN_STT_DEBUG_WAV") == "1":
++                    import wave as _w
++                    _p = "/tmp/stackchan-listen.wav"
++                    with _w.open(_p, "wb") as _f:
++                        _f.setnchannels(1); _f.setsampwidth(2)
++                        _f.setframerate(DEVICE_SAMPLE_RATE)
++                        _f.writeframes(pcm)
++                    logger.info("listen: 録れた音を保存 %s (%d frames)", _p, len(frames))
+             except Exception as exc:
+                 raise RuntimeError(f"Opus decode failed: {exc}") from exc
+ 

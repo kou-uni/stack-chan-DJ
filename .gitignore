@@ -13,6 +13,7 @@ __pycache__/
 # ★ただし vendor/stackchan-mcp にはローカル改変がある。
 #   改変は docs/vendor-patches.md に記録し、パッチとして残す
 vendor/
+!vendor-patches/
 
 # ── 大きいバイナリ ────────────────────────────
 firmware/*.bin
