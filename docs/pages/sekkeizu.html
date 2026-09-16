@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>スタックチャンDJ 設計図</title>
+<style>
+  :root{
+    --ink:#080a0f; --ink2:#10151f; --ink3:#171d29;
+    --line:#28313f; --line2:#3a4759;
+    --text:#e3e9f5; --dim:#8b98af; --faint:#5d6a80;
+    --midi:#ffb347; --led:#3ee39b; --voice:#79b8ff; --stage:#c874ff;
+    --face:#ff8fb1; --warn:#ff6b57;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:"Zen Kaku Gothic New",-apple-system,"Hiragino Sans",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:var(--sans);
+       line-height:1.8;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:56px 22px 110px}
+
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;
+           color:var(--faint);text-transform:uppercase;margin:0 0 14px}
+  h1{font-size:clamp(28px,4.6vw,46px);font-weight:900;line-height:1.2;margin:0 0 18px;
+     letter-spacing:-.01em;text-wrap:balance}
+  .lede{font-size:16.5px;color:var(--dim);max-width:62ch;margin:0}
+  .stamp{font-family:var(--mono);font-size:12px;color:var(--faint);margin:22px 0 0;
+         display:flex;gap:18px;flex-wrap:wrap}
+
+  h2{font-size:24px;font-weight:900;margin:88px 0 8px;letter-spacing:-.01em}
+  h2 .n{font-family:var(--mono);font-size:12px;letter-spacing:.16em;color:var(--led);
+        display:block;margin-bottom:8px;font-weight:700}
+  .sub{color:var(--dim);font-size:15px;margin:0 0 24px;max-width:66ch}
+
+  .board{background:var(--ink2);border:1px solid var(--line);border-radius:16px;
+         padding:12px;overflow-x:auto}
+  svg.dia{display:block;width:100%;height:auto}
+  figure{margin:0}
+  figcaption{font-size:12.5px;color:var(--faint);margin-top:12px;text-align:center}
+
+  .cards{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(262px,1fr))}
+  .card{background:var(--ink2);border:1px solid var(--line);border-radius:14px;
+        padding:20px 22px 22px;position:relative}
+  .card::before{content:"";position:absolute;left:22px;top:0;width:34px;height:2px;
+                background:var(--c,var(--line2))}
+  .card .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--c,var(--faint));
+             margin:12px 0 0}
+  .card h3{font-size:16px;font-weight:900;margin:6px 0 4px}
+  .card .role{font-size:13px;color:var(--dim);margin:0 0 12px}
+  .card ul{margin:0;padding-left:1.1em}
+  .card li{font-size:13.5px;color:var(--dim);margin:5px 0}
+  .card li b{color:var(--text)}
+  .card .ports{font-family:var(--mono);font-size:11px;color:var(--faint);
+               margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--ink2)}
+  table{border-collapse:collapse;width:100%;min-width:600px;font-size:13.5px}
+  th,td{padding:11px 15px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  thead th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--faint);
+           text-transform:uppercase;font-weight:700;background:var(--ink3);white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td.k{font-family:var(--mono);color:var(--dim);white-space:nowrap}
+  .chip{font-family:var(--mono);font-size:10.5px;border:1px solid currentColor;border-radius:4px;
+        padding:1px 6px;white-space:nowrap}
+  .c-midi{color:var(--midi)} .c-led{color:var(--led)} .c-stage{color:var(--stage)}
+  .c-face{color:var(--face)} .c-voice{color:var(--voice)}
+
+  .legend{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin:20px 0 0;
+          font-size:12.5px;color:var(--dim)}
+  .legend span{display:inline-flex;align-items:center;gap:8px}
+  .legend i{width:20px;height:3px;border-radius:2px;display:block}
+
+  .note{background:var(--ink2);border:1px solid var(--line);border-left:3px solid var(--led);
+        border-radius:0 12px 12px 0;padding:16px 20px;font-size:14px;color:var(--dim);margin:22px 0 0}
+  .note b{color:var(--text)}
+  code{font-family:var(--mono);font-size:12.5px;background:var(--ink3);padding:1px 6px;border-radius:5px}
+  .foot{margin-top:86px;padding-top:24px;border-top:1px solid var(--line);
+        font-size:13px;color:var(--faint)}
+
+  @media (prefers-reduced-motion: reduce){ .flow{display:none} }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap">
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">Crypto Cafe and Bar / 2026-09-29</p>
+  <h1>設計図 — どの機械が、<br>何を持っているか</h1>
+  <p class="lede">
+    4つの機械が関わります。ロボット、Mac、iPad、そして外から開くためのトンネル。
+    <b>どれが何を担って、データがどちらへ流れるか</b>を、1枚ずつ開けていきます。
+  </p>
+  <p class="stamp">
+    <span>更新 2026-09-16</span><span>実機 M5Stack K151</span><span>道具 49個（MCP）</span>
+  </p>
+
+  <!-- ══ 1. 論理構成 ══ -->
+  <h2><span class="n">01 — 論理構成</span>4つの機械の役割</h2>
+  <p class="sub">
+    <b>ロボットの中にAIは入っていません。</b>入口（マイク・タッチ）と出口（首・声・光）だけを持っています。
+    考えることも、色を決めることも、絵を描くことも、全部 Mac の中です。
+  </p>
+
+  <div class="cards">
+    <div class="card" style="--c:var(--led)">
+      <p class="tag">DEVICE</p>
+      <h3>スタックチャン</h3>
+      <p class="role">I/O ゲートウェイ。判断は一切しない</p>
+      <ul>
+        <li><b>入口</b> — マイク／頭のタッチ（3ゾーン）／カメラ</li>
+        <li><b>出口</b> — サーボ2軸（首）／LCDの顔／内蔵LED／<b>外付けテープ30粒</b>／スピーカー</li>
+        <li>受け取るのは<b>角度と色の列</b>だけ。意味は持たない</li>
+        <li>電源を切ると<b>表情もタッチ設定も消える</b>（毎回入れ直す）</li>
+      </ul>
+      <p class="ports">ESP32 / Wi-Fi 2.4GHz → ws:8775</p>
+    </div>
+
+    <div class="card" style="--c:var(--voice)">
+      <p class="tag">BRAIN</p>
+      <h3>Mac（当日は MacBook）</h3>
+      <p class="role">頭脳・演出・配信。ほぼ全部ここ</p>
+      <ul>
+        <li><b>gateway</b> — 実機との窓口。聞き取り（STT）もここ</li>
+        <li><b>console</b> — 踊り・LED・首・モード。<b>状態を持つ唯一の場所</b></li>
+        <li><b>Ollama</b> — 考える（gemma3:4b）</li>
+        <li><b>VOICEVOX</b> — 声を作る（話者14）</li>
+        <li><b>背景サーバ</b> — iPadに配る／操作パネルを配る</li>
+      </ul>
+      <p class="ports">8767 MCP ／ 8770 首30Hz ／ 8771 LED20Hz ／ 8779 画面・パネル ／ 11434 頭脳 ／ 50021 声</p>
+    </div>
+
+    <div class="card" style="--c:var(--stage)">
+      <p class="tag">SCREEN</p>
+      <h3>iPad</h3>
+      <p class="role">ブラウザだけ。アプリも配線も無い</p>
+      <ul>
+        <li>URLを開くと <b>HTML 1枚</b>が落ちてくる</li>
+        <li>毎秒20回、<b>いまの状態</b>がWebSocketで届く</li>
+        <li>絵はその場で描く（<b>動画ではない</b>）</li>
+        <li>落ちても<b>開き直すだけ</b>で戻る</li>
+      </ul>
+      <p class="ports">Safari → ws:8779/ws</p>
+    </div>
+
+    <div class="card" style="--c:var(--warn)">
+      <p class="tag">CLOUD</p>
+      <h3>外に出るもの</h3>
+      <p class="role">AIは1つも使っていない</p>
+      <ul>
+        <li><b>外部のAI・音声認識・音声合成 … ゼロ</b></li>
+        <li>使うのは<b>トンネル1本だけ</b>（外から操作パネルを開くため）</li>
+        <li>当日、会場では<b>それも要らない</b>（同じLANで完結）</li>
+        <li>声も画像も<b>この部屋から出ない</b></li>
+      </ul>
+      <p class="ports">cloudflared → 8779（任意・当日は未使用）</p>
+    </div>
+  </div>
+
+  <!-- ══ 2. 全体のデータの流れ ══ -->
+  <h2><span class="n">02 — データの流れ</span>誰が誰に何を送っているか</h2>
+  <p class="sub">数字は実際の送信レート。点はデータの向き。</p>
+
+  <figure>
+    <div class="board">
+      <svg class="dia" viewBox="0 0 1140 470" role="img"
+           aria-label="DJ機材からMacへMIDI、Macから実機へ首とLED、Macからブラウザへ状態、実機からMacへ声、Mac内でOllamaとVOICEVOXを使う流れ">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6"
+                  orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+          <path id="f-midi"  d="M250,90 C330,90 330,176 396,182"/>
+          <path id="f-pose"  d="M396,250 C330,250 320,296 250,300"/>
+          <path id="f-led"   d="M396,276 C330,276 320,330 250,334"/>
+          <path id="f-mic"   d="M250,218 C320,218 330,214 396,214"/>
+          <path id="f-stage" d="M782,214 C860,214 880,120 944,112"/>
+          <path id="f-panel" d="M944,368 C880,368 860,300 782,258"/>
+          <path id="f-think" d="M600,332 C600,366 600,370 600,396"/>
+          <path id="f-voice" d="M690,396 C690,366 690,362 690,332"/>
+        </defs>
+
+        <!-- 器 -->
+        <rect x="396" y="60" width="386" height="290" rx="14" fill="#0c1018" stroke="#232c3a"/>
+        <text x="418" y="88" font-family="JetBrains Mono, monospace" font-size="11.5"
+              letter-spacing="1.6" fill="#5d6a80">MAC — 頭脳と演出</text>
+
+        <!-- 左：DJ機材 -->
+        <rect x="44" y="60" width="206" height="66" rx="10" fill="#151b27"
+              stroke="#ffb347" stroke-opacity=".5"/>
+        <text x="64" y="90" font-size="14.5" font-weight="700" fill="#e3e9f5">DDJ-FLX2</text>
+        <text x="64" y="112" font-size="12" fill="#8b98af">人が触る唯一の入力</text>
+
+        <!-- 左：実機 -->
+        <rect x="44" y="184" width="206" height="166" rx="10" fill="#151b27" stroke="#3a4759"/>
+        <text x="64" y="212" font-size="14.5" font-weight="700" fill="#e3e9f5">スタックチャン</text>
+        <text x="64" y="236" font-size="12" fill="#79b8ff">マイク・タッチ</text>
+        <text x="64" y="260" font-size="12" fill="#8b98af">首（サーボ2軸）</text>
+        <text x="64" y="284" font-size="12" fill="#8b98af">顔（LCD）</text>
+        <text x="64" y="308" font-size="12" fill="#3ee39b">LEDテープ 30粒</text>
+        <text x="64" y="336" font-size="12" fill="#8b98af">スピーカー</text>
+
+        <!-- Mac 中身 -->
+        <rect x="418" y="104" width="160" height="52" rx="8" fill="#151b27" stroke="#3a4759"/>
+        <text x="436" y="128" font-size="13" font-weight="700" fill="#e3e9f5">gateway</text>
+        <text x="436" y="146" font-size="11" fill="#8b98af">窓口・聞き取り</text>
+
+        <rect x="418" y="172" width="160" height="60" rx="8" fill="#151b27" stroke="#3a4759"/>
+        <text x="436" y="196" font-size="13" font-weight="700" fill="#e3e9f5">console</text>
+        <text x="436" y="214" font-size="11" fill="#8b98af">状態を持つ唯一の場所</text>
+
+        <rect x="418" y="248" width="160" height="56" rx="8" fill="#151b27" stroke="#3a4759"/>
+        <text x="436" y="272" font-size="13" font-weight="700" fill="#e3e9f5">背景サーバ</text>
+        <text x="436" y="290" font-size="11" fill="#8b98af">画面とパネルを配る</text>
+
+        <rect x="600" y="104" width="160" height="52" rx="8" fill="#151b27" stroke="#3a4759"/>
+        <text x="618" y="128" font-size="13" font-weight="700" fill="#e3e9f5">踊りの計算</text>
+        <text x="618" y="146" font-size="11" fill="#8b98af">拍・振り付け・色</text>
+
+        <rect x="530" y="396" width="140" height="48" rx="8" fill="#151b27"
+              stroke="#79b8ff" stroke-opacity=".45"/>
+        <text x="548" y="418" font-size="13" font-weight="700" fill="#e3e9f5">Ollama</text>
+        <text x="548" y="436" font-size="11" fill="#8b98af">考える</text>
+
+        <rect x="690" y="396" width="140" height="48" rx="8" fill="#151b27"
+              stroke="#79b8ff" stroke-opacity=".45"/>
+        <text x="708" y="418" font-size="13" font-weight="700" fill="#e3e9f5">VOICEVOX</text>
+        <text x="708" y="436" font-size="11" fill="#8b98af">声を作る</text>
+
+        <!-- 右：画面 -->
+        <rect x="944" y="76" width="160" height="66" rx="10" fill="#151b27"
+              stroke="#c874ff" stroke-opacity=".5"/>
+        <text x="962" y="104" font-size="14" font-weight="700" fill="#e3e9f5">iPad</text>
+        <text x="962" y="126" font-size="11.5" fill="#8b98af">背景スクリーン</text>
+
+        <rect x="944" y="336" width="160" height="66" rx="10" fill="#151b27" stroke="#3a4759"/>
+        <text x="962" y="364" font-size="14" font-weight="700" fill="#e3e9f5">スマホ</text>
+        <text x="962" y="386" font-size="11.5" fill="#8b98af">操作パネル</text>
+
+        <!-- 線 -->
+        <g fill="none" stroke-width="1.5" marker-end="url(#ar)">
+          <use href="#f-midi"  color="#ffb347" stroke="#ffb347" stroke-opacity=".7"/>
+          <use href="#f-pose"  color="#8b98af" stroke="#8b98af" stroke-opacity=".6"/>
+          <use href="#f-led"   color="#3ee39b" stroke="#3ee39b" stroke-opacity=".7"/>
+          <use href="#f-mic"   color="#79b8ff" stroke="#79b8ff" stroke-opacity=".6"/>
+          <use href="#f-stage" color="#c874ff" stroke="#c874ff" stroke-opacity=".7"/>
+          <use href="#f-panel" color="#8b98af" stroke="#8b98af" stroke-opacity=".5"/>
+          <use href="#f-think" color="#79b8ff" stroke="#79b8ff" stroke-opacity=".6"/>
+          <use href="#f-voice" color="#79b8ff" stroke="#79b8ff" stroke-opacity=".6"/>
+        </g>
+        <g font-size="11" font-family="JetBrains Mono, monospace">
+          <text x="278" y="140" fill="#ffb347">MIDI / USB</text>
+          <text x="262" y="292" fill="#8b98af">首 30Hz</text>
+          <text x="262" y="358" fill="#3ee39b">LED 20Hz</text>
+          <text x="272" y="206" fill="#79b8ff">声・タッチ</text>
+          <text x="820" y="150" fill="#c874ff">状態 20Hz</text>
+          <text x="820" y="318" fill="#8b98af">操作 HTTP</text>
+        </g>
+
+        <!-- 走る点 -->
+        <g class="flow">
+          <circle r="3.6" fill="#ffb347"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#f-midi"/></animateMotion></circle>
+          <circle r="3.4" fill="#8b98af"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#f-pose"/></animateMotion></circle>
+          <circle r="3.6" fill="#3ee39b"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#f-led"/></animateMotion></circle>
+          <circle r="3.6" fill="#3ee39b"><animateMotion dur="1.6s" begin=".8s" repeatCount="indefinite"><mpath href="#f-led"/></animateMotion></circle>
+          <circle r="3.4" fill="#79b8ff"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#f-mic"/></animateMotion></circle>
+          <circle r="3.6" fill="#c874ff"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#f-stage"/></animateMotion></circle>
+          <circle r="3.6" fill="#c874ff"><animateMotion dur="1.6s" begin=".8s" repeatCount="indefinite"><mpath href="#f-stage"/></animateMotion></circle>
+          <circle r="3.2" fill="#8b98af"><animateMotion dur="3.4s" repeatCount="indefinite"><mpath href="#f-panel"/></animateMotion></circle>
+          <circle r="3.4" fill="#79b8ff"><animateMotion dur="2.6s" repeatCount="indefinite"><mpath href="#f-think"/></animateMotion></circle>
+          <circle r="3.4" fill="#79b8ff"><animateMotion dur="2.6s" begin="1.3s" repeatCount="indefinite"><mpath href="#f-voice"/></animateMotion></circle>
+        </g>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><i style="background:#ffb347"></i>人の操作</span>
+      <span><i style="background:#3ee39b"></i>LED</span>
+      <span><i style="background:#c874ff"></i>画面</span>
+      <span><i style="background:#79b8ff"></i>声と思考</span>
+      <span><i style="background:#8b98af"></i>首・操作</span>
+    </div>
+    <figcaption>状態を持つのは console だけ。他は全部「送る」か「受け取る」</figcaption>
+  </figure>
+
+  <!-- ══ 3. DJ盤 ══ -->
+  <h2><span class="n">03 — DJ盤</span>つまみ1つ1つが、何になるか</h2>
+  <p class="sub">
+    特別な操作画面はありません。<b>MIDIの数字を、角度・色・光量に読み替えているだけ</b>です。
+    DJが普段やる手つきが、そのまま演出になります。
+  </p>
+
+  <figure>
+    <div class="board">
+      <svg class="dia" viewBox="0 0 1140 400" role="img"
+           aria-label="DJコントローラの各つまみが首・表情・LED・スポットライト・バーストに対応する図">
+        <defs>
+          <path id="d-yaw"   d="M214,96 C360,96 420,96 560,96"/>
+          <path id="d-pad"   d="M214,152 C360,152 420,152 560,152"/>
+          <path id="d-led"   d="M214,208 C360,208 420,208 560,208"/>
+          <path id="d-jog"   d="M214,264 C360,264 420,264 560,264"/>
+          <path id="d-burst" d="M214,320 C360,320 420,320 560,320"/>
+        </defs>
+
+        <!-- 盤 -->
+        <rect x="24" y="48" width="190" height="320" rx="12" fill="#151b27" stroke="#ffb347" stroke-opacity=".4"/>
+        <text x="44" y="78" font-family="JetBrains Mono, monospace" font-size="11"
+              letter-spacing="1.4" fill="#ffb347">DDJ-FLX2</text>
+        <g font-size="12.5" fill="#e3e9f5">
+          <circle cx="60" cy="118" r="11" fill="none" stroke="#ffb347" stroke-opacity=".7"/>
+          <text x="82" y="122">つまみ 2本</text>
+          <rect x="49" y="164" width="22" height="16" rx="3" fill="none" stroke="#ff8fb1" stroke-opacity=".7"/>
+          <text x="82" y="177">表情パッド 4</text>
+          <rect x="49" y="220" width="22" height="16" rx="3" fill="none" stroke="#3ee39b" stroke-opacity=".7"/>
+          <text x="82" y="233">LEDパッド 11</text>
+          <circle cx="60" cy="276" r="13" fill="none" stroke="#c874ff" stroke-opacity=".7"/>
+          <text x="82" y="281">右レコード</text>
+          <rect x="54" y="316" width="12" height="30" rx="3" fill="none" stroke="#ff6b57" stroke-opacity=".8"/>
+          <text x="82" y="336">音量フェーダー</text>
+        </g>
+
+        <!-- 線 -->
+        <g fill="none" stroke-width="1.4" stroke-dasharray="3 5">
+          <use href="#d-yaw"   stroke="#ffb347" stroke-opacity=".5"/>
+          <use href="#d-pad"   stroke="#ff8fb1" stroke-opacity=".5"/>
+          <use href="#d-led"   stroke="#3ee39b" stroke-opacity=".5"/>
+          <use href="#d-jog"   stroke="#c874ff" stroke-opacity=".5"/>
+          <use href="#d-burst" stroke="#ff6b57" stroke-opacity=".5"/>
+        </g>
+
+        <!-- 結果 -->
+        <g font-family="Zen Kaku Gothic New, sans-serif">
+          <text x="576" y="92"  font-size="14" font-weight="700" fill="#ffb347">首が動く</text>
+          <text x="576" y="112" font-size="12" fill="#8b98af">0〜127 を角度に。同時にLEDが点灯本数でメーターになる</text>
+
+          <text x="576" y="148" font-size="14" font-weight="700" fill="#ff8fb1">表情が変わる</text>
+          <text x="576" y="168" font-size="12" fill="#8b98af">笑う／驚く／照れる／しょんぼり。4秒で戻る</text>
+
+          <text x="576" y="204" font-size="14" font-weight="700" fill="#3ee39b">LEDの模様が変わる</text>
+          <text x="576" y="224" font-size="12" fill="#8b98af">13種。20秒で自動で戻る。実機と背景が同時に変わる</text>
+
+          <text x="576" y="260" font-size="14" font-weight="700" fill="#c874ff">下からスポットライト</text>
+          <text x="576" y="280" font-size="12" fill="#8b98af">擦っている間だけ。手を離すと自動の首振りに戻る</text>
+
+          <text x="576" y="316" font-size="14" font-weight="700" fill="#ff6b57">バーストモード</text>
+          <text x="576" y="336" font-size="12" fill="#8b98af">70%で赤く点火 → 100%で花火とCO2。首も激しく揺れる</text>
+        </g>
+
+        <g class="flow">
+          <circle r="3.4" fill="#ffb347"><animateMotion dur="1.5s" repeatCount="indefinite"><mpath href="#d-yaw"/></animateMotion></circle>
+          <circle r="3.4" fill="#ff8fb1"><animateMotion dur="1.5s" begin=".3s" repeatCount="indefinite"><mpath href="#d-pad"/></animateMotion></circle>
+          <circle r="3.4" fill="#3ee39b"><animateMotion dur="1.5s" begin=".6s" repeatCount="indefinite"><mpath href="#d-led"/></animateMotion></circle>
+          <circle r="3.4" fill="#c874ff"><animateMotion dur="1.5s" begin=".9s" repeatCount="indefinite"><mpath href="#d-jog"/></animateMotion></circle>
+          <circle r="3.4" fill="#ff6b57"><animateMotion dur="1.5s" begin="1.2s" repeatCount="indefinite"><mpath href="#d-burst"/></animateMotion></circle>
+        </g>
+      </svg>
+    </div>
+    <figcaption>割り当ては `app/dj/mapping.json` の1箇所。ここを変えれば手つきが変わる</figcaption>
+  </figure>
+
+  <div class="tablewrap" style="margin-top:20px">
+    <table>
+      <thead><tr><th>操作</th><th>MIDI</th><th>実機で起きること</th><th>背景で起きること</th></tr></thead>
+      <tbody>
+        <tr><td>首のつまみ</td><td class="k">CC ch6 #23</td>
+            <td>首が左右に回る／<b>LEDが点灯本数で値を出す</b></td><td>—</td></tr>
+        <tr><td>うなずきのつまみ</td><td class="k">CC ch0 #15</td>
+            <td>首が上下する／同じくメーター</td><td>—</td></tr>
+        <tr><td>表情パッド ×4</td><td class="k">Note ch7 #4–#7</td>
+            <td><span class="chip c-face">happy</span> <span class="chip c-face">surprised</span>
+                <span class="chip c-face">embarrassed</span> <span class="chip c-face">sad</span></td><td>—</td></tr>
+        <tr><td>LEDパッド ×11</td><td class="k">Note ch9 #0–#7 ／ ch1 #11,#12,#88</td>
+            <td>模様が変わる（13種）</td><td><b>同じ色が柱とグリルとリングに出る</b></td></tr>
+        <tr><td>PLAY</td><td class="k">Note ch0 #11</td><td>DJモードON。音に反応し始める</td><td>照明が点く</td></tr>
+        <tr><td>MASTER</td><td class="k">Note ch6 #99</td><td>OFF。待機に戻る</td><td><b>照明が落ちる</b></td></tr>
+        <tr><td>右レコード（擦る）</td><td class="k">CC ch1 #34</td>
+            <td>LEDが白く速く刻む</td><td>下からスポットライトが立ち上がり、左右に振れる</td></tr>
+        <tr><td>音量フェーダー</td><td class="k">CC ch1 #19</td>
+            <td>70%〜 赤く激しい点滅／首が大きく揺れる</td>
+            <td>会場が赤く染まる → 100%で<b>花火・CO2</b></td></tr>
+        <tr><td>未割当のつまみ・ボタン</td><td class="k">—</td>
+            <td><b>必ず何か起きる</b>（頷き＋LED）</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <b>押して無反応だと、その人は「壊れている」と思って離れます。</b>
+    だから割り当てていないボタンでも、必ず身体のどこかが応えるようにしてあります。
+  </div>
+
+  <!-- ══ 4. LED連動 ══ -->
+  <h2><span class="n">04 — LEDの連動</span>1本の配列が、4箇所に出る</h2>
+  <p class="sub">
+    背景の光は「それらしく作った絵」ではありません。
+    <b>実機のテープに送っているのと、まったく同じ30個の色の列</b>を、画面も受け取っています。
+  </p>
+
+  <figure>
+    <div class="board">
+      <svg class="dia" viewBox="0 0 1140 300" role="img"
+           aria-label="consoleが作った30個の色の配列が、実機のテープと背景の柱・グリル・ウーファーのリングへ同時に送られる">
+        <defs>
+          <path id="l-dev"  d="M340,150 C420,150 440,74 520,68"/>
+          <path id="l-scr"  d="M340,150 C420,150 440,226 520,232"/>
+          <path id="l-s1"   d="M700,232 C760,232 770,150 830,146"/>
+          <path id="l-s2"   d="M700,232 C760,232 770,196 830,192"/>
+          <path id="l-s3"   d="M700,232 C760,232 770,242 830,238"/>
+        </defs>
+
+        <rect x="120" y="116" width="220" height="68" rx="10" fill="#151b27" stroke="#3ee39b" stroke-opacity=".5"/>
+        <text x="142" y="146" font-size="14.5" font-weight="700" fill="#e3e9f5">console が色を決める</text>
+        <text x="142" y="168" font-size="12" fill="#8b98af">拍・模様・会話の状態・バースト</text>
+
+        <!-- 30粒の帯 -->
+        <g>
+          <text x="142" y="212" font-family="JetBrains Mono, monospace" font-size="11" fill="#5d6a80">
+            [[r,g,b] × 30]
+          </text>
+          <g class="flow">
+            <rect x="142" y="222" width="180" height="10" rx="5" fill="#3ee39b" opacity=".18"/>
+            <rect x="142" y="222" width="30" height="10" rx="5" fill="#3ee39b">
+              <animate attributeName="x" values="142;292;142" dur="3s" repeatCount="indefinite"/>
+            </rect>
+          </g>
+        </g>
+
+        <rect x="520" y="36" width="180" height="64" rx="10" fill="#151b27" stroke="#3a4759"/>
+        <text x="540" y="64" font-size="14" font-weight="700" fill="#e3e9f5">実機のテープ</text>
+        <text x="540" y="86" font-size="11.5" fill="#8b98af">足元に巻いた30粒</text>
+
+        <rect x="520" y="200" width="180" height="64" rx="10" fill="#151b27" stroke="#c874ff" stroke-opacity=".5"/>
+        <text x="540" y="228" font-size="14" font-weight="700" fill="#e3e9f5">背景スクリーン</text>
+        <text x="540" y="250" font-size="11.5" fill="#8b98af">同じ配列を受け取る</text>
+
+        <g font-size="13" fill="#e3e9f5">
+          <text x="848" y="151">柱のテープ（左は昇り・右は降り）</text>
+          <text x="848" y="197">スピーカーのグリルの溝</text>
+          <text x="848" y="243">ウーファーの縁のリング</text>
+        </g>
+
+        <g fill="none" stroke-width="1.5" stroke-opacity=".6">
+          <use href="#l-dev" stroke="#3ee39b"/><use href="#l-scr" stroke="#c874ff"/>
+          <use href="#l-s1" stroke="#c874ff" stroke-opacity=".35"/>
+          <use href="#l-s2" stroke="#c874ff" stroke-opacity=".35"/>
+          <use href="#l-s3" stroke="#c874ff" stroke-opacity=".35"/>
+        </g>
+        <g class="flow">
+          <circle r="3.6" fill="#3ee39b"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#l-dev"/></animateMotion></circle>
+          <circle r="3.6" fill="#c874ff"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#l-scr"/></animateMotion></circle>
+          <circle r="3" fill="#c874ff"><animateMotion dur="1.2s" begin="1.4s" repeatCount="indefinite"><mpath href="#l-s1"/></animateMotion></circle>
+          <circle r="3" fill="#c874ff"><animateMotion dur="1.2s" begin="1.5s" repeatCount="indefinite"><mpath href="#l-s2"/></animateMotion></circle>
+          <circle r="3" fill="#c874ff"><animateMotion dur="1.2s" begin="1.6s" repeatCount="indefinite"><mpath href="#l-s3"/></animateMotion></circle>
+        </g>
+      </svg>
+    </div>
+    <figcaption>画面側で作り直していないので、目の前の光と画面の光は必ず一致する</figcaption>
+  </figure>
+
+  <div class="note">
+    <b>消えているときは、画面の光も消えます。</b>
+    「いま出している色」の判定を1箇所に置いてあるので、
+    実機が暗いのに画面だけ光る、が起きません。
+  </div>
+
+  <!-- ══ 5. 表情 ══ -->
+  <h2><span class="n">05 — 表情</span>顔は、誰が決めているか</h2>
+  <p class="sub">
+    顔は7種類。<b>パッドで直接変えるものと、状態から自動で決まるものがあります。</b>
+    ぶつかったときは、強い方が勝つように順番が決めてあります。
+  </p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>強さ</th><th>きっかけ</th><th>顔</th><th>期限</th></tr></thead>
+      <tbody>
+        <tr><td class="k">1（最強）</td><td>つまみを触っている</td><td><span class="chip c-face">向いている方向</span></td><td>離して2秒</td></tr>
+        <tr><td class="k">2</td><td><b>頭をなでた</b></td><td>照れる／慣れる／嫌がる（6種から選ぶ）</td><td>3秒</td></tr>
+        <tr><td class="k">3</td><td>聞いている／喋っている</td><td><span class="chip c-face">thinking</span> <span class="chip c-face">happy</span></td><td>会話が終わるまで</td></tr>
+        <tr><td class="k">4</td><td>サビを検出</td><td>驚く</td><td>短く</td></tr>
+        <tr><td class="k">5</td><td>歓声を検出</td><td>喜ぶ</td><td>短く</td></tr>
+        <tr><td class="k">6</td><td>表情パッド</td><td><span class="chip c-face">happy</span> <span class="chip c-face">surprised</span>
+            <span class="chip c-face">embarrassed</span> <span class="chip c-face">sad</span></td><td>4秒で戻る</td></tr>
+        <tr><td class="k">7（既定）</td><td>モード</td><td>DJ中は <span class="chip c-face">happy</span>／待機は <span class="chip c-face">idle</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <b>一時的な顔には、必ず期限を付けてあります。</b>
+    期限のない上書きは消し忘れが起きて、パッドを押しただけで顔が固定されます。
+  </div>
+
+  <!-- ══ 6. リモコン ══ -->
+  <h2><span class="n">06 — リモコン</span>ブラウザから何ができるか</h2>
+  <p class="sub">
+    スマホでURLを開くだけ。アプリは要りません。<b>カメラは既定でオフ</b>です。
+  </p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>できること</th><th>送っているもの</th><th>結果</th></tr></thead>
+      <tbody>
+        <tr><td>映像を見る</td><td class="k">ws /api/camws</td><td>1.9コマ/秒で写真が流れる（<b>押して初めて動く</b>）</td></tr>
+        <tr><td>首を動かす</td><td class="k">act: head</td><td>左・右・上・下・正面</td></tr>
+        <tr><td>顔を変える</td><td class="k">act: face</td><td>7種</td></tr>
+        <tr><td>モードを変える</td><td class="k">act: mode</td><td>OFF ⇄ DJ</td></tr>
+        <tr><td>LEDの模様</td><td class="k">act: led</td><td>13種。20秒で戻る</td></tr>
+        <tr><td><b>バースト</b></td><td class="k">act: burst</td><td>DJ機材が無くても赤くできる（<b>リハ用の逃げ道</b>）</td></tr>
+        <tr><td>喋らせる</td><td class="k">act: say</td><td>書いた文をそのまま読む</td></tr>
+        <tr><td>写真を撮る</td><td class="k">act: photo</td><td>1枚撮って返す</td></tr>
+        <tr><td>質問する</td><td class="k">/api/ask</td><td>考えて、<b>文字で返して、声でも喋る</b></td></tr>
+        <tr><td>MIDIを流し込む</td><td class="k">/api/midi</td><td>機材が無くても同じ動きを再現できる</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <b>外にいる人には、ロボットが見えません。</b>
+    だから映像は「見るボタン」ではなく、開いたら流れているのが正しい ──
+    と一度直しました。カメラだけは、プライバシーの約束があるので既定オフのままです。
+  </div>
+
+  <p class="foot">
+    ポートと割り当ての出典は <code>app/dj/mapping.json</code> / <code>.env.gateway</code> /
+    <code>app/dj/console.py</code>。この図はそこから起こしています。
+  </p>
+
+</div>
+</body>
+</html>

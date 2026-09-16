@@ -1,0 +1,309 @@
+<title>スタックチャンのファーム選び</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap">
+
+<style>
+  :root{
+    --paper:#faf7f2; --ink:#16171c; --sub:#5b6070; --faint:#9299a8;
+    --rule:#e2ddd4; --card:#fff;
+    --pick:#c2410c;     /* 選んだもの */
+    --risk:#b91c1c;     /* 気をつけること */
+    --good:#15803d;     /* 良いところ */
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:"Zen Kaku Gothic New",-apple-system,"Hiragino Sans",sans-serif;
+  }
+  :root[data-theme="dark"], :root:not([data-theme="light"]){
+    --paper:#111318; --ink:#e8eaf0; --sub:#a2a9ba; --faint:#6b7382;
+    --rule:#262a33; --card:#171a21;
+    --pick:#fb923c; --risk:#f87171; --good:#4ade80;
+  }
+  :root[data-theme="light"]{
+    --paper:#faf7f2; --ink:#16171c; --sub:#5b6070; --faint:#9299a8;
+    --rule:#e2ddd4; --card:#fff;
+    --pick:#c2410c; --risk:#b91c1c; --good:#15803d;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --paper:#faf7f2; --ink:#16171c; --sub:#5b6070; --faint:#9299a8;
+      --rule:#e2ddd4; --card:#fff;
+      --pick:#c2410c; --risk:#b91c1c; --good:#15803d;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+       font-family:var(--sans);line-height:1.85;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto;padding:60px 24px 110px}
+
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;
+           color:var(--faint);text-transform:uppercase;margin:0 0 16px}
+  h1{font-size:clamp(30px,4.6vw,46px);font-weight:900;line-height:1.22;
+     margin:0 0 20px;letter-spacing:-.01em;text-wrap:balance}
+  .lede{font-size:17px;color:var(--sub);max-width:60ch;margin:0}
+  .by{font-family:var(--mono);font-size:12px;color:var(--faint);margin-top:26px}
+
+  h2{font-size:22px;font-weight:900;margin:76px 0 6px;letter-spacing:-.01em}
+  h2 .n{font-family:var(--mono);font-size:13px;color:var(--pick);
+        display:block;letter-spacing:.14em;margin-bottom:6px;font-weight:700}
+  .sub{color:var(--sub);font-size:15px;margin:0 0 26px;max-width:62ch}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--rule);border-radius:12px;background:var(--card)}
+  table{border-collapse:collapse;width:100%;min-width:660px;font-size:14px}
+  th,td{padding:13px 16px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--faint);
+           text-transform:uppercase;font-weight:700;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  tr.picked{background:color-mix(in srgb, var(--pick) 8%, transparent)}
+  tr.picked td:first-child{font-weight:700}
+  .badge{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+         border:1px solid currentColor;border-radius:4px;padding:1px 6px;margin-left:8px;
+         white-space:nowrap}
+  .b-pick{color:var(--pick)} .b-out{color:var(--faint)}
+  .ng{color:var(--risk);font-weight:700}
+  .ok{color:var(--good);font-weight:700}
+
+  .split{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));margin-top:20px}
+  .box{background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:22px 24px}
+  .box h3{margin:0 0 12px;font-size:15px;font-weight:900}
+  .box.good h3{color:var(--good)} .box.risk h3{color:var(--risk)}
+  .box ul{margin:0;padding-left:1.15em} .box li{margin:7px 0;font-size:14.5px;color:var(--sub)}
+  .box li b{color:var(--ink)}
+
+  blockquote{margin:24px 0;padding:18px 22px;border-left:3px solid var(--pick);
+             background:var(--card);border-radius:0 10px 10px 0;font-size:15px;color:var(--sub)}
+  blockquote b{color:var(--ink)}
+
+  figure{margin:26px 0 0}
+  svg{display:block;width:100%;height:auto;max-width:100%}
+  figcaption{font-size:13px;color:var(--faint);text-align:center;margin-top:12px}
+
+  code{font-family:var(--mono);font-size:13px;background:color-mix(in srgb,var(--ink) 7%,transparent);
+       padding:1px 6px;border-radius:5px}
+  .foot{margin-top:84px;padding-top:26px;border-top:1px solid var(--rule);
+        font-size:13.5px;color:var(--faint)}
+  .foot a{color:var(--sub)}
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">スタックチャン勉強会 / 配布物</p>
+  <h1>ファームを選ぶ、という<br>いちばん大きな分かれ道</h1>
+  <p class="lede">
+    スタックチャンは、箱から出した瞬間から喋ります。とてもよくできています。
+    ただ<b>「その声がどこへ行くか」は、ファームで決まります。</b>
+    5つ調べて、1つ選びました。その理由を置いていきます。
+  </p>
+  <p class="by">2026-09-29 Crypto Cafe and Bar ／ 出典 docs/00-concept.md §5–§7</p>
+
+  <h2><span class="n">01 — 選択肢</span>ファームは5つある</h2>
+  <p class="sub">
+    どれが正解という話ではありません。<b>何を大事にするかで変わります。</b>
+    リモートで使いたいのか、手軽さを取るのか、声を外に出したくないのか。
+  </p>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>ファーム</th><th>どんなもの</th><th>遠隔</th><th>声の行き先</th><th>手間</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>① 出荷時（XiaoZhi）<span class="badge b-out">既定</span></td>
+          <td>ノーコード。アプリだけで完結する</td>
+          <td>クラウド完結</td>
+          <td class="ng">海外のクラウド</td><td>最小</td>
+        </tr>
+        <tr>
+          <td>② xiaozhi-esp32-server</td>
+          <td>接続先を自前サーバーに向ける</td>
+          <td class="ok">できる</td>
+          <td class="ok">自前</td><td>大</td>
+        </tr>
+        <tr>
+          <td>③ 元祖 stack-chan</td>
+          <td>ブラウザだけで書き込める。<b>教材として一番きれい</b></td>
+          <td>概念が薄い</td>
+          <td class="ok">ほぼ出ない</td><td>中</td>
+        </tr>
+        <tr>
+          <td>④ xangi-stackchan</td>
+          <td>PCが頭脳。USB直結でフルローカル</td>
+          <td class="ng">できない</td>
+          <td class="ok">ほぼ出ない</td><td>中〜大</td>
+        </tr>
+        <tr class="picked">
+          <td>⑤ stackchan-mcp<span class="badge b-pick">これにした</span></td>
+          <td>②のフォーク＋<b>MCPゲートウェイ</b></td>
+          <td class="ok">できる</td>
+          <td class="ok">自前</td><td>大</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2><span class="n">02 — 出荷時ファーム</span>よくできている。だから、知っておく</h2>
+  <p class="sub">
+    けなす話ではありません。<b>体験としては、いまでもこれが一番速い。</b>
+    ただ、知らずに使うのと、知って使うのは別です。
+  </p>
+
+  <div class="split">
+    <div class="box good">
+      <h3>良いところ</h3>
+      <ul>
+        <li><b>買ってすぐ喋る。</b>アプリだけで完結する</li>
+        <li><b>速い。</b>自前で組むと、たいてい負ける</li>
+        <li>表情・モーション・ダンス・ESP-NOW が最初から入っている</li>
+        <li>アプリ経由のアバター／監視カメラ、アプリストア、OTA</li>
+        <li>Home Assistant の MCP にも繋がる</li>
+      </ul>
+    </div>
+    <div class="box risk">
+      <h3>気をつけること</h3>
+      <ul>
+        <li>音声認識・思考・音声合成は<b>すべて海外のクラウド</b>で処理されます</li>
+        <li>通信先は<b>深セン・香港</b>のバックエンド</li>
+        <li><b>セットアップに利用規約の提示も承諾もありません</b></li>
+        <li>会話の流れで<b>カメラ撮影が起き、画像も送られます</b></li>
+        <li>ウェイクワードは <code>Hi, StackChan</code> 固定。モデルはアプリの選択肢内</li>
+      </ul>
+    </div>
+  </div>
+
+  <blockquote>
+    規約には「入力された内容を<b>無償・全世界・永続的に</b>使ってよい」とあります。
+    モデルの改善、研究、宣伝、マーケティングを含みます。
+    <b>規約自体は普通です。問題は、同意の動線が無いこと。</b><br><br>
+    人前でデモするなら、<b>説明責任はこちら側に来ます。</b>
+    逆に言えば、これは「AIデバイスのプライバシー」の生きた教材になります。
+  </blockquote>
+
+  <h2><span class="n">03 — 選んだ理由</span>体験を捨てずに、頭脳だけ動かせるから</h2>
+  <p class="sub">
+    ②と⑤の系統は、そもそも<b>「WebSocketで遠くのサーバーに繋いで喋る」</b>のがプロトコルの前提です。
+    だから<b>接続先のURLを差し替えるだけ</b>で、頭脳の置き場所を変えられます。無理をしていません。
+  </p>
+
+  <div class="split">
+    <div class="box">
+      <h3>⑤ stackchan-mcp を選んだ3つの理由</h3>
+      <ul>
+        <li><b>K151専用のボード定義がある。</b>サーボ・LED・タッチ・カメラがそのまま動く</li>
+        <li><b>MCPゲートウェイになっている。</b>Claude Code から首振り・撮影・表情を直接呼べる
+            ＝<b>開発が驚くほど速い</b></li>
+        <li><b>出荷時の体験を保ったまま</b>、頭脳だけ自分の側へ移せる</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>捨てた理由</h3>
+      <ul>
+        <li>③ 元祖 — <b>教材としては一番きれい。</b>ただ遠隔の概念が薄い</li>
+        <li>④ xangi — <b>USB直結なので遠隔ができない。</b>宅内据え置きなら最高</li>
+        <li>①は、上のとおり</li>
+      </ul>
+    </div>
+  </div>
+
+  <blockquote>
+    ⑤は②の代わりではなく、<b>重ねるもの</b>です。
+    そして全部 <b>OSS</b>。読めるし、直せるし、フォークできる。
+    <b>だから「自分の場合の構成」を作れます。</b>今日話すのも、唯一解ではなく僕の場合です。
+  </blockquote>
+
+  <h2><span class="n">04 — MCPという入口</span>ロボットが、AIの道具になる</h2>
+  <p class="sub">
+    MCP は「道具の並べ方と呼び方」だけを決めた規格です。
+    これに対応していると、<b>Claude Code から実機の機能をそのまま呼べます。</b>
+  </p>
+
+  <figure>
+    <svg viewBox="0 0 900 200" role="img"
+         aria-label="Claude Code から MCP を通じて、実機の首振り・撮影・表情・LEDを直接呼べる">
+      <defs>
+        <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6"
+                orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <g fill="none" stroke="currentColor" stroke-width="1.3" opacity=".45" marker-end="url(#a1)">
+        <path d="M232,78 L318,78"/>
+        <path d="M562,78 L648,78"/>
+      </g>
+      <g font-family="Zen Kaku Gothic New, sans-serif">
+        <rect x="24" y="44" width="208" height="70" rx="10" fill="none"
+              stroke="currentColor" stroke-opacity=".28"/>
+        <text x="48" y="78" font-size="15" font-weight="700" fill="currentColor">Claude Code</text>
+        <text x="48" y="100" font-size="12.5" fill="currentColor" opacity=".6">人が日本語で頼む</text>
+
+        <rect x="318" y="44" width="244" height="70" rx="10" fill="none"
+              stroke="currentColor" stroke-opacity=".28"/>
+        <text x="342" y="78" font-size="15" font-weight="700" fill="currentColor">MCP ゲートウェイ</text>
+        <text x="342" y="100" font-size="12.5" fill="currentColor" opacity=".6">道具の名前と引数を決めている</text>
+
+        <rect x="648" y="44" width="228" height="70" rx="10" fill="none"
+              stroke="currentColor" stroke-opacity=".28"/>
+        <text x="672" y="78" font-size="15" font-weight="700" fill="currentColor">スタックチャン</text>
+        <text x="672" y="100" font-size="12.5" fill="currentColor" opacity=".6">首・LED・カメラ・タッチ</text>
+
+        <text x="450" y="162" font-size="13.5" text-anchor="middle" fill="currentColor" opacity=".72">
+          「右を向いて写真を撮って」で、実機が動いて画像が返る（道具は49個）
+        </text>
+      </g>
+    </svg>
+    <figcaption>取扱説明書と製品が、同じものになった</figcaption>
+  </figure>
+
+  <h2><span class="n">05 — いまの形</span>結局どうなったか</h2>
+  <p class="sub">
+    ロボットは<b>入口と出口だけ</b>。考えるのも、声を作るのも、光らせるのも、全部Macの中です。
+  </p>
+
+  <figure>
+    <svg viewBox="0 0 900 260" role="img"
+         aria-label="スタックチャンはマイク・スピーカー・首・LEDのみ。Macの中にゲートウェイ、ローカルLLM、音声合成がある">
+      <g fill="none" stroke="currentColor" stroke-width="1.3" opacity=".45" marker-end="url(#a1)">
+        <path d="M262,96 L392,96"/>
+      </g>
+      <g fill="none" stroke="currentColor" stroke-width="1.3" opacity=".3" marker-end="url(#a1)">
+        <path d="M392,150 L262,150"/>
+      </g>
+      <g font-family="Zen Kaku Gothic New, sans-serif">
+        <rect x="24" y="52" width="238" height="142" rx="11" fill="none"
+              stroke="currentColor" stroke-opacity=".28"/>
+        <text x="48" y="86" font-size="15" font-weight="700" fill="currentColor">スタックチャン</text>
+        <text x="48" y="112" font-size="13" fill="currentColor" opacity=".72">マイク・スピーカー</text>
+        <text x="48" y="136" font-size="13" fill="currentColor" opacity=".72">首・顔・LEDテープ30粒</text>
+        <text x="48" y="168" font-size="12" fill="currentColor" opacity=".45"
+              font-family="JetBrains Mono, monospace">中にAIは入っていない</text>
+
+        <rect x="392" y="30" width="484" height="200" rx="11" fill="none"
+              stroke="currentColor" stroke-opacity=".28"/>
+        <text x="416" y="62" font-size="15" font-weight="700" fill="currentColor">Mac（この机の上）</text>
+        <text x="416" y="96" font-size="13.5" fill="currentColor" opacity=".8">gateway ── 実機との窓口・聞き取り</text>
+        <text x="416" y="126" font-size="13.5" fill="currentColor" opacity=".8">ローカルLLM ── 考える</text>
+        <text x="416" y="156" font-size="13.5" fill="currentColor" opacity=".8">VOICEVOX ── 声を作る</text>
+        <text x="416" y="186" font-size="13.5" fill="currentColor" opacity=".8">console ── 踊り・LED・背景スクリーン</text>
+        <text x="416" y="214" font-size="12" fill="currentColor" opacity=".45"
+              font-family="JetBrains Mono, monospace">外部APIは1つも使っていない</text>
+
+        <text x="327" y="88" font-size="12" text-anchor="middle" fill="currentColor" opacity=".6">声・タッチ</text>
+        <text x="327" y="170" font-size="12" text-anchor="middle" fill="currentColor" opacity=".6">首・光・声</text>
+      </g>
+    </svg>
+    <figcaption>実機は I/O ゲートウェイ。だから頭脳を差し替えられる</figcaption>
+  </figure>
+
+  <blockquote>
+    <b>これが今日いちばん持ち帰ってほしい考え方です。</b><br>
+    「中にAIが入っているロボット」だと思うと、買ったものが天井になります。
+    <b>入口と出口だと思うと、頭脳は自分で選べます。</b>
+    今日のこれも、明日には別のモデルに差し替えられます。
+  </blockquote>
+
+  <p class="foot">
+    出典はすべて手元の実機で確認したものです（2026-09、K151）。
+    詳しい根拠と手順は当日配るリポジトリに入っています。
+    <b>手順は読まなくて構いません。あなたのエージェントに読ませてください。</b>
+  </p>
+
+</div>

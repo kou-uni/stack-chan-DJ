@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>スタックチャンDJ 配線図</title>
+<style>
+  :root{
+    --ink:#080a0f; --ink2:#10151f; --ink3:#161d2b;
+    --line:#28313f; --line2:#3a4759;
+    --text:#e2e8f4; --dim:#8b98af; --faint:#5d6a80;
+    --midi:#ffb347;   /* 人の操作 */
+    --led:#3ee39b;    /* LEDの同期 */
+    --voice:#79b8ff;  /* 声 */
+    --stage:#c874ff;  /* 画面 */
+    --warn:#ff6b57;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:"Zen Kaku Gothic New",-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--ink); color:var(--text);
+    font-family:var(--sans); font-weight:400; line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:56px 24px 96px}
+
+  /* ── 見出し ─────────────────────────── */
+  .eyebrow{
+    font-family:var(--mono); font-size:12px; letter-spacing:.16em;
+    color:var(--faint); text-transform:uppercase; margin:0 0 14px;
+  }
+  h1{
+    font-size:clamp(30px,5vw,50px); font-weight:900; line-height:1.18;
+    margin:0 0 18px; text-wrap:balance; letter-spacing:-.01em;
+  }
+  h1 .hl{
+    background:linear-gradient(transparent 62%, rgba(62,227,155,.22) 62%);
+  }
+  .lede{
+    font-size:17px; color:var(--dim); max-width:62ch; margin:0 0 8px;
+  }
+  .stamp{
+    font-family:var(--mono); font-size:12px; color:var(--faint);
+    margin:22px 0 0; display:flex; gap:18px; flex-wrap:wrap;
+  }
+
+  /* ── 切り替え ───────────────────────── */
+  .modes{display:flex; gap:8px; margin:40px 0 18px; flex-wrap:wrap}
+  .modes button{
+    font-family:var(--sans); font-weight:700; font-size:14px;
+    color:var(--dim); background:var(--ink2);
+    border:1px solid var(--line); border-radius:999px;
+    padding:9px 20px; cursor:pointer; transition:.18s;
+  }
+  .modes button:hover{color:var(--text); border-color:var(--line2)}
+  .modes button[aria-pressed="true"]{
+    color:var(--ink); background:var(--text); border-color:var(--text);
+  }
+  .modes button:focus-visible{outline:2px solid var(--led); outline-offset:3px}
+  .modenote{
+    font-size:14px; color:var(--dim); margin:0 0 22px; min-height:1.75em;
+  }
+  .modenote b{color:var(--text); font-weight:700}
+
+  /* ── 図 ───────────────────────────── */
+  figure{margin:0}
+  .board{
+    background:
+      radial-gradient(120% 90% at 22% 8%, rgba(200,116,255,.07), transparent 60%),
+      radial-gradient(100% 80% at 88% 92%, rgba(121,184,255,.07), transparent 60%),
+      var(--ink2);
+    border:1px solid var(--line); border-radius:18px;
+    padding:10px; overflow-x:auto;
+  }
+  svg.dia{display:block; width:100%; height:auto; min-width:760px}
+  figcaption{
+    font-size:13px; color:var(--faint); margin-top:14px; text-align:center;
+  }
+
+  /* ── 凡例 ───────────────────────────── */
+  .legend{
+    display:flex; gap:22px; flex-wrap:wrap; justify-content:center;
+    margin:22px 0 0; font-size:13px; color:var(--dim);
+  }
+  .legend span{display:inline-flex; align-items:center; gap:8px}
+  .legend i{width:22px; height:3px; border-radius:2px; display:block}
+
+  /* ── 読みどころ ─────────────────────── */
+  h2{
+    font-size:13px; font-family:var(--mono); letter-spacing:.16em;
+    color:var(--faint); text-transform:uppercase;
+    margin:72px 0 22px; font-weight:700;
+  }
+  .cards{
+    display:grid; gap:14px;
+    grid-template-columns:repeat(auto-fit,minmax(255px,1fr));
+  }
+  .card{
+    background:var(--ink2); border:1px solid var(--line);
+    border-radius:14px; padding:22px 22px 24px; position:relative;
+  }
+  .card::before{
+    content:""; position:absolute; left:22px; top:0; width:34px; height:2px;
+    background:var(--c,var(--line2));
+  }
+  .card h3{
+    font-size:16px; font-weight:700; margin:12px 0 10px; line-height:1.5;
+  }
+  .card p{font-size:14px; color:var(--dim); margin:0}
+  .card p + p{margin-top:10px}
+  .card code{
+    font-family:var(--mono); font-size:12.5px; color:var(--text);
+    background:var(--ink3); padding:1px 6px; border-radius:5px;
+  }
+  .card .tag{
+    font-family:var(--mono); font-size:11px; letter-spacing:.1em;
+    color:var(--c,var(--faint));
+  }
+
+  /* ── 表 ───────────────────────────── */
+  .tablewrap{overflow-x:auto; border:1px solid var(--line); border-radius:14px}
+  table{border-collapse:collapse; width:100%; min-width:560px; font-size:14px}
+  th,td{padding:13px 18px; text-align:left; border-bottom:1px solid var(--line)}
+  thead th{
+    font-family:var(--mono); font-size:11px; letter-spacing:.12em;
+    color:var(--faint); text-transform:uppercase; font-weight:700;
+    background:var(--ink3);
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.n{font-family:var(--mono); color:var(--dim); font-variant-numeric:tabular-nums}
+  .yes{color:var(--led); font-weight:700}
+  .no{color:var(--warn); font-weight:700}
+
+  .foot{
+    margin-top:70px; padding-top:26px; border-top:1px solid var(--line);
+    font-size:13px; color:var(--faint);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .flow{display:none}
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap">
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">Crypto Cafe and Bar / 2026-09-29</p>
+  <h1>DJ台の上のロボットは、<br><span class="hl">この部屋の中だけで</span>動いている。</h1>
+  <p class="lede">
+    人がDJ機材をいじる。ロボットが踊る。背中のスクリーンが同じ色で光る。
+    話しかけると答える ── 考えているのも、この机の上のMacの中。
+    声も映像も、この部屋から一歩も出ません。
+  </p>
+  <p class="stamp">
+    <span>更新 2026-09-14</span>
+    <span>頭脳 Ollama / gemma3:4b</span>
+    <span>声 VOICEVOX 話者14</span>
+  </p>
+
+  <div class="modes" role="group" aria-label="構成の切り替え">
+    <button id="b-now" aria-pressed="true">いま（自宅で開発中）</button>
+    <button id="b-day" aria-pressed="false">当日（会場）</button>
+  </div>
+  <p class="modenote" id="modenote">
+    <b>いまは Mac Studio 1台に全部載っています。</b>
+    DJ機材もここに挿さっているので、この形のまま作り込めます。
+  </p>
+
+  <figure>
+    <div class="board">
+      <svg class="dia" viewBox="0 0 1180 660" role="img"
+           aria-label="DJ機材からMacへ、Macからロボットと背景画面へ、そして自宅のローカルLLMへ、データがどう流れるかの構成図">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+          <!-- 流れの線（点を走らせる同じ経路） -->
+          <path id="p-midi"  d="M262,168 C330,168 320,300 372,318"/>
+          <path id="p-pose"  d="M372,404 C320,404 320,432 262,432"/>
+          <path id="p-stage" d="M512,268 C512,236 512,232 512,204"/>
+          <path id="p-mic"   d="M262,372 C316,372 330,352 372,352"/>
+          <path id="p-brain" d="M652,360 C740,360 760,352 840,352"/>
+          <path id="p-back"  d="M840,392 C760,392 740,400 652,400"/>
+          <path id="p-phone" d="M262,556 C330,556 340,470 372,452"/>
+        </defs>
+
+        <!-- ── 会場 / 自宅 の地 ── -->
+        <rect x="20" y="70" width="700" height="560" rx="16"
+              fill="#0c1018" stroke="#232c3a"/>
+        <text x="44" y="102" font-family="JetBrains Mono, monospace" font-size="12"
+              letter-spacing="2" fill="#5d6a80">VENUE — 会場</text>
+        <g id="g-home">
+          <rect x="756" y="240" width="404" height="220" rx="16"
+                fill="#0c1018" stroke="#232c3a"/>
+          <text x="780" y="272" font-family="JetBrains Mono, monospace" font-size="12"
+                letter-spacing="2" fill="#5d6a80">HOME — 自宅（退避先）</text>
+        <line x1="738" y1="120" x2="738" y2="600" stroke="#28313f"
+              stroke-dasharray="3 7"/>
+        <text x="738" y="112" text-anchor="middle" font-family="JetBrains Mono, monospace"
+              font-size="11" fill="#5d6a80">インターネット（自分の家までの往復だけ）</text>
+        </g>
+
+        <!-- ── DJ機材 ── -->
+        <g>
+          <rect x="62" y="128" width="200" height="80" rx="11"
+                fill="#151b27" stroke="#ffb347" stroke-opacity=".5"/>
+          <text x="82" y="160" font-size="15" font-weight="700" fill="#e2e8f4">DDJ-FLX2</text>
+          <text x="82" y="184" font-size="12.5" fill="#8b98af">人が触る唯一の入力</text>
+          <circle cx="238" cy="152" r="4" fill="#ffb347"/>
+        </g>
+
+        <!-- ── スタックチャン ── -->
+        <g>
+          <rect x="62" y="300" width="200" height="148" rx="11"
+                fill="#151b27" stroke="#3a4759"/>
+          <text x="82" y="332" font-size="15" font-weight="700" fill="#e2e8f4">スタックチャン</text>
+          <text x="82" y="356" font-size="12.5" fill="#79b8ff">マイク・スピーカー</text>
+          <text x="82" y="378" font-size="12.5" fill="#8b98af">顔・首（サーボ2軸）</text>
+          <text x="82" y="400" font-size="12.5" fill="#3ee39b">LEDテープ 30粒</text>
+          <text x="82" y="428" font-family="JetBrains Mono, monospace" font-size="11"
+                fill="#5d6a80">ESP32 / Wi-Fi</text>
+        </g>
+
+        <!-- ── 参加者のスマホ ── -->
+        <g>
+          <rect x="62" y="520" width="200" height="72" rx="11"
+                fill="#151b27" stroke="#3a4759"/>
+          <text x="82" y="550" font-size="14" font-weight="700" fill="#e2e8f4">参加者のスマホ</text>
+          <text x="82" y="572" font-size="12.5" fill="#8b98af">操作パネル（ブラウザ）</text>
+        </g>
+
+        <!-- ── iPad ── -->
+        <g>
+          <rect x="372" y="128" width="280" height="76" rx="11"
+                fill="#151b27" stroke="#c874ff" stroke-opacity=".5"/>
+          <text x="394" y="158" font-size="15" font-weight="700" fill="#e2e8f4">iPad — 背景スクリーン</text>
+          <text x="394" y="182" font-size="12.5" fill="#8b98af">ブラウザでHTMLを開くだけ</text>
+        </g>
+
+        <!-- ── 母艦 ── -->
+        <g>
+          <rect x="372" y="268" width="280" height="256" rx="11"
+                fill="#151b27" stroke="#3a4759"/>
+          <text id="hostname" x="394" y="298" font-size="15" font-weight="700"
+                fill="#e2e8f4">Mac Studio（いま）</text>
+          <text id="hostsub" x="394" y="318" font-family="JetBrains Mono, monospace"
+                font-size="11" fill="#5d6a80">当日は MacBook に載せ替える</text>
+          <line x1="394" y1="332" x2="630" y2="332" stroke="#28313f"/>
+          <text x="394" y="358" font-size="13" fill="#dfe6f2">gateway<tspan fill="#8b98af" font-size="12"> — 実機の窓口・聞き取り</tspan></text>
+          <text x="394" y="384" font-size="13" fill="#dfe6f2">console<tspan fill="#8b98af" font-size="12"> — 踊り・LED・首</tspan></text>
+          <text x="394" y="410" font-size="13" fill="#dfe6f2">背景サーバ<tspan fill="#8b98af" font-size="12"> — iPadに配る</tspan></text>
+          <text x="394" y="436" font-size="13" fill="#dfe6f2">VOICEVOX<tspan fill="#8b98af" font-size="12"> — 声を作る</tspan></text>
+          <text x="394" y="462" font-size="13" fill="#dfe6f2">操作パネル<tspan fill="#8b98af" font-size="12"> — スマホの受け口</tspan></text>
+          <text id="inbrain" x="394" y="488" font-size="13" fill="#79b8ff">Ollama<tspan fill="#8b98af" font-size="12"> — 考える（gemma3:4b・この機械の中）</tspan></text>
+          <text x="394" y="512" font-family="JetBrains Mono, monospace" font-size="11"
+                fill="#5d6a80">DJ機材はUSB。だからここでしか動かない</text>
+        </g>
+
+        <!-- ── 自宅の頭脳 ── -->
+        <g id="g-brain">
+          <rect x="840" y="300" width="280" height="104" rx="11"
+                fill="#151b27" stroke="#79b8ff" stroke-opacity=".45"/>
+          <text x="862" y="332" font-size="15" font-weight="700" fill="#e2e8f4">Mac Studio — 退避先</text>
+          <text x="862" y="356" font-size="12.5" fill="#8b98af">大きいモデル・MacBookが落ちたとき</text>
+          <text x="862" y="382" font-family="JetBrains Mono, monospace" font-size="11"
+                fill="#5d6a80">think-url を向け替えれば1行で切替</text>
+        </g>
+        <text id="brainnote" x="980" y="432" text-anchor="middle" font-size="12"
+              fill="#5d6a80">ここだけ自宅に残る</text>
+
+        <!-- ── 線 ── -->
+        <g fill="none" stroke-width="1.6" marker-end="url(#ar)">
+          <use href="#p-midi"  color="#ffb347" stroke="#ffb347" stroke-opacity=".75"/>
+          <use href="#p-pose"  color="#3ee39b" stroke="#3ee39b" stroke-opacity=".75"/>
+          <use href="#p-stage" color="#c874ff" stroke="#c874ff" stroke-opacity=".75"/>
+          <use href="#p-mic"   color="#79b8ff" stroke="#79b8ff" stroke-opacity=".6"/>
+          <g id="g-brainline">
+            <use href="#p-brain" color="#79b8ff" stroke="#79b8ff" stroke-opacity=".75"/>
+            <use href="#p-back"  color="#79b8ff" stroke="#79b8ff" stroke-opacity=".45"/>
+          </g>
+          <use href="#p-phone" color="#8b98af" stroke="#8b98af" stroke-opacity=".5"/>
+        </g>
+
+        <!-- ── 線のラベル ── -->
+        <g font-size="11.5" font-family="JetBrains Mono, monospace">
+          <text x="298" y="228" fill="#ffb347">MIDI / USB</text>
+          <text x="286" y="466" fill="#3ee39b">首 30Hz・LED 20Hz</text>
+          <text x="524" y="244" fill="#c874ff">WebSocket 20Hz</text>
+          <text x="276" y="342" fill="#79b8ff">声</text>
+          <g id="g-brainlabel">
+            <text x="690" y="336" fill="#79b8ff">切替時のみ</text>
+            
+          </g>
+          <text x="290" y="506" fill="#8b98af">HTTP</text>
+        </g>
+
+        <!-- ── LEDが同じ配列であることの強調 ── -->
+        <g>
+          <path d="M356,404 C356,470 700,470 700,214" fill="none"
+                stroke="#3ee39b" stroke-opacity=".28" stroke-dasharray="4 6"/>
+          <rect x="452" y="588" width="330" height="52" rx="9"
+                fill="#0f1a16" stroke="#3ee39b" stroke-opacity=".45"/>
+          <circle cx="474" cy="614" r="4" fill="#3ee39b"/>
+          <text x="490" y="610" font-size="12.5" font-weight="700" fill="#3ee39b">同じ1本の配列が、2つへ同時に出る</text>
+          <text x="490" y="630" font-size="11.5" fill="#8b98af">実機のテープと、背景の柱・グリル・縁のリング</text>
+        </g>
+
+        <!-- ── 走る点 ── -->
+        <g class="flow">
+          <circle r="3.6" fill="#ffb347">
+            <animateMotion dur="2.1s" repeatCount="indefinite"><mpath href="#p-midi"/></animateMotion>
+          </circle>
+          <circle r="3.6" fill="#3ee39b">
+            <animateMotion dur="1.5s" repeatCount="indefinite" begin="0s"><mpath href="#p-pose"/></animateMotion>
+          </circle>
+          <circle r="3.6" fill="#3ee39b">
+            <animateMotion dur="1.5s" repeatCount="indefinite" begin=".5s"><mpath href="#p-pose"/></animateMotion>
+          </circle>
+          <circle r="3.6" fill="#3ee39b">
+            <animateMotion dur="1.5s" repeatCount="indefinite" begin="1s"><mpath href="#p-pose"/></animateMotion>
+          </circle>
+          <circle r="3.6" fill="#c874ff">
+            <animateMotion dur="1.5s" repeatCount="indefinite"><mpath href="#p-stage"/></animateMotion>
+          </circle>
+          <circle r="3.6" fill="#c874ff">
+            <animateMotion dur="1.5s" repeatCount="indefinite" begin=".75s"><mpath href="#p-stage"/></animateMotion>
+          </circle>
+          <circle r="3.6" fill="#79b8ff">
+            <animateMotion dur="3.4s" repeatCount="indefinite"><mpath href="#p-mic"/></animateMotion>
+          </circle>
+          <g id="g-braindots">
+            <circle r="3.6" fill="#79b8ff">
+              <animateMotion dur="3.4s" repeatCount="indefinite" begin=".6s"><mpath href="#p-brain"/></animateMotion>
+            </circle>
+            <circle r="3.6" fill="#79b8ff" fill-opacity=".8">
+              <animateMotion dur="3.4s" repeatCount="indefinite" begin="1.9s"><mpath href="#p-back"/></animateMotion>
+            </circle>
+          </g>
+          <circle r="3.2" fill="#8b98af">
+            <animateMotion dur="3.8s" repeatCount="indefinite"><mpath href="#p-phone"/></animateMotion>
+          </circle>
+        </g>
+      </svg>
+    </div>
+
+    <div class="legend">
+      <span><i style="background:#ffb347"></i>人の操作</span>
+      <span><i style="background:#3ee39b"></i>身体とLED</span>
+      <span><i style="background:#c874ff"></i>背景スクリーン</span>
+      <span><i style="background:#79b8ff"></i>声と思考</span>
+    </div>
+
+    <figcaption>
+      点の流れは実際の向き。数字は実際の送信レート。
+    </figcaption>
+  </figure>
+
+  <h2>読みどころ</h2>
+  <div class="cards">
+
+    <div class="card" style="--c:#ffb347">
+      <p class="tag">01 / INPUT</p>
+      <h3>DJコントローラーが、唯一の「人が触る入力」</h3>
+      <p>
+        つまみを回せば首が動く。パッドを押せばLEDの模様が変わる。
+        右のレコードを擦れば下からスポットライトが上がる。
+        音量ゲージを70%まで上げると、会場が赤く染まって花火が出る。
+      </p>
+      <p>
+        <code>MIDI CC</code> を角度・色・光量に読み替えているだけで、
+        <b>特別な操作画面は一切ありません。</b>
+        DJが普段やる手つきが、そのまま演出になります。
+      </p>
+    </div>
+
+    <div class="card" style="--c:#c874ff">
+      <p class="tag">02 / SCREEN</p>
+      <h3>iPadは「HTMLを開いているだけ」</h3>
+      <p>
+        背景のステージ映像は動画ではありません。
+        MacがWebサーバを立て、iPadはそのURLをブラウザで開いているだけ。
+        毎秒20回、いまの状態がWebSocketで届いて、その場で描かれます。
+      </p>
+      <p>
+        だから<b>専用アプリも配線も要りません。</b>
+        画面が増えたらURLを開くだけで増やせます。
+      </p>
+    </div>
+
+    <div class="card" style="--c:#3ee39b">
+      <p class="tag">03 / SYNC</p>
+      <h3>実機のLEDと、背景のLEDは同じ配列</h3>
+      <p>
+        ロボットの足元に巻いた30粒のテープに送る色を、
+        <b>そっくり同じまま</b>背景スクリーンにも送っています。
+        画面側でそれらしく作り直してはいません。
+      </p>
+      <p>
+        背景の柱を這うテープ、スピーカーの溝、ウーファーの縁のリング。
+        全部この配列を映しているので、<b>目の前の光と画面の光が必ず一致します。</b>
+      </p>
+    </div>
+
+    <div class="card" style="--c:#79b8ff">
+      <p class="tag">04 / BRAIN</p>
+      <h3>考えるところだけが、自宅のMacにいる</h3>
+      <p>
+        聞き取りも、考えるのも、声を作るのも<b>ぜんぶ自分のMacの中</b>。
+        外部のAPIは1つも使っていません。<b>いまは1台で完結していて、ネットに出ません。</b>
+      </p>
+      <p>
+        当日も同じです。<b>会場はテザリングなので、頭脳が自宅にあると
+        回線が切れた瞬間に会話が死にます。</b>机の上で完結させます。
+      </p>
+      <p>
+        自宅の Mac Studio は<b>退避先</b>。<code>think-url</code> 1行で行き先が変わるので、
+        <b>「じゃあ自宅に投げてみます」をその場で実演できます。</b>
+      </p>
+    </div>
+
+  </div>
+
+  <h2>落ちたときにどうなるか</h2>
+  <p class="lede" style="font-size:15px; margin-bottom:22px">
+    スタックチャンが誰を見に行くかは、本体の設定ではなく
+    <b>同じLANで名乗っている機械</b>（mDNS）で決まります。
+    名乗る／名乗らないの判断は、<b>Mac Studio だけが持ちます。</b>
+    両方が譲り合うと、誰も名乗らない事故が起きるためです。
+  </p>
+
+  <div class="cards">
+    <div class="card" style="--c:#3ee39b">
+      <p class="tag">A / 平常</p>
+      <h3>MacBook が居る</h3>
+      <p><b>MacBook が無条件で名乗る。</b>空気を読みません。
+      同じLANなので踊りが低遅延で回ります。</p>
+    </div>
+    <div class="card" style="--c:#ffb347">
+      <p class="tag">B / 退避</p>
+      <h3>MacBook が落ちた</h3>
+      <p>Mac Studio が <code>macbook.local:8765</code> を10秒ごとに叩いていて、
+      <b>連続3回（30秒）届かなければ名乗り始めます。</b>
+      復帰は2回で取り下げ ── 上下で回数を変えて、バタつきを止めています。</p>
+    </div>
+    <div class="card" style="--c:#ff6b57">
+      <p class="tag">C / 最後の砦</p>
+      <h3>どちらも居ない</h3>
+      <p>本体の <code>fallback_url</code> が自宅のトンネルを向いています。
+      外を一周してでも繋がる形。<b>ただし遅い。</b></p>
+    </div>
+  </div>
+
+  <div class="tablewrap" style="margin-top:14px">
+    <table>
+      <thead>
+        <tr><th>MacBook が止まったとき</th><th>どうなるか</th><th>なぜ</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>身体（首・表情・LED）</td><td class="yes">生きる</td>
+            <td>Mac Studio も同じコードを持っているから</td></tr>
+        <tr><td>会話</td><td class="yes">生きる</td>
+            <td>むしろ Mac Studio が本籍</td></tr>
+        <tr><td>背景スクリーン</td><td class="yes">生きる</td>
+            <td>iPadがURLを開き直せば繋がる</td></tr>
+        <tr><td>踊り</td><td class="no">死ぬ</td>
+            <td><b>DJ機材がMacBookに挿さっているから。</b>MIDIの供給元が消える</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="foot" style="margin-top:22px; border:1px solid #3a2a1a; background:#1a120a;
+     border-radius:12px; padding:16px 20px; color:#d7a86a">
+    ⚠️ <b>この退避（B）は、まだ実装も実測もしていません。</b>
+    設計は <code style="font-family:var(--mono)">docs/master-and-hybrid.md</code> に置いてあります。
+    切り替わるのは「次の再接続」なので、意図的に切り替えるには本体の再起動（RST短押し）が要ります。
+  </p>
+
+  <h2>いま／当日で変わるところ</h2>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>動かすもの</th><th>いま（自宅で開発中）</th><th>当日（会場）</th><th>用意できているか</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>gateway・console・背景サーバ・VOICEVOX</td><td class="n">Mac Studio</td><td class="n">MacBook</td><td class="no">未セットアップ</td></tr>
+        <tr><td>DJ機材（DDJ-FLX2）</td><td class="n">Mac Studio</td><td class="n">MacBook</td><td class="yes">USBを挿すだけ</td></tr>
+        <tr><td>Ollama（考える）<br><span style="font-size:12px;color:#5d6a80">gemma3:4b / 3.3GB</span></td><td class="n">Mac Studio</td><td class="n">MacBook（16GB）</td><td class="no">未インストール</td></tr>
+        <tr><td>スタックチャン実機</td><td class="n">同じLAN</td><td class="n">同じLAN（MacBookが親AP）</td><td class="yes">mDNSで自動</td></tr>
+        <tr><td>iPad・参加者のスマホ</td><td class="n">同じLAN</td><td class="n">同じLAN</td><td class="yes">URLを開くだけ</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="foot">
+    コードは1本。機械ごとに変えるのは設定ファイルだけ
+    （<code style="font-family:var(--mono);color:var(--dim)">config.toml</code> /
+    <code style="font-family:var(--mono);color:var(--dim)">.env.gateway</code>）。
+    会場で直したくなっても、その場で書き換えず main に反映してから両方で取り込むこと。
+  </p>
+
+</div>
+
+<script>
+  (function(){
+    var now = document.getElementById('b-now');
+    var day = document.getElementById('b-day');
+    var name = document.getElementById('hostname');
+    var sub  = document.getElementById('hostsub');
+    var note = document.getElementById('modenote');
+    var bnote = document.getElementById('brainnote');
+
+    var ids = ['g-home','g-brainline','g-brainlabel','g-braindots'];
+    function show(id, on){
+      var el = document.getElementById(id);
+      if (el) el.style.display = on ? '' : 'none';
+    }
+    function set(isDay){
+      now.setAttribute('aria-pressed', String(!isDay));
+      day.setAttribute('aria-pressed', String(isDay));
+      ids.forEach(function(id){ show(id, isDay); });
+      show('inbrain', true);      // ★頭脳はどちらでも机の上
+      var h = document.getElementById('g-home');
+      if (h) h.style.opacity = isDay ? '.6' : '.35';
+      if (isDay){
+        name.textContent = 'MacBook（当日・会場）';
+        sub.textContent  = 'DJ機材が挿さっている機械・16GB';
+        bnote.textContent = '退避先。設定1行で切り替わる';
+        note.innerHTML = '<b>当日は、考えるところも含めて、ぜんぶ MacBook に載ります。</b>'
+          + '会場はテザリング。頭脳が自宅にあると、回線が切れた瞬間に会話が死にます。'
+          + '<b>机の上で完結させれば、ネットに一切依存しません。</b>';
+      } else {
+        name.textContent = 'Mac Studio（いま）';
+        sub.textContent  = '当日は MacBook に載せ替える';
+        bnote.textContent = 'いまは同じ機械の中にある';
+        note.innerHTML = '<b>いまは Mac Studio 1台に全部載っています。</b>'
+          + '考えるところも同じ機械の中。<b>ネットには一切出ません。</b>';
+      }
+    }
+    set(false);
+    now.addEventListener('click', function(){ set(false); });
+    day.addEventListener('click', function(){ set(true); });
+  })();
+</script>
+</body>
+</html>

@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import re
 import time
 from pathlib import Path
 
@@ -80,6 +81,37 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
 
     async def index(_req):
         return web.FileResponse(HERE / "stage.html", headers=NOCACHE)
+
+    # ★配布物を、同じLANのブラウザから開けるようにする（2026-09-16）。
+    #   当日は電波が無いかもしれない。**外に出さずに配れる形**にしておく。
+    #   中身は docs/pages/（scripts/pack-page.py が作る単体HTML）
+    PAGES = HERE.parent.parent / "docs" / "pages"
+
+    async def page(req):
+        name = req.match_info["name"]
+        # ★名前しか受け取らない。**パスを外から組み立てさせない**
+        if not name.replace("-", "").replace("_", "").isalnum():
+            raise web.HTTPNotFound()
+        f = PAGES / f"{name}.html"
+        if not f.is_file():
+            raise web.HTTPNotFound()
+        return web.FileResponse(f, headers=NOCACHE)
+
+    async def pages_index(_req):
+        import html as _h
+        rows = []
+        for f in sorted(PAGES.glob("*.html")):
+            m = re.search(r"<title>(.*?)</title>", f.read_text(encoding="utf-8"))
+            rows.append(f'<li><a href="/p/{f.stem}">'
+                        f'{_h.escape(m.group(1) if m else f.stem)}</a></li>')
+        return web.Response(content_type="text/html", headers=NOCACHE, text=(
+            '<!doctype html><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width,initial-scale=1">'
+            '<title>配布物</title>'
+            '<style>body{background:#080a0f;color:#e3e9f5;font-family:-apple-system,'
+            '"Hiragino Sans",sans-serif;padding:40px 24px;line-height:2}'
+            'a{color:#3ee39b}h1{font-size:20px}</style>'
+            '<h1>配布物</h1><ul>' + "".join(rows) + '</ul>'))
 
     async def ws(req):
         sock = web.WebSocketResponse(heartbeat=20)
@@ -270,6 +302,7 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
 
     app = web.Application()
     app.add_routes([web.get("/", index), web.get("/ws", ws),
+                    web.get("/p", pages_index), web.get("/p/{name}", page),
                     web.get("/panel", panel),
                     web.get("/guide", guide),
                     web.get("/api/state", api_state),
