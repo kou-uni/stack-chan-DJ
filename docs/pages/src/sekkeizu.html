@@ -514,6 +514,169 @@
     と一度直しました。カメラだけは、プライバシーの約束があるので既定オフのままです。
   </div>
 
+  <!-- ══ 7. 背景スクリーン ══ -->
+  <h2><span class="n">07 — 背景スクリーン</span>ブラウザが1枚、ライブ会場になる</h2>
+  <p class="sub">
+    iPad で開いているのは <b>URL 1本</b>です。動画ではありません。
+    毎秒20回届く「いまの状態」から、<b>その場で会場を描いています。</b>
+  </p>
+
+  <div class="tablewrap" style="margin-bottom:22px">
+    <table>
+      <thead><tr><th>開き方</th><th>URL</th><th>備考</th></tr></thead>
+      <tbody>
+        <tr><td>同じWi-Fiから</td><td class="k">http://&lt;MacのIP&gt;:8779/</td>
+            <td>console の画面に<b>QRが出る</b>ので読むだけ</td></tr>
+        <tr><td>配布物の一覧</td><td class="k">http://&lt;MacのIP&gt;:8779/p</td><td>鍵なし。その場で配れる</td></tr>
+        <tr><td>操作パネル</td><td class="k">http://&lt;MacのIP&gt;:8779/panel?k=…</td>
+            <td><b>鍵つき。そのまま人に送らない</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="font-size:17px;font-weight:900;margin:36px 0 6px">奥から手前へ、7枚を重ねている</h3>
+  <p class="sub">
+    描く順番がそのまま<b>奥行き</b>になります。順番を間違えると、空が壁を塗り潰します（一度やりました）。
+  </p>
+
+  <figure>
+    <div class="board">
+      <svg class="dia" viewBox="0 0 1140 330" role="img"
+           aria-label="背景の描画順。奥から夜空、3面ディスプレイ、柱とトラス、床、空気中の光、灯体、花火の7層">
+        <defs>
+          <path id="z-flow" d="M90,286 L1050,286"/>
+        </defs>
+        <g font-family="Zen Kaku Gothic New, sans-serif">
+          <g>
+            <rect x="60" y="40" width="130" height="200" rx="8" fill="#0c1018" stroke="#232c3a"/>
+            <text x="125" y="70" font-size="13" font-weight="700" text-anchor="middle" fill="#8b98af">① 夜空</text>
+            <text x="125" y="92" font-size="11" text-anchor="middle" fill="#5d6a80">星260個</text>
+            <text x="125" y="112" font-size="11" text-anchor="middle" fill="#5d6a80">明るいと</text>
+            <text x="125" y="128" font-size="11" text-anchor="middle" fill="#5d6a80">見えなくなる</text>
+          </g>
+          <g>
+            <rect x="202" y="40" width="150" height="200" rx="8" fill="#101722" stroke="#c874ff" stroke-opacity=".4"/>
+            <text x="277" y="70" font-size="13" font-weight="700" text-anchor="middle" fill="#c874ff">② ディスプレイ</text>
+            <text x="277" y="92" font-size="11" text-anchor="middle" fill="#8b98af">3面・射影変換</text>
+            <text x="277" y="112" font-size="11" text-anchor="middle" fill="#8b98af">ソースコードが流れる</text>
+            <text x="277" y="132" font-size="11" text-anchor="middle" fill="#5d6a80">500mmの継ぎ目</text>
+          </g>
+          <g>
+            <rect x="364" y="40" width="140" height="200" rx="8" fill="#101722" stroke="#3ee39b" stroke-opacity=".4"/>
+            <text x="434" y="70" font-size="13" font-weight="700" text-anchor="middle" fill="#3ee39b">③ 骨組み</text>
+            <text x="434" y="92" font-size="11" text-anchor="middle" fill="#8b98af">柱・横トラス</text>
+            <text x="434" y="112" font-size="11" text-anchor="middle" fill="#8b98af"><tspan fill="#3ee39b">テープLED</tspan></text>
+            <text x="434" y="132" font-size="11" text-anchor="middle" fill="#5d6a80">連結はコーナー</text>
+          </g>
+          <g>
+            <rect x="516" y="40" width="120" height="200" rx="8" fill="#101722" stroke="#232c3a"/>
+            <text x="576" y="70" font-size="13" font-weight="700" text-anchor="middle" fill="#8b98af">④ 床</text>
+            <text x="576" y="92" font-size="11" text-anchor="middle" fill="#5d6a80">目地が収束</text>
+            <text x="576" y="112" font-size="11" text-anchor="middle" fill="#5d6a80">拍でマスが光る</text>
+          </g>
+          <g>
+            <rect x="648" y="40" width="140" height="200" rx="8" fill="#101722" stroke="#79b8ff" stroke-opacity=".4"/>
+            <text x="718" y="70" font-size="13" font-weight="700" text-anchor="middle" fill="#79b8ff">⑤ 空気中の光</text>
+            <text x="718" y="92" font-size="11" text-anchor="middle" fill="#8b98af">ヘイズに散る</text>
+            <text x="718" y="112" font-size="11" text-anchor="middle" fill="#8b98af">逆二乗で落ちる</text>
+            <text x="718" y="132" font-size="11" text-anchor="middle" fill="#5d6a80">8層で縁を溶かす</text>
+          </g>
+          <g>
+            <rect x="800" y="40" width="130" height="200" rx="8" fill="#101722" stroke="#232c3a"/>
+            <text x="865" y="70" font-size="13" font-weight="700" text-anchor="middle" fill="#8b98af">⑥ 灯体</text>
+            <text x="865" y="92" font-size="11" text-anchor="middle" fill="#5d6a80">ムービングヘッド4台</text>
+            <text x="865" y="112" font-size="11" text-anchor="middle" fill="#5d6a80"><tspan fill="#8b98af">光を遮る側</tspan></text>
+          </g>
+          <g>
+            <rect x="942" y="40" width="130" height="200" rx="8" fill="#101722" stroke="#ff6b57" stroke-opacity=".4"/>
+            <text x="1007" y="70" font-size="13" font-weight="700" text-anchor="middle" fill="#ff6b57">⑦ 花火</text>
+            <text x="1007" y="92" font-size="11" text-anchor="middle" fill="#8b98af">前縁から吹く</text>
+            <text x="1007" y="112" font-size="11" text-anchor="middle" fill="#5d6a80">100%のときだけ</text>
+          </g>
+          <text x="90" y="272" font-size="11.5" font-family="JetBrains Mono, monospace" fill="#5d6a80">奥</text>
+          <text x="1046" y="272" font-size="11.5" font-family="JetBrains Mono, monospace" fill="#5d6a80">手前</text>
+        </g>
+        <path d="M90,286 L1050,286" fill="none" stroke="#3a4759" stroke-width="1.2"
+              marker-end="url(#ar)"/>
+        <g class="flow">
+          <circle r="4" fill="#3ee39b"><animateMotion dur="4s" repeatCount="indefinite"><mpath href="#z-flow"/></animateMotion></circle>
+        </g>
+      </svg>
+    </div>
+    <figcaption>1フレーム1000命令まで。超えるとiPadが止まるので、機械で見張っている</figcaption>
+  </figure>
+
+  <h3 style="font-size:17px;font-weight:900;margin:44px 0 6px">流れているのは、このロボット自身のコード</h3>
+  <p class="sub">
+    適当な文字列ではありません。<b>LEDの色を決めている `led.py` の中身</b>が流れています。
+    <b>「いま目の前で光らせている処理」が、背中に映っている</b>という関係です。
+  </p>
+
+  <div class="cards">
+    <div class="card" style="--c:var(--led)">
+      <p class="tag">スタックチャンとの関わり</p>
+      <h3>光は必ず一致する</h3>
+      <ul>
+        <li>実機のテープに送る<b>30個の色の列を、そのまま</b>画面も受け取る</li>
+        <li>出る場所は<b>柱のテープ／グリルの溝／ウーファーの縁</b>の3箇所</li>
+        <li>左の柱は下から上、右は上から下。<b>光が会場を一周して見える</b></li>
+        <li>実機が消えていれば<b>画面の光も消える</b>（判定は1箇所）</li>
+      </ul>
+    </div>
+    <div class="card" style="--c:var(--midi)">
+      <p class="tag">DJ台との関わり</p>
+      <h3>触ったものが、会場を動かす</h3>
+      <ul>
+        <li><b>PLAY / MASTER</b> — 会場の照明が点く／落ちる</li>
+        <li><b>LEDパッド</b> — 実機と背景の模様が<b>同時に</b>変わる</li>
+        <li><b>右レコード</b> — 下からのスポットが立ち上がり、擦る方向へ振れる</li>
+        <li><b>音量フェーダー</b> — 70%で会場が赤く／コードが32倍速に／100%で花火とCO2</li>
+        <li>曲の拍で灯体が向きを変え、床のマスが光る</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="font-size:17px;font-weight:900;margin:44px 0 6px">物理法則を守る、という縛り</h3>
+  <p class="sub">
+    それらしく光らせるのは簡単です。<b>「嘘がある」と感じさせないほうが難しい。</b>
+    直したところは、ほぼ全部「人間なら一目で分かるのに、機械には分からなかった」場所でした。
+  </p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>やったこと</th><th>やらなかったら</th></tr></thead>
+      <tbody>
+        <tr><td><b>射影変換で壁を貼る</b>（奥ほど横も詰まる）</td>
+            <td>等間隔に切って高さだけ縮める＝<b>垂れ幕に見える</b></td></tr>
+        <tr><td><b>光は筒の先から出す</b>（首を振ると出口も動く）</td>
+            <td>筒が横を向いた瞬間、<b>光源だけ元の位置に取り残される</b></td></tr>
+        <tr><td><b>灯体は揺れない。</b>キューへ素早く動いて止まる</td>
+            <td>ゆらゆら揺れて、<b>一気に安っぽくなる</b></td></tr>
+        <tr><td>刻むのは<b>シャッター</b>。灯体は止まったまま光だけが点滅</td>
+            <td>本体が震えて見える</td></tr>
+        <tr><td><b>逆二乗で落とす／8層重ねて縁を溶かす</b></td>
+            <td>光に輪郭が出る。空気中の散乱に見えない</td></tr>
+        <tr><td><b>光だまりは物の形で切り抜く</b></td>
+            <td>矩形の縁でグラデーションが切れ、<b>空間に横線が走る</b></td></tr>
+        <tr><td><b>素材は暗いまま。</b>明るさは当たった光からだけ来る</td>
+            <td>骨組みが一様に光って、<b>作り物に見える</b></td></tr>
+        <tr><td>上の箱は<b>拡散して桟が縞に</b>、下の箱は<b>面で返す</b></td>
+            <td>同じ光り方になり、<b>素材の違いが消える</b></td></tr>
+        <tr><td>連結部（コーナー）は<b>光らない</b></td>
+            <td>そこが光ると、<b>横材と柱が宙で離れて見える</b></td></tr>
+        <tr><td>減衰は<b>時間基準</b></td>
+            <td>fpsで点灯時間が変わる（12fpsと60fpsで別物になった）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <b>「テストは全部緑なのに、画面は真っ白」が一度起きました。</b>
+    加算で重ねた透明度の合計が 1 を超えて、例外でそのフレームが丸ごと消えていた。
+    <b>「落ちずに描けた」は「正しく描けた」ではありません。</b>
+    それ以来、背景を触ったら必ず<b>実際に撮って目で見る</b>ようにしています。
+  </div>
+
   <p class="foot">
     ポートと割り当ての出典は <code>app/dj/mapping.json</code> / <code>.env.gateway</code> /
     <code>app/dj/console.py</code>。この図はそこから起こしています。
