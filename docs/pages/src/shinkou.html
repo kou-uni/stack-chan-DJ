@@ -15,6 +15,7 @@ h1{font-size:clamp(27px,4.4vw,42px);font-weight:900;line-height:1.24;margin:0 0 
 h2{font-size:23px;font-weight:900;margin:70px 0 14px;letter-spacing:-.01em;
    padding-top:20px;border-top:1px solid var(--line)}
 h3{font-size:16px;font-weight:900;margin:34px 0 10px;color:var(--hot)}
+h4{font-size:14.5px;font-weight:700;margin:24px 0 8px;color:var(--text)}
 p{margin:0 0 14px;color:var(--dim);font-size:15px}
 p b,li b,td b{color:var(--text)}
 ul{margin:0 0 16px;padding-left:1.2em}li{color:var(--dim);font-size:15px;margin:6px 0}
@@ -45,7 +46,7 @@ a{color:var(--hot)}
 <h2>全体の形 — ブロックごとに、1つ渡す</h2>
 <p><b>体験だけ並べない。</b> 各ブロックに「何を渡すか」と「どれを起こすか」を書く。</p>
 <p>どれも起こさないブロックは、<b>中身が無い。</b></p>
-<div class="tablewrap"><table><thead><tr><th></th><th>ブロック</th><th>分</th><th>渡すもの</th><th>起こすもの</th></tr></thead><tbody><tr><td><b>A</b></td><td>掴み — 触る</td><td>10</td><td>—</td><td><b>G1</b> 私もやってみたい</td></tr><tr><td><b>B</b></td><td>仕組み — 構成／作り方／始め方</td><td>25</td><td><b>配線図・設計図・始め方の地図・ファーム選び</b></td><td><b>G1＋G2</b> 私もやってみたい</td></tr><tr><td><b>C</b></td><td>失敗カタログ</td><td>20</td><td><b>踏んだ穴と抜け方</b></td><td><b>G2＋G4</b> 他では聞けない</td></tr><tr><td><b>D</b></td><td>手を動かす</td><td>25</td><td><b>ガイドエージェント入りリポジトリ</b></td><td><b>G1＋G3</b> 今夜できる1手</td></tr><tr><td><b>E</b></td><td>出す</td><td>5</td><td>—</td><td>G3</td></tr><tr><td><b>F</b></td><td>返す</td><td>5</td><td><b>原価と日数の実データ</b></td><td><b>G5</b> もらってラッキー</td></tr></tbody></table></div>
+<div class="tablewrap"><table><thead><tr><th></th><th>ブロック</th><th>分</th><th>渡すもの</th><th>起こすもの</th></tr></thead><tbody><tr><td><b>A</b></td><td>掴み — 触る</td><td>10</td><td>—</td><td><b>G1</b> 私もやってみたい</td></tr><tr><td><b>B</b></td><td>仕組み — 開けて見せる</td><td>25</td><td><b>配線図・設計図・ファーム選び</b></td><td><b>G1＋G2</b> 私もやってみたい</td></tr><tr><td><b>C</b></td><td>失敗カタログ</td><td>20</td><td><b>踏んだ穴と抜け方</b></td><td><b>G2＋G4</b> 他では聞けない</td></tr><tr><td><b>D</b></td><td>手を動かす</td><td>25</td><td><b>ガイドエージェント入りリポジトリ</b></td><td><b>G1＋G3</b> 今夜できる1手</td></tr><tr><td><b>E</b></td><td>出す</td><td>5</td><td>—</td><td>G3</td></tr><tr><td><b>F</b></td><td>返す</td><td>5</td><td><b>原価と日数の実データ</b></td><td><b>G5</b> もらってラッキー</td></tr></tbody></table></div>
 <p><b>★音が競合しない。</b> DJが鳴るのは A だけ。音声で相談するのは D だけ。</p>
 <hr>
 <h2>A　掴み（10分）— 説明より先に触らせる</h2>
@@ -68,11 +69,13 @@ a{color:var(--hot)}
 <p><b>Aの合格条件：触った人が、自分から2回目を触る。</b></p>
 <p>これが出なければ、何が動いていても負け。</p>
 <hr>
-<h2>B　仕組み（25分）— 構成を見せる／作り方を見せる／始め方を渡す</h2>
-<p><b>ここが教材の本体。</b> 「できます」ではなく「<b>どうなっていて、どう作って、どこから始めるか</b>」。</p>
-<div class="tablewrap"><table><thead><tr><th></th><th>中身</th><th>分</th><th>渡すもの</th></tr></thead><tbody><tr><td>①</td><td><b>構成</b> — そもそもどうなっているか</td><td>8</td><td>📄 配線図・設計図</td></tr><tr><td>②</td><td><b>作り方</b> — Claude Code から実機を直接叩く</td><td>9</td><td>—</td></tr><tr><td>③</td><td><b>始め方</b> — どこから手を付けるか</td><td>8</td><td>📄 始め方の地図・ファーム選び</td></tr></tbody></table></div>
+<h2>B　仕組み（25分）— 開けて見せる</h2>
+<p><b>ここが教材の本体。</b> 「できます」ではなく「<b>どうなっていて、どう作っているか</b>」。</p>
+<div class="tablewrap"><table><thead><tr><th></th><th>中身</th><th>分</th><th>実演</th></tr></thead><tbody><tr><td>①</td><td><b>構成</b> — 実機は入口と出口だけ</td><td>6</td><td>Wi-Fiを切って、止めて、戻す</td></tr><tr><td>②</td><td><b>ファームの中身</b> — MCPが入っている</td><td>7</td><td>道具の一覧を出す</td></tr><tr><td>③</td><td><b>作り方</b> — Claude Code から直接叩く</td><td>6</td><td>その場で打って動かす</td></tr><tr><td>④</td><td><b>DJの接続</b> ★見せ場</td><td>6</td><td>つまみが身体と会場を動かす</td></tr></tbody></table></div>
+<p>→ 📄 <b><a href="../docs/pages/haisenzu.html">配線図</a></b> ／ <b><a href="../docs/pages/sekkeizu.html">設計図</a></b> ／</p>
+<p><b><a href="../docs/pages/firmware.html">ファーム選び</a></b> を渡す</p>
 <hr>
-<h3>① 構成（8分）— 中に AI は入っていない</h3>
+<h3>① 構成（6分）— 中に AI は入っていない</h3>
 <pre>  マイク・カメラ・タッチ  ──▶  実機  ──▶  Macの中の頭脳
   サーボ・LED・画面      ◀──        ◀──</pre>
 <p><b>実機は I/O ゲートウェイ。だから頭脳を差し替えられる。</b></p>
@@ -88,15 +91,31 @@ a{color:var(--hot)}
 <p>背中のスクリーンも同じで、流れているのは <b>このロボット自身のソースコード</b>。</p>
 <p><b>実機のLEDと背景のLEDは、同じ30個の配列</b>を映している。</p>
 <blockquote><b>★実演：LEDパッドを押す。</b> 実機と背景が<b>同時に</b>変わる。<br>「作り直していないからです。同じ配列を2つに送っているだけ。」</blockquote>
-<p>→ 📄 <b><a href="../docs/pages/haisenzu.html">配線図</a></b> ／ 📄 <b><a href="../docs/pages/sekkeizu.html">設計図</a></b> を渡す</p>
 <hr>
-<h3>② 作り方（9分）— 線で繋いで、話しかけて作る</h3>
+<h3>② ファームの中身（7分）— MCPが入っている　★ここが選んだ理由</h3>
+<p><b>ファームは5つ調べた。選んだのは、MCPが入っているもの。</b></p>
+<div class="tablewrap"><table><thead><tr><th></th><th>すぐ始められること</th><th>そのままだと</th></tr></thead><tbody><tr><td>出荷時</td><td><b>すぐ喋る。速い</b></td><td>声も画像も海外のクラウドへ。<b>同意の動線が無い</b></td></tr><tr><td>自前構成（今日のもの）</td><td>頭脳を選べる。外に出ない。<b>AIと作れる</b></td><td>会話は自分で組み直すまで戻らない</td></tr></tbody></table></div>
+<p><b>A で感じた「速さ」の理由がここ。</b> 便利さは、どこかに繋がっていることで成り立っている。</p>
+<p><b>けなす話ではない。知って使うのと、知らずに使うのは別、という話。</b></p>
+<blockquote>物理カメラカバーを小道具に使う。口上は <a href="privacy-notice.md">privacy-notice.md</a></blockquote>
+<h4>MCPとは — 道具の並べ方と呼び方だけを決めた規格</h4>
+<p><b>★実演：道具の一覧を出す。</b></p>
+<pre>  首を動かす      表情を変える      LEDを光らせる
+  写真を撮る      タッチを読む      音を鳴らす
+  …… 全部で 49個</pre>
+<p><b>この49個が、ファームの中で「道具」として並んでいる。</b></p>
+<p>だから Claude Code が<b>一覧を読んで、自分で選んで、呼べる。</b></p>
+<blockquote><b>取扱説明書と製品が、同じものになった。</b><br>「どう動かすか」を読んで、コードに書き写す工程が丸ごと消えた。</blockquote>
+<h4>だから、AIと作るのに向いている</h4>
+<p><b>これは感想ではなく、選定理由。</b></p>
+<div class="tablewrap"><table><thead><tr><th></th><th>普通のファーム</th><th>MCPが入っているファーム</th></tr></thead><tbody><tr><td>何ができるか</td><td>ドキュメントを読む</td><td><b>エージェントが一覧を取得する</b></td></tr><tr><td>どう呼ぶか</td><td>自分でコードを書く</td><td><b>名前と引数が決まっている</b></td></tr><tr><td>試すまで</td><td>ビルドして焼く</td><td><b>その場で呼べる</b></td></tr></tbody></table></div>
+<p><b>「AIに任せられる範囲」が、ファームの作りで決まる。</b></p>
+<p>ここを選び間違えると、<b>何を作るにも先に翻訳作業が要る。</b></p>
+<hr>
+<h3>③ 作り方（6分）— 線で繋いで、話しかけて作る</h3>
 <p><b>ここが「私もやってみたい」に一番効く。</b></p>
 <pre>  Claude Code  ──▶  MCP  ──▶  USB / Wi-Fi  ──▶  実機が動く
    日本語で頼む      道具49個                    首・撮影・LED・表情</pre>
-<p><b>MCPは、道具の並べ方と呼び方だけを決めた規格。</b></p>
-<p>実機がそれに対応していると、<b>Claude Code から機能をそのまま呼べる。</b></p>
-<blockquote><b>取扱説明書と製品が、同じものになった。</b><br>「どう動かすか」を読んで書き写す工程が、丸ごと消える。</blockquote>
 <p><b>★実演：その場で打つ。</b></p>
 <pre>  「右を向いて、写真を撮って」
      ↓
@@ -104,19 +123,20 @@ a{color:var(--hot)}
 <p><b>これが開発の実体です。</b> コードを書く前に、まず会話で動く。</p>
 <p>動いてから、<b>繰り返したいものだけコードにする。</b></p>
 <h3>ここで言う3つ</h3>
-<ul><li><b>最初に線で繋ぐ。</b> USBで繋いで、Claude Code から叩けるようにするのが一番先</li><li><b>会話で試してから、コードにする。</b> いきなり書かない</li><li><b>踏んだ穴はエージェントに渡す。</b> 人間が覚え直さない（→ C・D へ）</li></ul>
+<ul><li><b>最初に線で繋ぐ。</b> Claude Code から叩けるようにするのが一番先</li><li><b>会話で試してから、コードにする。</b> いきなり書かない</li><li><b>踏んだ穴はエージェントに渡す。</b> 人間が覚え直さない（→ C・D へ）</li></ul>
 <hr>
-<h3>③ 始め方（8分）— 大きな手順は6つ</h3>
-<p><b>全部を今日やる必要はない。①と②だけで、もう遊べる。</b></p>
-<div class="tablewrap"><table><thead><tr><th></th><th>やること</th><th>一言</th></tr></thead><tbody><tr><td>①</td><td><b>出荷時のまま遊ぶ</b></td><td>まずこれ。<b>自前構成はそのあと</b></td></tr><tr><td>②</td><td><b>バックアップを取る</b></td><td>焼く前に。取り返しのつく状態を作る</td></tr><tr><td>③</td><td><b>アンバインドする</b></td><td>★焼く前に必ず。忘れるとペアリングが壊れる</td></tr><tr><td>④</td><td>ファームを焼く</td><td>ここから自分の構成</td></tr><tr><td>⑤</td><td><b>Macで gateway を起動する</b></td><td>Claude Code から叩けるようになる</td></tr><tr><td>⑥</td><td>作り込む</td><td>首・LED・会話・演出。<b>ここは無限</b></td></tr></tbody></table></div>
-<p><b>★止まるのは③と④の間。</b> 出荷時の会話は、④を越えるまで戻らない。</p>
-<p><b>「一度、喋らなくなる」ことを知ってから始める。</b></p>
-<h3>ファームは5つある</h3>
-<div class="tablewrap"><table><thead><tr><th></th><th>すぐ始められること</th><th>そのままだと</th></tr></thead><tbody><tr><td>出荷時</td><td><b>すぐ喋る。速い</b></td><td>声も画像も海外のクラウドへ。<b>同意の動線が無い</b></td></tr><tr><td>自前構成</td><td>頭脳を選べる。外に出ない</td><td>会話は自分で組み直すまで戻らない</td></tr></tbody></table></div>
-<p><b>A で感じた「速さ」の理由がここ。</b> 便利さは、どこかに繋がっていることで成り立っている。</p>
-<p><b>けなす話ではない。知って使うのと、知らずに使うのは別、という話。</b></p>
-<blockquote>物理カメラカバーを小道具に使う。口上は <a href="privacy-notice.md">privacy-notice.md</a></blockquote>
-<p>→ 📄 <b>始め方の地図</b>（★未作成）／ 📄 <b><a href="../docs/pages/firmware.html">ファーム選び</a></b> を渡す</p>
+<h3>④ DJの接続（6分）— ★見せ場。人間が入力になる</h3>
+<p><b>DJ機材は USB で Mac に刺さっているだけ。</b></p>
+<p>流れているのは「<b>番号と、0〜127の値</b>」それだけ。</p>
+<pre>  つまみを回す  →  CC ch6 #23 = 94
+                      ↓  読み替える
+                    首の角度 / LEDの本数 / 光量</pre>
+<div class="tablewrap"><table><thead><tr><th>触るもの</th><th>実機</th><th>背景スクリーン</th></tr></thead><tbody><tr><td><b>つまみ</b></td><td>首が回る・LEDが点灯本数でメーターになる</td><td>—</td></tr><tr><td><b>パッド</b></td><td>表情が変わる・LEDの模様が変わる</td><td><b>同じ模様が同時に出る</b></td></tr><tr><td><b>レコードを擦る</b></td><td>LEDが白く速く刻む</td><td><b>下からスポットライトが立ち上がる</b></td></tr><tr><td><b>音量フェーダー</b></td><td>赤く激しく点滅・首が大きく揺れる</td><td><b>会場が赤く染まり、花火とCO2</b></td></tr></tbody></table></div>
+<p><b>★特別な操作画面は1つも無い。</b></p>
+<p><b>DJが普段やる手つきが、そのまま演出になっている。</b></p>
+<blockquote><b>これが今日の合言葉そのものです。</b><br>素材は自分が作っていない。それでも、<b>選択と並びとタイミングに自分が出る。</b><br><b>アレンジは創作だと、DJ文化がとっくに証明している。</b></blockquote>
+<p><b>割り当ては設定ファイル1箇所。</b> 変えれば、手つきが変わる。</p>
+<p><b>「自分ならこのつまみに何を割り当てるか」を、D で実際に触って考えてもらう。</b></p>
 <hr>
 <h2>C　失敗カタログ（20分）— 踏んだ穴を、全部渡す　★ここが差別化</h2>
 <p><b>他のAIイベントは「できます」を見せる。「壊れ方」を配るところは無い。</b></p>
@@ -134,7 +154,10 @@ a{color:var(--hot)}
 <pre>  AIにドキュメントを読ませる   ← 素材を入れる
   AIに作業をさせる            ← 回してもらう
   人間は選ぶ・混ぜる・止める   ← 統制側に立つ</pre>
-<h3>① リポジトリを渡す（10分）　→ 📄 <b>ガイドエージェント</b></h3>
+<h3>① リポジトリを渡す（10分）　→ 📄 <b>ガイドエージェント</b> ／ 📄 <b>始め方の地図</b></h3>
+<p><b>大きな手順は6つ。</b> 出荷時で遊ぶ → バックアップ → <b>アンバインド</b> → 焼く →</p>
+<p>gateway を起動 → 作り込む。<b>止まるのはアンバインドと焼くの間。</b></p>
+<p>「一度、喋らなくなる」ことを知ってから始める。</p>
 <ul><li>QRを配る</li><li>各自の Claude Code に読ませる</li><li><b>ガイドエージェントが立ち上がる</b></li></ul>
 <p><b>手順は人間に渡さない。エージェントに渡す。人間が覚えるのは「渡し方」のほう。</b></p>
 <p>私が踏んだアンチパターンは、もう中に入っている。</p>
