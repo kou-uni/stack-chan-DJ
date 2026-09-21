@@ -1,0 +1,101 @@
+<!doctype html><html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>スタックチャンに聞く</title>
+<style>
+  :root{--ink:#080a0f;--ink2:#10151f;--ink3:#171d29;--line:#28313f;
+   --text:#e3e9f5;--dim:#8b98af;--faint:#5d6a80;--you:#79b8ff;--bot:#3ee39b;--uni:#c874ff;
+   --mono:ui-monospace,Menlo,monospace;
+   --sans:-apple-system,"Hiragino Sans",system-ui,sans-serif}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:var(--sans);
+   line-height:1.8;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
+  header{padding:18px 16px 12px;border-bottom:1px solid var(--line);flex:none}
+  h1{font-size:17px;font-weight:800;margin:0 0 10px;letter-spacing:-.01em}
+  .modes{display:flex;gap:8px}
+  .modes button{flex:1;background:var(--ink2);border:1px solid var(--line);color:var(--dim);
+   border-radius:10px;padding:9px 6px;font:inherit;font-size:13px;cursor:pointer;
+   -webkit-tap-highlight-color:transparent}
+  .modes button .s{display:block;font-size:10.5px;color:var(--faint);margin-top:1px}
+  .modes button[aria-pressed="true"]{color:var(--text);border-color:var(--c);
+   background:color-mix(in srgb,var(--c) 14%,var(--ink2))}
+  #log{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+  .msg{max-width:88%;padding:11px 14px;border-radius:14px;font-size:15px;white-space:pre-wrap;
+   word-break:break-word}
+  .you{align-self:flex-end;background:var(--ink3);border:1px solid var(--line)}
+  .bot{align-self:flex-start;background:var(--ink2);border:1px solid var(--line);
+   border-left:3px solid var(--c)}
+  .src{font-size:11.5px;color:var(--faint);margin-top:7px;font-family:var(--mono)}
+  .wait{color:var(--faint);font-size:13.5px}
+  .dots::after{content:"";animation:d 1.2s steps(4,end) infinite}
+  @keyframes d{0%{content:""}25%{content:"・"}50%{content:"・・"}75%{content:"・・・"}}
+  .hint{color:var(--faint);font-size:13px;text-align:center;margin:auto 0;padding:0 20px}
+  .hint b{color:var(--dim);display:block;margin-bottom:10px;font-size:14px}
+  .ex{display:inline-block;margin:4px;padding:7px 12px;background:var(--ink2);
+   border:1px solid var(--line);border-radius:999px;color:var(--dim);font-size:13px;cursor:pointer}
+  form{flex:none;display:flex;gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+   border-top:1px solid var(--line);background:var(--ink)}
+  input{flex:1;background:var(--ink2);border:1px solid var(--line);color:var(--text);
+   border-radius:11px;padding:12px 14px;font:inherit;font-size:16px;min-width:0}
+  input:focus{outline:none;border-color:var(--c)}
+  button.go{flex:none;background:var(--c);color:#06080c;border:0;border-radius:11px;
+   padding:0 18px;font:inherit;font-weight:800;font-size:15px;cursor:pointer}
+  button.go:disabled{opacity:.4}
+</style></head><body data-mode="today">
+<header>
+  <h1>スタックチャンに聞く</h1>
+  <div class="modes">
+    <button data-m="today" style="--c:var(--bot)" aria-pressed="true">今日のこと<span class="s">作り方・失敗したこと</span></button>
+    <button data-m="uni" style="--c:var(--uni)" aria-pressed="false">uni の相棒<span class="s">なぜそう選んだか</span></button>
+  </div>
+</header>
+<div id="log"><div class="hint" id="hint"><b>なんでも聞いてください</b>
+  <span class="ex">何から始めればいい？</span>
+  <span class="ex">ファームを焼くとき気をつけることは？</span>
+  <span class="ex">うちの会社でもできる？</span></div></div>
+<form id="f" autocomplete="off">
+  <input id="q" placeholder="質問を書く" maxlength="200" enterkeyhint="send">
+  <button class="go" id="go" type="submit">聞く</button>
+</form>
+<script>
+(function(){
+  var log=document.getElementById('log'),hint=document.getElementById('hint'),
+      f=document.getElementById('f'),q=document.getElementById('q'),go=document.getElementById('go');
+  function color(){return getComputedStyle(document.querySelector('.modes button[aria-pressed="true"]')).getPropertyValue('--c');}
+  document.querySelectorAll('.modes button').forEach(function(b){
+    b.onclick=function(){
+      document.querySelectorAll('.modes button').forEach(function(x){x.setAttribute('aria-pressed',x===b);});
+      document.body.dataset.mode=b.dataset.m;
+      document.documentElement.style.setProperty('--c',color());
+    };
+  });
+  document.documentElement.style.setProperty('--c',color());
+  document.querySelectorAll('.ex').forEach(function(e){
+    e.onclick=function(){q.value=e.textContent;f.requestSubmit();};
+  });
+  function add(cls,text){
+    if(hint&&hint.parentNode){hint.remove();}
+    var d=document.createElement('div');d.className='msg '+cls;d.textContent=text;
+    d.style.setProperty('--c',color());log.appendChild(d);log.scrollTop=log.scrollHeight;return d;
+  }
+  f.onsubmit=async function(ev){
+    ev.preventDefault();
+    var text=q.value.trim(); if(!text)return;
+    q.value='';go.disabled=true;
+    add('you',text);
+    var w=add('bot','');w.innerHTML='<span class="wait">この机の上のMacが考えています<span class="dots"></span></span>';
+    try{
+      var r=await fetch('/api/qa',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({text:text,mode:document.body.dataset.mode})});
+      var j=await r.json();
+      w.textContent=j.answer||j.error||'答えられませんでした。';
+      if(j.sources&&j.sources.length){
+        var s=document.createElement('div');s.className='src';
+        s.textContent='もとにした資料: '+j.sources.join(' / ');w.appendChild(s);
+      }
+    }catch(e){ w.textContent='繋がりませんでした。もう一度ためしてください。'; }
+    go.disabled=false;log.scrollTop=log.scrollHeight;q.focus();
+  };
+})();
+</script></body></html>
