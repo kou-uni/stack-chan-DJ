@@ -144,6 +144,21 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
     qa_index: dict[str, list] = {}
     qa_limit = ask.Limiter(per_window=5, window_s=60.0)
     qa_gate = ask.Gate()          # ★頭脳は1つ。並べて待たせる
+
+    async def qa_warm():
+        """人が来る前に、モデルを起こしておく。
+
+        ★実測（2026-09-21）：眠ったモデルの起床に34秒かかった。
+          **当日、最初の1人がこれを踏む。**起こすのは進行役の仕事にする。
+        """
+        await asyncio.sleep(3)                       # ★起動を遅くしない
+        try:
+            if await ask.warm():
+                print("  頭脳を起こしました（質疑応答の準備ができています）")
+            else:
+                print("★ 頭脳を起こせませんでした。/qa は最初の1問が遅くなります")
+        except Exception as exc:                     # noqa: BLE001
+            print(f"★ 頭脳を起こせませんでした: {type(exc).__name__}")
     token = load_token()
 
     async def _shoot() -> bytes | None:
@@ -348,6 +363,8 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
         return web.FileResponse(shots[0])
 
     app = web.Application()
+    app.on_startup.append(lambda _a: _a.loop.create_task(qa_warm())
+                          if hasattr(_a, "loop") else asyncio.ensure_future(qa_warm()))
     app.add_routes([web.get("/", index), web.get("/ws", ws),
                     web.get("/p", pages_index), web.get("/p/{name}", page),
                     web.get("/panel", panel),

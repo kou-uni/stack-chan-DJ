@@ -271,8 +271,27 @@ def think_url() -> str:
     return os.environ.get("OLLAMA_URL", DEFAULT_THINK_URL).rstrip("/")
 
 
+def build_payload(question: str, model: str, keep_alive: str | None = None) -> dict:
+    """頭脳に投げる中身を組む。**組み立てだけを、試験できる形で切り出す。**
+
+    ★`keep_alive` は「答えたあとも、モデルを起こしたままにして」という指示。
+      実測（2026-09-21）：しばらく空くと9GBのモデルが追い出され、
+      **次の質問が34秒かかった。**当日、最初の1人がこれを踏む。
+      ただし**頼まれたときだけ付ける**。声の側の挙動を変えない。
+    """
+    payload = {
+        "model": model,
+        "prompt": f"{system_prompt()}\n\n質問: {question}",
+        "stream": False,
+    }
+    if keep_alive:
+        payload["keep_alive"] = keep_alive
+    return payload
+
+
 async def think(question: str, model: str = MODEL, timeout_s: float = 60.0,
-                ollama: str | None = None, url: str | None = None) -> str:
+                ollama: str | None = None, url: str | None = None,
+                keep_alive: str | None = None) -> str:
     """Ollama に訊く。**HTTP で叩く。**
 
     ★以前は `ollama run` を起動していた。同じ機械にしか頭脳を置けない作りで、
@@ -290,11 +309,7 @@ async def think(question: str, model: str = MODEL, timeout_s: float = 60.0,
         return ""
 
     base = (url or think_url()).rstrip("/")
-    payload = {
-        "model": model,
-        "prompt": f"{system_prompt()}\n\n質問: {question}",
-        "stream": False,
-    }
+    payload = build_payload(question, model, keep_alive)
     try:
         import aiohttp
         timeout = aiohttp.ClientTimeout(total=timeout_s)

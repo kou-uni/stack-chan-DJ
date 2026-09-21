@@ -92,7 +92,7 @@
       w.textContent=j.answer||j.error||'答えられませんでした。';
       if(j.sources&&j.sources.length){
         var s=document.createElement('div');s.className='src';
-        s.textContent='もとにした資料: '+j.sources.join(' / ');w.appendChild(s);
+        s.textContent='もとにした資料: '+j.sources.map(function(x){return x.length>22?x.slice(0,22)+'…':x;}).join(' / ');w.appendChild(s);
       }
     }catch(e){ w.textContent='繋がりませんでした。もう一度ためしてください。'; }
     go.disabled=false;log.scrollTop=log.scrollHeight;q.focus();

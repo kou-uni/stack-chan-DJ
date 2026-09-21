@@ -39,10 +39,15 @@ ROOT = Path(__file__).resolve().parents[2]
 #   声は速さが要る（gemma3:4b、2〜3秒）。**テキストは待てるので、賢い方を使う。**
 #   4bは「記憶にありません」を出しすぎた（5問中3問）。14bは3問とも答えた。
 DEFAULT_MODEL = "qwen2.5:14b"
+# ★答えたあともモデルを起こしたままにする。**最初の1人に起こさせない**
+KEEP_ALIVE = "45m"
+TIMEOUT_S = 180.0           # ★寝ていた場合の起床時間を含む
 
 MAX_QUESTION = 200          # ★長文を貼って文脈を押し流す手を、入口で止める
 MAX_ANSWER = 400            # ★スマホで読む。長いと読まれない
 MAX_CONTEXT = 4000          # ★小さいモデルで動かす。入れすぎるとどれも読まれない
+MAX_SOURCES = 3             # ★出典が答えより長くならないように
+CITE_FLOOR = 0.70           # ★一番強い節に対する下限。弱いものを「もとにした」と言わない
 MIN_SCORE = 0.30            # ★質問のどれだけを拾えたか。これ未満なら「知らない」と言う
 REL_FLOOR = 0.45            # ★最強の節に対する下限。弱い候補を混ぜると脱線する
 
@@ -92,9 +97,11 @@ class Mode:
 
 @dataclass(frozen=True)
 class Section:
-    source: str
-    title: str
+    source: str        # ファイル名。**人に見せない**
+    doc: str           # 資料の題名。**出典として人に見せるのはこちら**
+    title: str         # 節の見出し
     body: str
+    score: float = 0.0  # ★どれだけ強く効いたか。出典を絞るのに使う
 
 
 # ── 知識を束ねる ────────────────────────────────────────
@@ -108,6 +115,27 @@ def _clean(s: str) -> str:
     return re.sub(r"[ \t]*\n[ \t]*", "\n", html.unescape(s)).strip()
 
 
+_FM_TITLE = re.compile(r"^---\s*\n(.*?)\n---", re.S)
+
+
+def doc_title(path: Path, text: str) -> str:
+    """資料の題名。**ファイル名は人に見せるものではない。**"""
+    if path.suffix.lower() in (".html", ".htm"):
+        m = re.search(r"<title[^>]*>(.*?)</title>", text, re.S | re.I)
+        if m:
+            return _clean(_TAG.sub("", m.group(1)))
+    fm = _FM_TITLE.match(text)
+    if fm:
+        m = re.search(r"^title:\s*(.+?)\s*$", fm.group(1), re.M)
+        if m:
+            return m.group(1).strip().strip("\"'")
+    for line in text.splitlines():
+        m = _HEAD_MD.match(line)
+        if m:
+            return _clean(m.group(1))
+    return path.stem
+
+
 def split_sections(path: Path) -> list[Section]:
     """1ファイルを見出しごとに切る。
 
@@ -118,6 +146,7 @@ def split_sections(path: Path) -> list[Section]:
     except (OSError, UnicodeDecodeError):
         return []
 
+    doc = doc_title(path, text)
     if path.suffix.lower() in (".html", ".htm"):
         text = re.sub(r"<(script|style)\b.*?</\1>", " ", text, flags=re.S | re.I)
         parts, last = [], 0
@@ -125,13 +154,13 @@ def split_sections(path: Path) -> list[Section]:
             parts.append((m.start(), _clean(_TAG.sub("", m.group(1)))))
             last = m.end()
         if not parts:
-            return [Section(path.name, path.stem, _clean(_TAG.sub(" ", text)))]
+            return [Section(path.name, doc, doc, _clean(_TAG.sub(" ", text)))]
         out = []
         bounds = [p[0] for p in parts] + [len(text)]
         for i, (_, title) in enumerate(parts):
             body = _clean(_TAG.sub(" ", text[bounds[i]:bounds[i + 1]]))
             body = body[len(title):].strip() if body.startswith(title) else body
-            out.append(Section(path.name, title, re.sub(r"\s{2,}", " ", body)))
+            out.append(Section(path.name, doc, title, re.sub(r"\s{2,}", " ", body)))
         return out
 
     out, title, buf = [], None, []
@@ -139,12 +168,12 @@ def split_sections(path: Path) -> list[Section]:
         m = _HEAD_MD.match(line)
         if m:
             if title is not None:
-                out.append(Section(path.name, title, "\n".join(buf).strip()))
+                out.append(Section(path.name, doc, title, "\n".join(buf).strip()))
             title, buf = _clean(m.group(1)), []
         elif title is not None:
             buf.append(line)
     if title is not None:
-        out.append(Section(path.name, title, "\n".join(buf).strip()))
+        out.append(Section(path.name, doc, title, "\n".join(buf).strip()))
     return out
 
 
@@ -229,6 +258,28 @@ def _grams(s: str) -> set[str]:
     return {s[i:i + 2] for i in range(len(s) - 1)} if len(s) > 1 else {s}
 
 
+_DF_CACHE: dict[int, dict[str, int]] = {}
+
+
+def _df(sections: list[Section]) -> dict[str, int]:
+    """その語が、いくつの節に出てくるか。
+
+    ★**どの資料にも出てくる語は、何も絞っていない。**
+      「実機」「する」で点が入ると、長い無関係なノートが上位に来る（実測）。
+      資料の束は起動時に1回作って使い回すので、数え直しも1回で済む。
+    """
+    key = id(sections)
+    got = _DF_CACHE.get(key)
+    if got is None or len(sections) != _DF_CACHE.get(-key, {}).get("n", -1):
+        got = {}
+        for s in sections:
+            for g in _grams(s.title) | _grams(s.body):
+                got[g] = got.get(g, 0) + 1
+        _DF_CACHE[key] = got
+        _DF_CACHE[-key] = {"n": len(sections)}
+    return got
+
+
 def pick(sections: list[Section], question: str, limit: int = 6) -> list[Section]:
     """質問に関係する節だけを選ぶ。
 
@@ -237,14 +288,22 @@ def pick(sections: list[Section], question: str, limit: int = 6) -> list[Section
     q = _grams(question)
     if not q:
         return []
+    import math
+
+    df = _df(sections)
+    n = max(1, len(sections))
+    # ★珍しい語ほど重い。どこにでもある語は、ほとんど点にならない
+    w = {g: math.log(1 + n / (1 + df.get(g, 0))) for g in q}
+    total = sum(w.values()) or 1.0
+
     scored = []
     for s in sections:
         hay = _grams(s.title) | _grams(s.body)
         # ★数ではなく「質問のどれだけを拾えたか」で測る。
         #   重なりの数で測ると、**本文が長いほど勝つ**（実測：uniモードが
         #   ファームの質問に、無関係な量子のノートを引いた）。
-        cover = len(q & hay) / len(q)
-        title = len(q & _grams(s.title)) / len(q)
+        cover = sum(w[g] for g in q & hay) / total
+        title = sum(w[g] for g in q & _grams(s.title)) / total
         score = cover + title
         if score >= MIN_SCORE:
             scored.append((score, s))
@@ -255,12 +314,32 @@ def pick(sections: list[Section], question: str, limit: int = 6) -> list[Section
         scored = [t for t in scored if t[0] >= floor]
 
     out, used = [], 0
-    for _, s in scored[:limit]:
+    for sc, s in scored[:limit]:
         body = s.body[: max(0, MAX_CONTEXT - used)]
         if not body:
             break
-        out.append(Section(s.source, s.title, body))
+        out.append(Section(s.source, s.doc, s.title, body, sc))
         used += len(body)
+    return out
+
+
+def cite(picked: list[Section]) -> list[str]:
+    """出典は、**強く効いたものだけを、題名で、数を絞って**出す。
+
+    ★実測：弱く引っかかっただけの資料まで並べ、答えより出典が長くなった。
+      しかもファイル名（`20260917-quantum-safe-is-the-o`）のままだった。
+    """
+    if not picked:
+        return []
+    floor = picked[0].score * CITE_FLOOR            # pick() は強い順に並んでいる
+    out: list[str] = []
+    for s in picked:
+        if s.score < floor:
+            break
+        if s.doc not in out:
+            out.append(s.doc)
+        if len(out) >= MAX_SOURCES:
+            break
     return out
 
 
@@ -319,6 +398,14 @@ class Gate:
         return False
 
 
+async def warm(model: str = DEFAULT_MODEL, url: str | None = None) -> bool:
+    """モデルを先に起こしておく。**当日、人が来る前に1回走らせる。**"""
+    import talk
+    out = await talk.think("おはよう", model=model, timeout_s=TIMEOUT_S,
+                           url=url, keep_alive=KEEP_ALIVE)
+    return bool(out.strip())
+
+
 # ── 出口 ────────────────────────────────────────────────
 def _patterns():
     """秘密の形は `scripts/secret_scan.py` に1箇所だけ置いてある。
@@ -370,7 +457,7 @@ def build_prompt(picked: list[Section], question: str,
 
 async def answer(question: str, sections: list[Section],
                  model: str = DEFAULT_MODEL, url: str | None = None,
-                 timeout_s: float = 60.0, mode: Mode | None = None
+                 timeout_s: float = TIMEOUT_S, mode: Mode | None = None
                  ) -> tuple[str, list[str]]:
     """答えと、根拠にした資料の名前を返す。"""
     q = clean_question(question)
@@ -380,10 +467,10 @@ async def answer(question: str, sections: list[Section],
 
     import talk                                     # ★頭脳への口は1つだけ持つ
     out = await talk.think(build_prompt(picked, q, mode), model=model,
-                           timeout_s=timeout_s, url=url)
+                           timeout_s=timeout_s, url=url, keep_alive=KEEP_ALIVE)
     if not out.strip():
         return BLOCKED, []
     cleaned = tidy(out)
     if cleaned == NO_ANSWER:
         return NO_ANSWER, []                        # ★知らないなら出典も出さない
-    return safe_out(cleaned), sorted({s.source for s in picked})
+    return safe_out(cleaned), cite(picked)

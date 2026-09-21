@@ -37,9 +37,9 @@ def test_HTMLはタグを落として取り込む(tmp_path):
 # ── 絞り込み ────────────────────────────────────────────
 def _secs():
     return [
-        ask.Section("firmware.html", "焼き方", "バックアップ、アンバインド、焼く。順番を間違えるとペアリングが壊れる"),
-        ask.Section("haisenzu.html", "電源", "LEDテープは全開 5V 1.8A。本体のポートからは取れない"),
-        ask.Section("learnings.md", "踊らない", "会場の音量では既定の閾値に届かない。実測は0.0087だった"),
+        ask.Section("firmware.html", "焼き方", "焼き方", "バックアップ、アンバインド、焼く。順番を間違えるとペアリングが壊れる"),
+        ask.Section("haisenzu.html", "電源", "電源", "LEDテープは全開 5V 1.8A。本体のポートからは取れない"),
+        ask.Section("learnings.md", "踊らない", "踊らない", "会場の音量では既定の閾値に届かない。実測は0.0087だった"),
     ]
 
 
@@ -56,7 +56,7 @@ def test_関係が薄ければ何も返さない():
 
 def test_渡す量に上限がある():
     """小さいモデルで動かす。**入れすぎると、どれも読まれない。**"""
-    big = [ask.Section("x", f"節{i}", "焼く" * 500) for i in range(20)]
+    big = [ask.Section("x", "資料", f"節{i}", "焼く" * 500) for i in range(20)]
     picked = ask.pick(big, "焼く", limit=6)
     assert sum(len(s.body) for s in picked) <= ask.MAX_CONTEXT
 
@@ -68,7 +68,7 @@ def test_抜粋に無いことは答えない文言を返す():
 
 def test_秘密らしき出力は落とす():
     """★入口だけでなく出口も見る。**万一混ざっても、外には出さない。**"""
-    bad = "鍵は sk-abcdefghijklmnopqrstuvwxyz0123 です"
+    bad = "鍵は sk-abcdefghijklmnopqrstuvwxyz0123 です"  # secret-scan: 見本
     assert ask.safe_out(bad) == ask.BLOCKED
     assert ask.safe_out("順番を守ってください") == "順番を守ってください"
 
@@ -175,8 +175,8 @@ def test_進行表は資料に入れない():
 def test_弱い候補は混ぜない():
     """★一番強い節に比べて弱すぎるものを足すと、答えが脱線する（実測）。"""
     secs = [
-        ask.Section("a", "焼き方", "バックアップ、アンバインド、焼く。順番を守る"),
-        ask.Section("b", "量子計算", "焼き物とは関係ない話。焼く。以上"),
+        ask.Section("a", "焼き方", "焼き方", "バックアップ、アンバインド、焼く。順番を守る"),
+        ask.Section("b", "量子計算", "量子計算", "焼き物とは関係ない話。焼く。以上"),
     ]
     got = ask.pick(secs, "焼く順番は？")
     assert [s.title for s in got] == ["焼き方"]
@@ -187,8 +187,8 @@ def test_長い節が有利にならない():
     uniモードが無関係な量子のノートを引いた）。
     質問側の**どれだけを拾えたか**で測る。"""
     secs = [
-        ask.Section("a", "焼き方", "焼く順番はバックアップ、アンバインド、焼く"),
-        ask.Section("b", "雑記", "あ" * 200 + "焼" + "い" * 200 + "く" + "う" * 200),
+        ask.Section("a", "焼き方", "焼き方", "焼く順番はバックアップ、アンバインド、焼く"),
+        ask.Section("b", "雑記", "雑記", "あ" * 200 + "焼" + "い" * 200 + "く" + "う" * 200),
     ]
     got = ask.pick(secs, "焼く順番は？")
     assert got and got[0].title == "焼き方"
@@ -220,3 +220,88 @@ def test_同時に1つずつしか頭脳に投げない():
 
     asyncio.run(all_of_them())
     assert peak == 1, f"同時に {peak} 件が走った"
+
+
+# ── 2つの口は、混ざらない ────────────────────────────────
+def test_2つのモードは同じ資料を見ない():
+    """★混ざると、どちらの口で喋っているか分からなくなる。
+    「今日のこと」に vault が混じれば**配っていないものを知っている**ことになり、
+    「uniの相棒」に配布物が混じれば**本人の考えでないものを本人の考えとして語る**。"""
+    a = {p.resolve() for p in ask.paths_for(ask.MODES["today"])}
+    b = {p.resolve() for p in ask.paths_for(ask.MODES["uni"])}
+    assert not (a & b), f"両方に入っている: {a & b}"
+
+
+def test_今日のモードはvaultに手が届かない():
+    """★経路が無いことを試験で固定する。**禁止ではなく構造。**"""
+    import os
+    home = os.path.expanduser("~")
+    for p in ask.paths_for(ask.MODES["today"]):
+        rel = str(p.resolve())
+        assert "Obsidian" not in rel, rel
+        assert rel.startswith(str(ask.ROOT.resolve())), rel
+
+
+def test_uniモードはリポジトリに手が届かない():
+    for p in ask.paths_for(ask.MODES["uni"]):
+        assert not str(p.resolve()).startswith(str(ask.ROOT.resolve()))
+
+
+def test_出典は人が読める題名で出す(tmp_path):
+    """★実測：出典が `20260917-quantum-safe-is-the-o` と出た。
+    **参加者にはこれが見える。**ファイル名は人に見せるものではない。"""
+    f = tmp_path / "20260903-stackchan-is-io-gateway.md"
+    f.write_text("---\ntitle: 実機は頭脳ではなくI/Oゲートウェイ\n---\n\n"
+                 "## エッセンス\n入口と出口だけを持つ\n", encoding="utf-8")
+    secs = ask.split_sections(f)
+    assert all(s.doc == "実機は頭脳ではなくI/Oゲートウェイ" for s in secs)
+
+
+def test_出典は数を絞る():
+    """★弱く引っかかっただけの資料まで並べると、**答えより出典が長くなる。**"""
+    secs = [ask.Section(f"s{i}", f"doc{i}", f"節{i}", "焼く順番はバックアップから")
+            for i in range(9)]
+    assert len(ask.cite(secs)) <= ask.MAX_SOURCES
+
+
+# ── 眠ったモデルを、当日の最初の人に起こさせない ─────────
+def test_起こしたまま保つ指示が入る():
+    """★実測（2026-09-21）：しばらく空くと9GBのモデルが追い出され、
+    **次の質問が34秒かかった。**当日、最初の1人がこれを踏む。
+
+    毎回の問い合わせに「起こしたままにして」を付けて、寝かせない。
+    """
+    import talk
+    p = talk.build_payload("こんにちは", model="m", keep_alive="30m")
+    assert p["keep_alive"] == "30m"
+
+
+def test_声の側は今までどおり():
+    """★寝かせない指示は、頼んだときだけ付ける。**声の挙動を変えない。**"""
+    import talk
+    assert "keep_alive" not in talk.build_payload("こんにちは", model="m")
+
+
+def test_待ち時間は長めに取る():
+    """★1人が長く待つより、全員が「答えが返る」方がよい。"""
+    assert ask.TIMEOUT_S >= 120
+
+
+def test_出典は強く効いたものだけ出す():
+    """★実測：答えは正しいのに、出典に無関係なノートが並んだ（量子の話）。
+    **参加者にはこれが見える。**「もとにした」と言う以上、弱いものは出さない。"""
+    strong = ask.Section("a", "焼き方の資料", "焼き方", "バックアップ、アンバインド、焼く", 0.9)
+    weak = ask.Section("b", "関係ない資料", "雑記", "焼き物の話", 0.4)
+    assert ask.cite([strong, weak]) == ["焼き方の資料"]
+
+
+def test_よくある語では釣られない():
+    """★実測：「なぜ実機を薄く保つの？」の出典に、量子のノートが残った。
+    「実機」「する」のような**どこにでもある語**で点が入っていた。
+    **珍しい語ほど重く**見る（どの資料にも出る語は、何も絞っていない）。"""
+    many = [ask.Section(f"q{i}", f"量子{i}", "量子", "実機を使う話。実機。実機。" * 20)
+            for i in range(30)]
+    one = ask.Section("a", "薄く保つ", "薄く保つ",
+                      "実機を薄く保つのは、書き換え直しを減らすため")
+    got = ask.pick(many + [one], "なぜ実機を薄く保つの？")
+    assert got and got[0].doc == "薄く保つ", [s.doc for s in got[:3]]
