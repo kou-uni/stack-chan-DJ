@@ -97,6 +97,12 @@ def main() -> int:
     if new == t:
         print("\n★ 書き戻す場所が見つかりません（nums の入れ物を確かめてください）")
         return 1
+
+    # ★本文にも同じ数字が出てくる。1箇所だけ直して満足しない
+    tests = rows[3][0]
+    new = re.sub(r"<b>テスト [\d,]+件</b>", f"<b>テスト {tests}件</b>", new)
+    new = re.sub(r"から[\d,]+件のテストが通る", f"から{tests}件のテストが通る", new)
+    # ★過去の事件の件数（363件）は当時の値。書き換えない
     PAGE.write_text(new, encoding="utf-8")
     subprocess.run([str(ROOT / ".venv/bin/python"), "scripts/pack-page.py", "tsukutta-mono"],
                    cwd=ROOT)

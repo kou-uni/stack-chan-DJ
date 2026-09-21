@@ -43,7 +43,11 @@ RISKY_DIR = {"acceptance-log", "recordings", "transcripts"}
 #   **ディレクトリ名で決めつけると、正しいものまで消させることになる。**
 
 SKIP_SUFFIX = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".ico", ".woff", ".woff2"}
-SELF = Path(__file__).name
+# ★この検査自身と、その試験は「見本」を持っている。除外しないと必ず自分で落ちる。
+#   ただし除外はこの2つだけ。**落ちたら消す、を面倒がって広げない。**
+SAMPLE_FILES = {Path(__file__).name, "test_secret_scan.py"}
+# ★どうしても本文に書きたい1行には、この印を同じ行に置く
+ALLOW_MARK = "secret-scan: 見本"
 
 
 def tracked(staged: bool) -> list[Path]:
@@ -68,7 +72,7 @@ def scan(paths: list[Path]) -> list[str]:
             continue
         if p.suffix in SKIP_SUFFIX:
             continue
-        if p.name == SELF:                      # ★この検査自身の見本で落ちない
+        if p.name in SAMPLE_FILES:
             continue
 
         try:
@@ -76,6 +80,8 @@ def scan(paths: list[Path]) -> list[str]:
         except (UnicodeDecodeError, OSError):
             continue
         for i, line in enumerate(text.splitlines(), 1):
+            if ALLOW_MARK in line:
+                continue
             for name, pat in PATTERNS:
                 if pat.search(line):
                     hits.append(f"{rel}:{i}: ★{name}らしきものがあります")

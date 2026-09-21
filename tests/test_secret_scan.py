@@ -49,3 +49,14 @@ def test_ログの種類はそれだけで止める(tmp_path):
 def test_このリポジトリ自身が綺麗である():
     """★これが赤くなったまま配らない。"""
     assert ss.scan(ss.tracked(staged=False)) == []
+
+
+def test_見本の印がある行は見逃す(tmp_path):
+    """★ドキュメントに1行だけ形を載せたいことがある。印は**行単位**で、ファイル単位にしない。"""
+    f = tmp_path / "a.md"
+    f.write_text(
+        "sk-abcdefghijklmnopqrstuvwxyz0123  <!-- secret-scan: 見本 -->\n"
+        "sk-zyxwvutsrqponmlkjihgfedcba9876\n",
+        encoding="utf-8")
+    hits = ss.scan([f])
+    assert len(hits) == 1 and ":2:" in hits[0], hits
