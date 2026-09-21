@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>作ったもの、全部</title>
+<style>
+  :root{--ink:#080a0f;--ink2:#10151f;--ink3:#171d29;--line:#28313f;--line2:#3a4759;
+   --text:#e3e9f5;--dim:#8b98af;--faint:#5d6a80;
+   --fw:#ffb347;--net:#79b8ff;--body:#3ee39b;--voice:#c874ff;--show:#ff8fb1;--meta:#8b98af;
+   --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+   --sans:"Zen Kaku Gothic New",-apple-system,"Hiragino Sans",sans-serif}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:var(--sans);
+   line-height:1.85;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1100px;margin:0 auto;padding:56px 22px 110px}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;
+   color:var(--faint);text-transform:uppercase;margin:0 0 14px}
+  h1{font-size:clamp(28px,4.6vw,46px);font-weight:900;line-height:1.2;margin:0 0 20px;letter-spacing:-.01em}
+  .lede{font-size:16.5px;color:var(--dim);max-width:62ch;margin:0}
+
+  .nums{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin:34px 0 0}
+  .num{background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .num b{display:block;font-family:var(--mono);font-size:26px;font-weight:700;
+   letter-spacing:-.02em;line-height:1.2}
+  .num span{font-size:12.5px;color:var(--faint)}
+
+  h2{font-size:23px;font-weight:900;margin:80px 0 6px;letter-spacing:-.01em}
+  h2 .n{font-family:var(--mono);font-size:12px;letter-spacing:.16em;display:block;
+   margin-bottom:8px;font-weight:700;color:var(--c,var(--faint))}
+  .sub{color:var(--dim);font-size:15px;margin:0 0 22px;max-width:64ch}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:13px;background:var(--ink2)}
+  table{border-collapse:collapse;width:100%;min-width:620px;font-size:14px}
+  th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;color:var(--dim)}
+  thead th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--faint);
+   text-transform:uppercase;font-weight:700;background:var(--ink3);white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td b{color:var(--text)}
+  td.w{width:26%}
+  .hit{color:var(--fw);font-weight:700}
+
+  figure{margin:26px 0 0}
+  svg{display:block;width:100%;height:auto}
+  figcaption{font-size:12.5px;color:var(--faint);text-align:center;margin-top:12px}
+  .board{background:var(--ink2);border:1px solid var(--line);border-radius:14px;padding:12px;overflow-x:auto}
+
+  .note{background:var(--ink2);border:1px solid var(--line);border-left:3px solid var(--c,var(--line2));
+   border-radius:0 12px 12px 0;padding:15px 20px;font-size:14px;color:var(--dim);margin:20px 0 0}
+  .note b{color:var(--text)}
+  code{font-family:var(--mono);font-size:12.5px;background:var(--ink3);padding:1px 6px;border-radius:5px;color:var(--text)}
+  .foot{margin-top:84px;padding-top:24px;border-top:1px solid var(--line);font-size:13.5px;color:var(--faint)}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap">
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">スタックチャン勉強会 / 2026-09-29</p>
+  <h1>作ったもの、全部</h1>
+  <p class="lede">
+    2週間で、6つの系統を作りました。<b>順番に意味があります。</b>
+    身体が動く前に会話を作ると、詰まったときに何も見せられなくなる ──
+    だから<b>「一番強い見せ場」から先に作りました。</b>
+  </p>
+
+  <div class="nums">
+    <div class="num"><b>161</b><span>コミット</span></div>
+    <div class="num"><b>10日</b><span>9/12 → 9/21</span></div>
+    <div class="num"><b>8,174</b><span>行（本体＋背景）</span></div>
+    <div class="num"><b>415</b><span>自動テスト</span></div>
+    <div class="num"><b>1,878</b><span>行の失敗記録</span></div>
+    <div class="num"><b>49</b><span>実機の道具（MCP）</span></div>
+  </div>
+
+  <!-- ══ 全体 ══ -->
+  <h2><span class="n" style="--c:var(--body)">MAP</span>6つの系統</h2>
+  <p class="sub">下へ行くほど後に作ったもの。<b>上が土台で、下が見せ場です。</b></p>
+
+  <figure>
+    <div class="board">
+      <svg viewBox="0 0 1060 300" role="img"
+           aria-label="ファーム、接続、身体、声、演出、土台の6系統がどう積み上がっているかの図">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6"
+                  orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+          <path id="u1" d="M176,72 L176,108"/><path id="u2" d="M176,166 L176,202"/>
+        </defs>
+        <g font-family="Zen Kaku Gothic New, sans-serif">
+          <rect x="40" y="26" width="272" height="46" rx="9" fill="#151b27" stroke="#ffb347" stroke-opacity=".45"/>
+          <text x="60" y="55" font-size="14" font-weight="700" fill="#e3e9f5">① ファームを選んで、焼く</text>
+
+          <rect x="40" y="108" width="272" height="46" rx="9" fill="#151b27" stroke="#79b8ff" stroke-opacity=".45"/>
+          <text x="60" y="137" font-size="14" font-weight="700" fill="#e3e9f5">② 繋がる道を作る</text>
+
+          <rect x="40" y="202" width="272" height="46" rx="9" fill="#151b27" stroke="#3ee39b" stroke-opacity=".45"/>
+          <text x="60" y="231" font-size="14" font-weight="700" fill="#e3e9f5">③ 身体が動く</text>
+
+          <rect x="356" y="108" width="240" height="46" rx="9" fill="#151b27" stroke="#8b98af" stroke-opacity=".4"/>
+          <text x="376" y="137" font-size="14" font-weight="700" fill="#e3e9f5">④ 遠隔で触れる</text>
+
+          <rect x="356" y="202" width="240" height="46" rx="9" fill="#151b27" stroke="#c874ff" stroke-opacity=".45"/>
+          <text x="376" y="231" font-size="14" font-weight="700" fill="#e3e9f5">⑤ 声で話す</text>
+
+          <rect x="640" y="108" width="240" height="140" rx="9" fill="#151b27" stroke="#ff8fb1" stroke-opacity=".45"/>
+          <text x="660" y="137" font-size="14" font-weight="700" fill="#e3e9f5">⑥ 演出</text>
+          <text x="660" y="162" font-size="12" fill="#8b98af">DJ機材・LED・背景</text>
+          <text x="660" y="184" font-size="12" fill="#8b98af">バースト・花火・CO2</text>
+          <text x="660" y="212" font-size="11.5" font-family="JetBrains Mono, monospace" fill="#5d6a80">いちばん長くかけた</text>
+
+          <rect x="924" y="26" width="96" height="222" rx="9" fill="#0f141d" stroke="#28313f"/>
+          <text x="972" y="120" font-size="13" font-weight="700" text-anchor="middle" fill="#8b98af">土</text>
+          <text x="972" y="140" font-size="13" font-weight="700" text-anchor="middle" fill="#8b98af">台</text>
+          <text x="972" y="168" font-size="11" text-anchor="middle" fill="#5d6a80">テスト</text>
+          <text x="972" y="186" font-size="11" text-anchor="middle" fill="#5d6a80">記録</text>
+          <text x="972" y="204" font-size="11" text-anchor="middle" fill="#5d6a80">再現</text>
+        </g>
+        <g fill="none" stroke="#3a4759" stroke-width="1.3" marker-end="url(#ar)">
+          <use href="#u1" color="#3a4759"/><use href="#u2" color="#3a4759"/>
+          <path d="M312,131 L356,131"/><path d="M312,225 L356,225"/>
+          <path d="M596,131 L640,150"/><path d="M596,225 L640,206"/>
+        </g>
+      </svg>
+    </div>
+    <figcaption>①②が通らないと、③以降は1行も動かない</figcaption>
+  </figure>
+
+  <!-- ══ ① ══ -->
+  <h2><span class="n" style="--c:var(--fw)">01</span>ファームを選んで、焼く</h2>
+  <p class="sub">
+    <b>ここがいちばん大きな分かれ道でした。</b>5つ調べて、出荷時ファームを実測してから選びました。
+  </p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th class="w">作ったこと</th><th>中身</th></tr></thead>
+      <tbody>
+        <tr><td><b>ファームの評価</b></td>
+            <td>5つを比較（遠隔できるか／声の行き先／手間）。<b>出荷時を実測</b>してから決めた ──
+                応答速度・騒音耐性・音量・待機時の挙動</td></tr>
+        <tr><td><b>焼く前の作法</b></td>
+            <td><b>バックアップ</b>（<code>esptool read_flash</code>）→ <b>アンバインド</b> → 焼く。
+                <span class="hit">順番を間違えるとペアリングが壊れる</span></td></tr>
+        <tr><td><b>ファームの更新</b></td>
+            <td>頭なでが効かなかったので <b>PR #374 を焼いた</b>。
+                <span class="hit">20秒で1回 → 15回</span>に改善</td></tr>
+        <tr><td><b>戻せる焼き方</b></td>
+            <td><b>OTAの2スロット</b>を使い、起動先だけ切り替える。<b>失敗しても前に戻れる</b></td></tr>
+        <tr><td><b>焼く前後の突き合わせ</b></td>
+            <td>受け入れ試験を先に作り、<b>焼く前に基準を取ってから</b>焼いて差分を見た</td></tr>
+        <tr><td><b>表情を自作</b></td>
+            <td>ファーム同梱の画像は <b>1×1の黒い点</b>だった。<b>14枚を自分で描いた</b>
+                （顔6・目3・口5）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note" style="--c:var(--fw)">
+    <b>最大の詰まりは「関門が1つだと思い込んだ」こと。</b>
+    焼けば終わりだと思っていたら、<b>OTAの6桁コード</b>という関門がもう1つあった。
+    さらに<b>前のファームが残した設定が消えず</b>、mDNSが死んで半日溶かした。
+  </div>
+
+  <!-- ══ ② ══ -->
+  <h2><span class="n" style="--c:var(--net)">02</span>繋がる道を作る</h2>
+  <p class="sub">実機がどのMacを見に行くか。<b>本体に触らずに切り替わる形</b>にしました。</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th class="w">作ったこと</th><th>中身</th></tr></thead>
+      <tbody>
+        <tr><td><b>mDNSで探させる</b></td>
+            <td>接続先URLを<b>空</b>にして、同じLANのゲートウェイを自動で見つけさせる。
+                <b>会場でも家でも、本体の設定は触らない</b></td></tr>
+        <tr><td><b>ゲートウェイの改造</b></td>
+            <td>踊りの閾値が固定で<b>部屋の音量では一生踊り出さなかった</b>ので、外から変えられるようにした。
+                聞き取りの設定（無音を捨てる・音量を上げる・語彙を先に教える）も追加。
+                <b>5ファイル</b></td></tr>
+        <tr><td><b>改変を運べる形に</b></td>
+            <td>改変は文章でしか残っていなかった。<b>patchとして書き出し</b>、
+                別の機械で「clone → 版を固定 → 当て直す」で再現できるようにした</td></tr>
+        <tr><td><b>退避の設計</b></td>
+            <td>MacBookが落ちたら Mac Studio が名乗る（<b>判断は片方だけが持つ</b>）。
+                <span class="hit">未実装・未実測</span></td></tr>
+        <tr><td><b>一から立ち上げる仕掛け</b></td>
+            <td><code>bootstrap.sh</code> 1本。<b>手で運ぶものはゼロ</b>。
+                まっさらなcloneから415件のテストが通るところまで確認済み</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══ ③ ══ -->
+  <h2><span class="n" style="--c:var(--body)">03</span>身体が動く</h2>
+  <p class="sub">
+    首・表情・LED・カメラ。<b>状態を1箇所に集める</b>という設計が、ここで全部決まりました。
+  </p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th class="w">作ったこと</th><th>中身</th></tr></thead>
+      <tbody>
+        <tr><td><b>宣言的な状態</b></td>
+            <td>首を<b>19箇所・5系統</b>から叩いていて、誰かが割り込むたびに壊れた。
+                <b>「いまどうあるべきか」を1箇所に置き、実機に書くのは1人だけ</b>にした</td></tr>
+        <tr><td><b>踊り（振り付け）</b></td>
+            <td>拍に合わせて首を振る。<b>複数のフレーズ</b>を持ち、長さも一定でない。
+                立ち上がりに助走をつける（<b>人は数拍聴いてから乗り出す</b>）</td></tr>
+        <tr><td><b>拍の検出</b></td>
+            <td>音からテンポを推定。
+                <span class="hit">ロボットが自分のサーボ音を拍として拾って踊り続けた</span> ──
+                <b>4秒ごとに首を止めて測る「聴き入る」演出</b>で解決</td></tr>
+        <tr><td><b>頭なで</b></td>
+            <td>タッチ3ゾーン。<b>6種の反応 × 声</b>。<b>いつも喜ぶ相手は機械に見える</b>ので、
+                嫌がる反応を入れた。閾値は実測から決めた（9.5秒／52秒／92秒の撫でが実在した）</td></tr>
+        <tr><td><b>LED 30粒</b></td>
+            <td>13種の模様。<b>入力への返事</b>（撫で＝七色／こすり＝白く速く／つまみ＝メーター）。
+                <b>割り当てていないボタンでも必ず何か起きる</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note" style="--c:var(--body)">
+    <b>「余計な反応」をバグと決めつけない。</b>
+    サーボ音で踊り続けたのは故障ではなく、<b>センサーとアクチュエータが同じ体に載っている</b>
+    という、この形のロボット固有の性質でした。
+  </div>
+
+  <!-- ══ ④ ══ -->
+  <h2><span class="n" style="--c:var(--meta)">04</span>遠隔で触れる</h2>
+  <p class="sub">外出先から実機を動かすための、ブラウザ1枚。</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th class="w">作ったこと</th><th>中身</th></tr></thead>
+      <tbody>
+        <tr><td><b>操作パネル</b></td>
+            <td>首・表情・モード・LED・バースト・喋らせる・写真・質問・MIDI流し込み。
+                ブラウザだけ、アプリ無し</td></tr>
+        <tr><td><b>映像</b></td>
+            <td>1.9コマ/秒で流れる。
+                <span class="hit">最初「見るボタン」にしていた</span> ──
+                <b>外にいる人はロボットが見えない。来た目的そのものを押させていた</b></td></tr>
+        <tr><td><b>外へ出す</b></td>
+            <td>トンネル1本。<b>鍵つきURL</b>。当日は同じLANなので使わない</td></tr>
+        <tr><td><b>MIDIの流し込み</b></td>
+            <td>機材が無くても同じ動きを再現できる。
+                <b>当日「パッドが効かない」ときの切り分けにも使える</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══ ⑤ ══ -->
+  <h2><span class="n" style="--c:var(--voice)">05</span>声で話す</h2>
+  <p class="sub"><b>全部この部屋の中で完結します。</b>外部のAIは1つも使っていません。</p>
+
+  <figure>
+    <div class="board">
+      <svg viewBox="0 0 1060 150" role="img"
+           aria-label="声が実機からMacへ行き、聞き取り、考える、声を作る、を経て実機に戻る流れ">
+        <g font-family="Zen Kaku Gothic New, sans-serif">
+          <rect x="20" y="40" width="150" height="60" rx="9" fill="#151b27" stroke="#3a4759"/>
+          <text x="40" y="68" font-size="13" font-weight="700" fill="#e3e9f5">実機のマイク</text>
+          <text x="40" y="88" font-size="11.5" fill="#8b98af">声を拾う</text>
+
+          <rect x="220" y="40" width="170" height="60" rx="9" fill="#151b27" stroke="#c874ff" stroke-opacity=".4"/>
+          <text x="240" y="68" font-size="13" font-weight="700" fill="#e3e9f5">聞き取り</text>
+          <text x="240" y="88" font-size="11.5" fill="#8b98af">gateway の中</text>
+
+          <rect x="440" y="40" width="170" height="60" rx="9" fill="#151b27" stroke="#c874ff" stroke-opacity=".4"/>
+          <text x="460" y="68" font-size="13" font-weight="700" fill="#e3e9f5">考える</text>
+          <text x="460" y="88" font-size="11.5" fill="#8b98af">ローカルLLM</text>
+
+          <rect x="660" y="40" width="170" height="60" rx="9" fill="#151b27" stroke="#c874ff" stroke-opacity=".4"/>
+          <text x="680" y="68" font-size="13" font-weight="700" fill="#e3e9f5">声を作る</text>
+          <text x="680" y="88" font-size="11.5" fill="#8b98af">VOICEVOX</text>
+
+          <rect x="880" y="40" width="160" height="60" rx="9" fill="#151b27" stroke="#3a4759"/>
+          <text x="900" y="68" font-size="13" font-weight="700" fill="#e3e9f5">実機が喋る</text>
+          <text x="900" y="88" font-size="11.5" fill="#8b98af">3〜5秒で返る</text>
+        </g>
+        <g fill="none" stroke="#c874ff" stroke-opacity=".5" stroke-width="1.4" marker-end="url(#ar)" color="#c874ff">
+          <path d="M170,70 L220,70"/><path d="M390,70 L440,70"/>
+          <path d="M610,70 L660,70"/><path d="M830,70 L880,70"/>
+        </g>
+      </svg>
+    </div>
+    <figcaption>外部APIはゼロ。声は建物の外へ出ない</figcaption>
+  </figure>
+
+  <div class="tablewrap" style="margin-top:20px">
+    <table>
+      <thead><tr><th class="w">作ったこと</th><th>中身</th></tr></thead>
+      <tbody>
+        <tr><td><b>相槌を先に返す</b></td>
+            <td>考える前に「うん」と言う。<b>無音が2秒続くと壊れて見える</b></td></tr>
+        <tr><td><b>短く答える</b></td>
+            <td>上限40文字。<b>70文字で音声10.4秒、体感18秒。人は10秒も一人で喋らない</b></td></tr>
+        <tr><td><b>振り分ける</b></td>
+            <td>深い話は「手順は君のエージェントが持ってる」と振る。<b>受付と振り分けをする先生</b></td></tr>
+        <tr><td><b>録音 → 文字起こし</b></td>
+            <td>当日の音声をその場で文字に起こし、<b>締めのスピーチに織り込む</b></td></tr>
+        <tr><td><b>台本で喋らせる</b></td>
+            <td>書いた文に <code>[face]</code> <code>[led]</code> <code>[move]</code> を混ぜると、
+                <b>喋りながら顔と首とLEDが動く</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note" style="--c:var(--voice)">
+    <b>会話サーバを一度まるごと立てて、使わないことにしました。</b>
+    Apple Silicon で動くところまで作ったあとで、<b>同じことをする経路が既にあった</b>と分かった。
+    <b>手を入れる前に、いま動いているものを数える。</b> 探すのは5分、作るのは半日。
+  </div>
+
+  <!-- ══ ⑥ ══ -->
+  <h2><span class="n" style="--c:var(--show)">06</span>演出</h2>
+  <p class="sub"><b>いちばん長くかけました。</b>直したところは、ほぼ全部「人間なら一目で分かるのに、機械には分からなかった」場所です。</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th class="w">作ったこと</th><th>中身</th></tr></thead>
+      <tbody>
+        <tr><td><b>DJ機材の割り当て</b></td>
+            <td>つまみ→首、パッド→表情とLED、レコード→光、フェーダー→バースト。
+                <b>番号は推測せず、動かして覚えさせる</b>仕組みも作った</td></tr>
+        <tr><td><b>背景スクリーン</b></td>
+            <td>ブラウザ1枚でライブ会場を描く。<b>流れているのはこのロボット自身のコード</b>。
+                奥から手前へ7層</td></tr>
+        <tr><td><b>LEDの一致</b></td>
+            <td>実機のテープに送る<b>30個の配列をそのまま</b>画面も受け取る。
+                柱・グリル・ウーファーの縁の3箇所</td></tr>
+        <tr><td><b>物理法則</b></td>
+            <td>射影変換／逆二乗／光は筒の先から出る／灯体は揺れない／
+                光だまりは物の形で切り抜く／素材ごとに返し方が違う。<b>全部やり直した</b></td></tr>
+        <tr><td><b>バースト</b></td>
+            <td>音量フェーダー70%で会場が赤く、100%で<b>花火とCO2</b>。
+                LEDも首も同時に激しくなる</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note" style="--c:var(--show)">
+    <b>テスト409件が全部緑なのに、画面は真っ白でした。</b>
+    加算した透明度が1を超えて、そのフレームが丸ごと消えていた。
+    <b>「落ちずに描けた」は「正しく描けた」ではない。</b>
+    それ以来、背景を触ったら<b>必ず撮って目で見る</b>ようにしています。
+  </div>
+
+  <!-- ══ 土台 ══ -->
+  <h2><span class="n" style="--c:var(--meta)">07</span>土台 — 全部を支えているもの</h2>
+  <p class="sub">これが無いと、上の6つは<b>触るたびに壊れます。</b></p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th class="w">作ったこと</th><th>中身</th></tr></thead>
+      <tbody>
+        <tr><td><b>テスト 415件</b></td>
+            <td>設計の不変条件をテストにしたら<b>違反35箇所が機械的に出た</b>。
+                振り付けの可動範囲をテストにしたら<b>頷きが40度で潰れていた</b></td></tr>
+        <tr><td><b>幾何と描画の検査</b></td>
+            <td>背景の図のズレを<b>目で追わず、不変条件として検査する</b>。
+                1フレームの描画命令数まで見張る（超えるとiPadが止まる）</td></tr>
+        <tr><td><b>受け入れテスト</b></td>
+            <td>当日の流れ順に28項目。<b>実機が声で読み上げて、頭タップで答える</b></td></tr>
+        <tr><td><b>失敗の記録 1,878行</b></td>
+            <td>詰まって抜けたら、その場で書く。<b>4分類</b>（ベストプラクティス／アンチパターン／
+                ノウハウ／当日話せるネタ）</td></tr>
+        <tr><td><b>再現できる形</b></td>
+            <td>コードは1本、機械ごとに変えるのは設定だけ。
+                <b>文書は「更新するもの」と「もう更新しないもの」に分けた</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="foot">
+    ここに書いたことの根拠と手順は、当日配るリポジトリに全部入っています。
+    <b>読まなくて構いません。あなたのエージェントに読ませてください。</b>
+  </p>
+
+</div>
+</body>
+</html>
