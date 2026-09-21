@@ -1,0 +1,259 @@
+<title>始め方の地図</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+  :root{--ink:#070a0e;--ink2:#0f151d;--ink3:#171f2a;--line:#26313f;
+   --text:#e8eef8;--dim:#93a2b8;--faint:#637287;
+   --go:#5fd3a0;--now:#7ee0d0;--stop:#ff6b57;--soon:#79b8ff;--late:#5b6b80;
+   --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+   --sans:"Zen Kaku Gothic New",-apple-system,"Hiragino Sans",sans-serif}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:var(--sans);
+   line-height:1.85;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:980px;margin:0 auto;padding:56px 22px 110px}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;
+   color:var(--faint);text-transform:uppercase;margin:0 0 14px}
+  h1{font-size:clamp(30px,5vw,50px);font-weight:900;line-height:1.16;margin:0 0 20px;letter-spacing:-.015em}
+  .lede{font-size:17px;color:var(--dim);max-width:60ch;margin:0}
+  .lede b{color:var(--text)}
+
+  figure{margin:38px 0 0}
+  svg{display:block;width:100%;height:auto}
+  figcaption{font-size:12.5px;color:var(--faint);text-align:center;margin-top:12px}
+  .board{background:var(--ink2);border:1px solid var(--line);border-radius:14px;padding:14px;overflow-x:auto}
+
+  h2{font-size:23px;font-weight:900;margin:80px 0 8px;letter-spacing:-.01em}
+  h2 .n{font-family:var(--mono);font-size:12px;letter-spacing:.16em;display:block;
+   margin-bottom:8px;font-weight:700;color:var(--now)}
+  .sub{color:var(--dim);font-size:15px;margin:0 0 22px;max-width:64ch}
+
+  .step{background:var(--ink2);border:1px solid var(--line);border-radius:14px;
+   padding:20px 24px;margin:14px 0 0;border-left:3px solid var(--c,var(--line))}
+  .step .top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .step .k{font-family:var(--mono);font-size:11.5px;color:var(--c,var(--faint));
+   font-weight:700;letter-spacing:.1em}
+  .step h3{font-size:19px;font-weight:900;margin:0;letter-spacing:-.01em}
+  .step .t{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--faint)}
+  .step p{margin:10px 0 0;font-size:14.5px;color:var(--dim)}
+  .step p b{color:var(--text)}
+  .step .trap{margin-top:12px;padding:11px 15px;background:#1a1012;border:1px solid #3a2226;
+   border-radius:9px;font-size:14px;color:var(--dim)}
+  .step .trap b{color:#ff9c8c}
+  .badge{display:inline-block;background:rgba(126,224,208,.15);border:1px solid var(--now);
+   color:var(--now);font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 11px;
+   font-family:var(--mono);letter-spacing:.06em}
+
+  pre{background:var(--ink3);border:1px solid var(--line);border-radius:11px;
+   padding:16px 19px;overflow-x:auto;font-family:var(--mono);font-size:13px;
+   color:var(--text);line-height:1.75;margin:16px 0 0;white-space:pre-wrap}
+  .note{background:var(--ink2);border:1px solid var(--line);border-left:3px solid var(--go);
+   border-radius:0 12px 12px 0;padding:16px 22px;font-size:14.5px;color:var(--dim);margin:24px 0 0}
+  .note b{color:var(--text)}
+  code{font-family:var(--mono);font-size:12.5px;background:var(--ink3);padding:1px 6px;border-radius:5px;color:var(--text)}
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--ink2);margin:20px 0 0}
+  table{border-collapse:collapse;width:100%;min-width:480px;font-size:14px}
+  th,td{padding:12px 17px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;color:var(--dim)}
+  thead th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--faint);
+   text-transform:uppercase;font-weight:700;background:var(--ink3);white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td b{color:var(--text)}
+  .foot{margin-top:84px;padding-top:26px;border-top:1px solid var(--line);font-size:13.5px;color:var(--faint)}
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">スタックチャン勉強会 / 2026-09-29</p>
+  <h1>始め方の地図</h1>
+  <p class="lede">
+    <b>まだ何も始めていない人へ。</b><br>
+    手順書ではありません。<b>道のりの、どこに何があるかの地図</b>です ──
+    <b>どこで止まるか</b>を先に知っておくための。
+  </p>
+
+  <figure>
+    <div class="board">
+      <svg viewBox="0 0 1040 250" role="img"
+           aria-label="6つの手順の道のり。今日は1番目まで。3番目と4番目の間で一度喋らなくなる">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5"
+                  orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a4759"/></marker>
+        </defs>
+        <g font-family="Zen Kaku Gothic New, sans-serif">
+          <!-- 道 -->
+          <line x1="40" y1="120" x2="1000" y2="120" stroke="#26313f" stroke-width="2"/>
+
+          <!-- 今日の範囲 -->
+          <rect x="26" y="62" width="128" height="134" rx="10" fill="rgba(126,224,208,.07)"
+                stroke="#7ee0d0" stroke-opacity=".5" stroke-dasharray="5 5"/>
+          <text x="90" y="50" font-size="12.5" font-weight="700" fill="#7ee0d0"
+                text-anchor="middle" font-family="JetBrains Mono, monospace">今日、ここまで</text>
+
+          <g font-size="12.5" fill="#e8eef8" text-anchor="middle">
+            <circle cx="90" cy="120" r="17" fill="#0f2a22" stroke="#5fd3a0" stroke-width="2"/>
+            <text x="90" y="125" font-size="13" font-weight="700" fill="#5fd3a0">1</text>
+            <text x="90" y="160" font-weight="700" font-size="12">出荷時で遊ぶ</text>
+            <text x="90" y="180" font-size="11" fill="#637287">30分</text>
+
+            <circle cx="250" cy="120" r="17" fill="#0f2a22" stroke="#5fd3a0" stroke-width="2"/>
+            <text x="250" y="125" font-size="13" font-weight="700" fill="#5fd3a0">2</text>
+            <text x="250" y="160" font-weight="700">戻れるようにする</text>
+            <text x="250" y="180" font-size="11" fill="#637287">20分</text>
+
+            <circle cx="430" cy="120" r="17" fill="#2a1416" stroke="#ff6b57" stroke-width="2"/>
+            <text x="430" y="125" font-size="13" font-weight="700" fill="#ff6b57">3</text>
+            <text x="430" y="160" font-weight="700" fill="#ff9c8c">アンバインド</text>
+            <text x="430" y="180" font-size="11" fill="#637287">10分</text>
+
+            <circle cx="610" cy="120" r="17" fill="#2a1416" stroke="#ff6b57" stroke-width="2"/>
+            <text x="610" y="125" font-size="13" font-weight="700" fill="#ff6b57">4</text>
+            <text x="610" y="160" font-weight="700" fill="#ff9c8c">焼く</text>
+            <text x="610" y="180" font-size="11" fill="#637287">60分</text>
+
+            <circle cx="790" cy="120" r="17" fill="#101c2a" stroke="#79b8ff" stroke-width="2"/>
+            <text x="790" y="125" font-size="13" font-weight="700" fill="#79b8ff">5</text>
+            <text x="790" y="160" font-weight="700">gateway を立てる</text>
+            <text x="790" y="180" font-size="11" fill="#637287">20分</text>
+
+            <circle cx="960" cy="120" r="17" fill="#101c2a" stroke="#79b8ff" stroke-width="2"/>
+            <text x="960" y="125" font-size="13" font-weight="700" fill="#79b8ff">6</text>
+            <text x="960" y="160" font-weight="700">作り込む</text>
+            <text x="960" y="180" font-size="11" fill="#637287">ずっと</text>
+          </g>
+
+          <!-- 沈黙の区間 -->
+          <path d="M447,96 L593,96" stroke="#ff6b57" stroke-width="2" stroke-dasharray="4 4"/>
+          <text x="520" y="86" font-size="12" font-weight="700" fill="#ff6b57" text-anchor="middle">ここで一度、喋らなくなる</text>
+          <text x="520" y="215" font-size="11.5" fill="#8a7078" text-anchor="middle">知らずに入ると「壊した」と思う区間</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>★<b>2を飛ばさない。</b>飛ばすと、詰まったときに戻る場所が無くなる</figcaption>
+  </figure>
+
+  <!-- ══ 買う ══ -->
+  <h2><span class="n">STEP 0</span>何を買うか</h2>
+  <p class="sub"><b>M5Stack 公式キット K151 / K151-R 一択でよい。</b>迷う必要がありません。</p>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>入っているもの</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td><b>コントローラ</b></td><td>M5Stack CoreS3（ESP32-S3）</td></tr>
+      <tr><td><b>サーボ 2基</b></td><td>フィードバック付き。横360°連続回転／縦90°</td></tr>
+      <tr><td><b>センサ</b></td><td>カメラ・デュアルマイク・近接／環境光・9軸IMU・<b>3ゾーン容量タッチ</b></td></tr>
+      <tr><td><b>光</b></td><td>RGB LED 12個（本体）</td></tr>
+      <tr><td><b>電源</b></td><td>バッテリー 550mAh</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note">
+    <b>★最初につまずくのは、たいていここです。USBポートが2つあります。</b>
+    <b>CoreS3 本体側＝書き込み。ベース側＝給電のみ。</b>
+    書き込めないときは、<b>まず挿している穴を疑ってください。</b>
+  </div>
+
+  <!-- ══ 6手順 ══ -->
+  <h2><span class="n">THE ROAD</span>6つの手順と、詰まる場所</h2>
+  <p class="sub">所要は実測です（2026-09-08〜09）。<b>詰まるところを、先に書いておきます。</b></p>
+
+  <div class="step" style="--c:var(--go)">
+    <div class="top"><span class="k">STEP 1</span><h3>出荷時のまま、遊ぶ</h3><span class="t">30分</span></div>
+    <p>
+      <span class="badge">今日、ここまで</span>
+      <b>いきなり自前構成にしないでください。</b>先に「本来どう動くのか」を体で知っておく。
+      <b>あとで自作と比べる基準になります。</b>
+    </p>
+    <p><b>ここで測っておくこと</b>（後で必ず効きます）──
+      <b>応答の速さ</b>／騒がしい場所でウェイクワードが通るか／<b>放置したときの挙動</b>。</p>
+    <div class="trap"><b>知っておくこと。</b>出荷時は、聞き取り・考える・喋るの<b>全部がメーカーのクラウド</b>に出ます。
+      会話の流れで<b>カメラのシャッターも切れます</b>。便利さは、どこかに繋がっていることで成り立っています。</div>
+  </div>
+
+  <div class="step" style="--c:var(--go)">
+    <div class="top"><span class="k">STEP 2</span><h3>戻れるようにする</h3><span class="t">20分</span></div>
+    <p><b>ここを飛ばさないでください。</b>飛ばすと、詰まったときに<b>戻る場所が無くなります。</b>
+      いまの状態をまるごと吸い出して、手元に置いておくだけです。</p>
+    <div class="trap"><b>★焼く話をすると「失敗したら文鎮」と思われますが、逆です。</b>
+      書き込み領域が<b>2面</b>あり、新しい方が立ち上がらなければ前の面に戻ります。
+      <b>失敗できる形にしてから焼きます。</b></div>
+  </div>
+
+  <div class="step" style="--c:var(--stop)">
+    <div class="top"><span class="k">STEP 3</span><h3>アンバインド（紐付けを外す）</h3><span class="t">10分</span></div>
+    <p><b>順番を守ってください。</b>バックアップ → アンバインド → 焼く。
+      <b>順番を間違えるとペアリングが壊れます。</b></p>
+    <div class="trap"><b>★ここから、一度喋らなくなります。</b>
+      これは壊れたのではなく、<b>道のりの一部です。</b>
+      知らずに入ると「自分が壊した」と思って、そこで止まります。<b>4まで行けば戻ります。</b></div>
+  </div>
+
+  <div class="step" style="--c:var(--stop)">
+    <div class="top"><span class="k">STEP 4</span><h3>焼く</h3><span class="t">60分 ← 一番詰まる</span></div>
+    <p>ここが山です。<b>関門が2段あります。</b>
+      ①登録を求められて先へ進めない ②<b>焼き直しても、前の接続先が生き残る</b>。</p>
+    <div class="trap"><b>★焼いても消えない領域があります。</b>
+      前の持ち主が書いた接続先がそこに残っていて、こちらの指定を無視して古い先へ行き続けます。
+      <b>「焼き直したのだから初期状態」は成り立ちません。</b></div>
+  </div>
+
+  <div class="step" style="--c:var(--soon)">
+    <div class="top"><span class="k">STEP 5</span><h3>母艦に gateway を立てる</h3><span class="t">20分</span></div>
+    <p>ここまで来ると、<b>頭脳を自分で選べるようになります。</b>
+      手元のMacでも、クラウドでも。<b>実機は入口と出口だけになります。</b></p>
+    <div class="trap"><b>実機側は薄く保ってください。</b>
+      ロジックを載せるほど、<b>直すたびに焼き直し</b>になります。</div>
+  </div>
+
+  <div class="step" style="--c:var(--soon)">
+    <div class="top"><span class="k">STEP 6</span><h3>作り込む</h3><span class="t">ずっと</span></div>
+    <p>表情を描く（60分）／音楽に合わせて踊らせる（半日）／電源を入れるだけで動く状態にする（30分）。
+      <b>ここから先は、やりたい順でよいです。</b></p>
+  </div>
+
+  <!-- ══ 渡し方 ══ -->
+  <h2><span class="n">HANDOFF</span>手順は、覚えません。渡します</h2>
+  <p class="sub">
+    ★<b>この地図は、人間が覚えるためのものではありません。</b>
+    どこで止まるかを知っておくためのものです。<b>手順そのものは、エージェントに渡します。</b>
+  </p>
+
+  <p style="color:var(--dim);font-size:14.5px;margin:0">
+    リポジトリを自分の Claude Code に読ませて、<b>これをそのまま言ってください。</b>
+  </p>
+<pre>このリポジトリを読んで、僕の状況に合わせて手順を出して。
+
+  持っているもの:  M5Stack K151 ／ Mac
+  いまの状態:      箱を開けたところ
+  今日やりたいこと: 出荷時のまま喋らせるところまで
+
+詰まったところは docs/learnings.md に全部書いてあるので、
+先に読んでから答えて。</pre>
+
+  <div class="note">
+    <b>踏んだ穴は、もう中に入っています。</b>
+    <b>同じ穴に落ちる前に、渡してある状態から始められます。</b>
+    詰まったら、起きたことをそのまま伝えてください ──
+    <b>「撫でても反応しない」「焼いたのに前の接続先に行く」</b>で通じます。
+  </div>
+
+  <!-- ══ 今日 ══ -->
+  <h2><span class="n">TODAY</span>今日、この場でやること</h2>
+  <p class="sub">25分で焼くと、<b>事故ります。</b>だから今日は<b>1まで</b>です。</p>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>やること</th><th>できたら</th></tr></thead>
+    <tbody>
+      <tr><td><b>① リポジトリを自分のエージェントに読ませる</b></td><td>上の一文を貼るだけ</td></tr>
+      <tr><td><b>② 持っている人は、出荷時のまま喋らせる</b></td><td><b>応答の速さを覚えておく。</b>あとで効きます</td></tr>
+      <tr><td><b>③ 持っていない人は、進行役の実機で見る</b></td><td>買うかどうかは、見てから決めればよいです</td></tr>
+      <tr><td><b>④ 「自分なら何をさせたいか」を1つ決める</b></td><td>あとで発表します。<b>技術の話でなくて構いません</b></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="foot">
+    細かい手順と実測は <code>docs/textbook.md</code>（9章）、踏んだ穴は
+    <b>失敗カタログ</b>と <code>docs/learnings.md</code>（1,878行）に。
+    <b>読まなくて構いません。あなたのエージェントに読ませてください。</b>
+  </p>
+
+</div>
