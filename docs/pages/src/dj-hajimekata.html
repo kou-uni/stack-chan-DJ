@@ -1,0 +1,176 @@
+<title>自分のDJ機材でやる</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+  :root{--ink:#080a0f;--ink2:#10151f;--ink3:#171d29;--line:#28313f;
+   --text:#e3e9f5;--dim:#8b98af;--faint:#5d6a80;
+   --midi:#ffb347;--led:#3ee39b;--warn:#ff6b57;
+   --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+   --sans:"Zen Kaku Gothic New",-apple-system,"Hiragino Sans",sans-serif}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:var(--sans);
+   line-height:1.85;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:56px 22px 110px}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;
+   color:var(--faint);text-transform:uppercase;margin:0 0 14px}
+  h1{font-size:clamp(28px,4.6vw,44px);font-weight:900;line-height:1.22;margin:0 0 20px;letter-spacing:-.01em}
+  .lede{font-size:16.5px;color:var(--dim);max-width:60ch;margin:0 0 8px}
+  .stamp{font-family:var(--mono);font-size:12px;color:var(--faint);margin:24px 0 0}
+
+  .step{margin:56px 0 0;padding-top:26px;border-top:1px solid var(--line)}
+  .step .n{font-family:var(--mono);font-size:12px;letter-spacing:.16em;color:var(--midi);font-weight:700}
+  .step h2{font-size:22px;font-weight:900;margin:8px 0 12px;letter-spacing:-.01em}
+  p{margin:0 0 14px;color:var(--dim);font-size:15px}
+  p b,li b,td b{color:var(--text)}
+  ul{margin:0 0 16px;padding-left:1.2em}li{color:var(--dim);font-size:15px;margin:6px 0}
+  pre{background:var(--ink2);border:1px solid var(--line);border-radius:12px;
+   padding:18px 20px;overflow-x:auto;font-family:var(--mono);font-size:13px;
+   color:var(--text);line-height:1.75;margin:0 0 18px}
+  pre .c{color:var(--faint)}
+  blockquote{margin:18px 0;padding:15px 20px;border-left:3px solid var(--led);
+   background:var(--ink2);border-radius:0 10px 10px 0;color:var(--dim);font-size:14.5px}
+  blockquote b{color:var(--text)}
+  .warn{border-left-color:var(--warn)}
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--ink2);margin:0 0 20px}
+  table{border-collapse:collapse;width:100%;min-width:480px;font-size:14px}
+  th,td{padding:11px 15px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;color:var(--dim)}
+  thead th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--faint);
+   text-transform:uppercase;font-weight:700;background:var(--ink3);white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  code{font-family:var(--mono);font-size:12.5px;background:var(--ink3);padding:1px 6px;border-radius:5px;color:var(--text)}
+  .foot{margin-top:76px;padding-top:24px;border-top:1px solid var(--line);font-size:13.5px;color:var(--faint)}
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">おまけ / 家に帰ってから</p>
+  <h1>自分のDJ機材で、<br>同じことをやる</h1>
+  <p class="lede">
+    リポジトリを自分の Claude Code に読ませたあとの話です。
+    <b>機材は同じものでなくて構いません。</b>むしろ違うほうがいい ──
+    つまみの数も並びも違うので、<b>割り当ては自分で決めることになります。</b>
+  </p>
+  <p class="stamp">所要 30分 ／ 必要なもの：MIDIが出るDJコントローラー（USB）</p>
+
+  <!-- 1 -->
+  <div class="step">
+    <p class="n">STEP 1</p>
+    <h2>繋いで、届いているかだけ見る</h2>
+    <p>まずは<b>「何か届いている」</b>だけ確認します。割り当ては後です。</p>
+<pre>USBで Mac に挿す
+  ↓
+./.venv/bin/python app/dj/midi_dump.py   <span class="c"># 触ると番号が流れる</span></pre>
+    <blockquote>
+      <b>何も流れない場合。</b>DJソフト（rekordbox など）が先にポートを掴んでいます。
+      <b>MIDIポートは1つのソフトしか開けません。</b>先に閉じてください。
+    </blockquote>
+  </div>
+
+  <!-- 2 -->
+  <div class="step">
+    <p class="n">STEP 2</p>
+    <h2>つまみを1本ずつ、覚えさせる</h2>
+    <p>
+      <b>番号を推測しないでください。</b>同じメーカーでも機種と世代で違います。
+      「たぶん19番」で書くと、<b>当日そのつまみだけ効かない</b>という壊れ方をします。
+    </p>
+<pre>./.venv/bin/python scripts/learn_cc.py burst "右の音量ゲージ"
+  ↓
+<span class="c">★ 右の音量ゲージ を、下から上までゆっくり1往復させてください</span>
+  ↓
+<span class="c">✓ 見つけました: CC ch1 #19  → mapping.json に書きました</span></pre>
+    <p>
+      動かした瞬間に確定します。<b>時間で締め切りません</b>
+      （8秒で切っていたら、読んで手を伸ばす間に終わっていました）。
+    </p>
+    <blockquote>
+      <b>14bitで送ってくる機材があります。</b>
+      上位（CC 0〜31）と下位（CC 32〜63）がペアで飛んでくるもので、
+      <b>下位を拾うとメーターが暴れます。</b>
+      このスクリプトは下位を無視し、<b>可動域が広いものだけ</b>を候補にします
+      （ジョグは回数が多いが範囲が狭いので、取り違えません）。
+    </blockquote>
+  </div>
+
+  <!-- 3 -->
+  <div class="step">
+    <p class="n">STEP 3</p>
+    <h2>何に割り当てるかを、自分で決める</h2>
+    <p><code>app/dj/mapping.json</code> の1箇所です。僕の場合はこうしました。</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>触るもの</th><th>割り当て</th><th>なぜ</th></tr></thead>
+        <tbody>
+          <tr><td>つまみ 2本</td><td>首の左右・うなずき</td><td><b>手の動きと首の動きが素直に重なる</b></td></tr>
+          <tr><td>パッド 4つ</td><td>表情（笑う・驚く・照れる・しょんぼり）</td><td>押した瞬間に返る。反応が速いものを置く</td></tr>
+          <tr><td>パッド 11個</td><td>LEDの模様</td><td>数が多いので、種類の多いものを置く</td></tr>
+          <tr><td>右レコード</td><td>下からのスポットライト</td><td><b>擦る＝速い動き。</b>速く返るものを置く</td></tr>
+          <tr><td>音量フェーダー</td><td>バースト（赤→花火）</td><td><b>上げ切る動作＝クライマックス</b>と意味が合う</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <blockquote>
+      <b>ここが「自分らしさ」の出るところです。</b>
+      僕は「手の動きと、起きることの意味が合っているか」で決めました。
+      <b>擦る＝速い、上げ切る＝頂点。</b>
+      別の人なら別の置き方になります。<b>型紙にしないでください。</b>
+    </blockquote>
+  </div>
+
+  <!-- 4 -->
+  <div class="step">
+    <p class="n">STEP 4</p>
+    <h2>効くかどうかを、機械に確かめさせる</h2>
+    <p>
+      <b>人の手でしか確かめられない作りは、確かめられていないのと同じです。</b>
+      MIDIを流し込んで、状態が期待どおり変わるかを機械に見せます。
+    </p>
+<pre>./.venv/bin/python scripts/check_mapping.py
+  ↓
+<span class="c">○ btn_happy       ch7 #4   → happy</span>
+<span class="c">○ led_rainbow     ch9 #2   → rainbow</span>
+<span class="c">すべて期待どおり</span></pre>
+    <blockquote class="warn">
+      <b>当日「パッドが効かない」となったときの切り分けにも使えます。</b>
+      流し込んで動けば機材側、動かなければ設定側。<b>2択に割れます。</b>
+    </blockquote>
+  </div>
+
+  <!-- 5 -->
+  <div class="step">
+    <p class="n">STEP 5</p>
+    <h2>機材が無い日は、パネルから同じことをする</h2>
+    <p>
+      操作パネル（ブラウザ）から MIDI を流し込めます。
+      <b>リハで確かめられないものは、本番で壊れます。</b>
+      機材を持ち歩けない日でも、演出の作り込みだけは進みます。
+    </p>
+<pre>http://&lt;MacのIP&gt;:8779/panel?k=…
+  ↓
+バーストのスライダー／LEDの模様／表情</pre>
+  </div>
+
+  <!-- 6 -->
+  <div class="step">
+    <p class="n">STEP 6</p>
+    <h2>増やすときは、エージェントに頼む</h2>
+    <p>
+      <b>ここから先は手順書が要りません。</b>
+      リポジトリを読んだあなたのエージェントが、割り当ての形も、
+      追加のしかたも、<b>踏んだ穴も</b>知っています。
+    </p>
+<pre>「2つ目のつまみに、LEDの明るさを割り当てたい」
+「パッドを押したら、首を振ってから光るようにしたい」</pre>
+    <blockquote>
+      <b>手順は人間に渡していません。エージェントに渡してあります。</b>
+      人間が覚えるのは「渡し方」のほうです。
+    </blockquote>
+  </div>
+
+  <p class="foot">
+    詰まったところは <code>docs/learnings.md</code> に全部書いてあります。
+    <b>同じ穴に落ちる前に、渡してある状態から始められます。</b>
+  </p>
+
+</div>
