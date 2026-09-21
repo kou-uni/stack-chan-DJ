@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>失敗カタログ</title>
+<style>
+  :root{--ink:#0a0708;--ink2:#140f11;--ink3:#1d1619;--line:#332529;--line2:#4a373d;
+   --text:#f2e9ec;--dim:#b09aa1;--faint:#7d666e;
+   --hit:#ff6b57;--ok:#5fd3a0;--warn:#ffb347;
+   --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+   --sans:"Zen Kaku Gothic New",-apple-system,"Hiragino Sans",sans-serif}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:var(--sans);
+   line-height:1.85;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1020px;margin:0 auto;padding:56px 22px 110px}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;
+   color:var(--faint);text-transform:uppercase;margin:0 0 14px}
+  h1{font-size:clamp(30px,5vw,50px);font-weight:900;line-height:1.16;margin:0 0 20px;letter-spacing:-.015em}
+  .lede{font-size:17px;color:var(--dim);max-width:60ch;margin:0}
+  .lede b{color:var(--text)}
+
+  .nums{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin:34px 0 0}
+  .num{background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:15px 17px}
+  .num b{display:block;font-family:var(--mono);font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+  .num span{font-size:12.5px;color:var(--faint)}
+
+  h2{font-size:24px;font-weight:900;margin:84px 0 8px;letter-spacing:-.01em}
+  h2 .n{font-family:var(--mono);font-size:12px;letter-spacing:.16em;display:block;
+   margin-bottom:8px;font-weight:700;color:var(--hit)}
+  .sub{color:var(--dim);font-size:15px;margin:0 0 24px;max-width:64ch}
+
+  .big{background:var(--ink2);border:1px solid var(--line);border-radius:16px;
+   padding:26px 28px;margin:20px 0 0;border-top:3px solid var(--hit)}
+  .big h3{font-size:20px;font-weight:900;margin:0 0 4px;letter-spacing:-.01em}
+  .big .when{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.08em}
+  .rows{display:grid;gap:0;margin:18px 0 0}
+  .row{display:grid;grid-template-columns:118px 1fr;gap:16px;padding:12px 0;
+   border-top:1px solid var(--line)}
+  .row dt{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.08em;padding-top:4px}
+  .row dd{margin:0;font-size:14.5px;color:var(--dim)}
+  .row dd b{color:var(--text)}
+  .row.lesson dd{color:var(--text);font-weight:700;font-size:15px}
+  .row.lesson dt{color:var(--ok)}
+
+  .type{margin:44px 0 0;background:var(--ink2);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .type>summary{cursor:pointer;list-style:none;padding:18px 22px;display:flex;
+   align-items:baseline;gap:12px;flex-wrap:wrap}
+  .type>summary::-webkit-details-marker{display:none}
+  .type>summary::before{content:"＋";font-family:var(--mono);color:var(--faint);font-size:13px}
+  .type[open]>summary::before{content:"−"}
+  .type h3{font-size:18px;font-weight:900;margin:0;letter-spacing:-.01em}
+  .type .cnt{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .type .gist{width:100%;margin:2px 0 0;font-size:14px;color:var(--dim)}
+  .type .gist b{color:var(--warn)}
+  .tablewrap{overflow-x:auto;border-top:1px solid var(--line)}
+  table{border-collapse:collapse;width:100%;min-width:640px;font-size:14px}
+  th,td{padding:12px 18px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;color:var(--dim)}
+  thead th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--faint);
+   text-transform:uppercase;font-weight:700;background:var(--ink3);white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td b{color:var(--text)}
+  td.w{width:40%}
+  .why{color:var(--warn)}
+
+  .note{background:var(--ink2);border:1px solid var(--line);border-left:3px solid var(--ok);
+   border-radius:0 12px 12px 0;padding:16px 22px;font-size:14.5px;color:var(--dim);margin:26px 0 0}
+  .note b{color:var(--text)}
+  code{font-family:var(--mono);font-size:12.5px;background:var(--ink3);padding:1px 6px;border-radius:5px;color:var(--text)}
+  .foot{margin-top:88px;padding-top:26px;border-top:1px solid var(--line);font-size:13.5px;color:var(--faint)}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap">
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">スタックチャン勉強会 / 2026-09-29</p>
+  <h1>失敗カタログ</h1>
+  <p class="lede">
+    できたことは、持ち帰れません。<b>壊れ方は持ち帰れます。</b><br>
+    2週間で踏んだ穴を、<b>「なぜそうしたくなるか」とセットで</b>置いていきます ──
+    理由のない禁止は、守られないので。
+  </p>
+
+  <div class="nums">
+    <div class="num"><b>1,878</b><span>行の記録</span></div>
+    <div class="num"><b>35</b><span>選んだ穴</span></div>
+    <div class="num"><b>6</b><span>穴の型</span></div>
+    <div class="num"><b>3</b><span>当日、深く話すもの</span></div>
+  </div>
+
+  <div class="note">
+    <b>並べても覚えられません。</b>だから<b>6つの型</b>に束ねました。
+    ★<b>型が分かると、まだ踏んでいない穴も避けられます。</b>
+    個々の話は、あなたのエージェントが <code>docs/learnings.md</code> ごと持っています。
+  </div>
+
+  <!-- ══ 本編3つ ══ -->
+  <h2><span class="n">DEEP 01–03</span>当日、深く話す3つ</h2>
+  <p class="sub">
+    どれも<b>「壊れていないのに、壊れて見える」</b>形です。
+    そして3つとも<b>違う方向</b>を向いています ── 自分が原因／観測が原因／仕様の1行。
+  </p>
+
+  <div class="big">
+    <h3>曲を止めても、踊り続けた</h3>
+    <p class="when">2026-09-05</p>
+    <dl class="rows">
+      <div class="row"><dt>起きたこと</dt><dd>
+        音楽を止めたのに踊りが終わらない。マイクが拾っていたのは<b>自分のサーボ音</b>だった。
+        首が動くと<b>音量が40倍</b>になり、音楽より大きい。しかも<b>動きは拍に同期している</b>ので、
+        「規則正しい拍」として検出され、<b>踊るほど拍が立つ</b>自己増幅ループになっていた。</dd></div>
+      <div class="row"><dt>なぜハマるか</dt><dd class="why">
+        「音に反応して踊る」を作るとき、<b>音源は外にあると当然に思う。</b>
+        自分が音を出す側でもあることは、<b>設計図のどこにも出てこない。</b></dd></div>
+      <div class="row lesson"><dt>一般化</dt><dd>
+        センサーとアクチュエータが同じ筐体にあると、<b>必ず自己観測が混ざる。</b>
+        打てる手は3つだけ ── <b>物理的に離す／自分の出力を差し引く／動きを止めて測る。</b></dd></div>
+    </dl>
+  </div>
+
+  <div class="big">
+    <h3>ちゃんと見張ろうとしたら、壊れた</h3>
+    <p class="when">2026-09-06</p>
+    <dl class="rows">
+      <div class="row"><dt>起きたこと</dt><dd>
+        「音が止まったら畳む」監督を<b>0.4秒ごと</b>に回した。すると<b>拍の検出そのものが壊れた。</b>
+        音声と制御が同じ経路を通っていて、<b>コマンドが音声フレームを押しのけていた。</b>
+        <b>壊れるほどコマンドが増え、増えるほど壊れた。</b></dd></div>
+      <div class="row"><dt>なぜハマるか</dt><dd class="why">
+        監視は「見るだけ」なので<b>無害に思える。</b>そして<b>不安なほど、細かく見たくなる。</b></dd></div>
+      <div class="row lesson"><dt>一般化</dt><dd>
+        <b>測るために壊す。</b>見る頻度と、そこから出る指示の量は、対象の性能を削る。
+        <b>二重に判定しない。</b></dd></div>
+    </dl>
+  </div>
+
+  <div class="big">
+    <h3>一番派手にした瞬間に、電源が落ちた</h3>
+    <p class="when">2026-09-04</p>
+    <dl class="rows">
+      <div class="row"><dt>起きたこと</dt><dd>
+        <b>同梱されていた</b>LEDテープ（30粒）は、全開で <b>5V 1.8A</b>。
+        本体のポートからは取れない。白で全開にすると電圧が落ちて<b>本体ごと再起動</b>する。
+        しかも<b>「一番派手にした瞬間」に落ちる。</b></dd></div>
+      <div class="row"><dt>なぜハマるか</dt><dd class="why">
+        <b>コネクタが刺さる＝対応済み</b>だと感じる。<b>同梱品ならなおさら</b>疑わない。</dd></div>
+      <div class="row lesson"><dt>一般化</dt><dd>
+        <b>繋がることと、使えることは別。</b>最大値を先に計算して、
+        <b>ソフト側に上限を持たせる。</b>仕様表の1行を、繋ぐ前に1回読む。</dd></div>
+    </dl>
+  </div>
+
+  <!-- ══ 6つの型 ══ -->
+  <h2><span class="n">TYPES</span>穴の6つの型</h2>
+  <p class="sub">残り32件。<b>型ごとに畳んであります。</b>開くと中身が出ます。</p>
+
+  <details class="type" open>
+    <summary><h3>型1 ── 黙って落ちる</h3><span class="cnt">5件</span>
+      <p class="gist"><b>エラーが出ない壊れ方は、見つからない。</b>沈黙は、正常と見分けがつかない。</p></summary>
+    <div class="tablewrap"><table>
+      <thead><tr><th class="w">起きたこと</th><th>なぜハマるか／一般化</th></tr></thead>
+      <tbody>
+        <tr><td><b>撫でても反応しない。通知の受け口が既定で全部 false</b><br>
+          実機は送っていたのに、どこにも届いていなかった</td>
+          <td><span class="why">引いて取れないと、まず壊れていると思う。押し出し型に「受け口の開閉」があるとは考えない</span><br>
+          <b>押し出されるものを、引きに行っても取れない</b></td></tr>
+        <tr><td><b>タッチが、電源を入れ直すたびに無効に戻る</b><br>
+          実機は繋がっていてLEDも首も動く。だから一番疑いにくかった</td>
+          <td><span class="why">動いている部分が多いほど、止まっている一箇所が疑われない。前日に入れた設定は「入っているはず」で記憶に置かれる</span><br>
+          <b>人の記憶を、状態の保管場所にしない</b></td></tr>
+        <tr><td><b>LEDが光らない。<code>received=728 / sent=0 / dropped=728</code></b><br>
+          フィールド名が1つ違うだけ。エラーは一度も返らない</td>
+          <td><span class="why">似た2つの流れは同じ形だろうと思う。「接続できた＝届いている」と感じる</span><br>
+          <b>検証に落ちたデータは、例外ではなくカウンタになって静かに積み上がる</b></td></tr>
+        <tr><td><b>20秒撫でて検出1回。感度の設定を、誰も書いていなかった</b><br>
+          既定値のままで、外殻ごしにはほぼ反応しない</td>
+          <td><span class="why">書かれなかった設定は、エラーを出さない。既定値で動いてしまう</span><br>
+          <b>壊れているなら気づくが、鈍いだけなら「そういうものか」で済む</b></td></tr>
+        <tr><td><b>1,218行を9ファイルに割ったら、未定義の名前が30個</b><br>
+          <code>--help</code> は通り、テストも通っていた</td>
+          <td><span class="why">分割は機械的な作業に見える。テストが通れば終わった気になる</span><br>
+          <b>import が通ることは、動くことの証明にならない</b></td></tr>
+      </tbody>
+    </table></div>
+  </details>
+
+  <details class="type">
+    <summary><h3>型2 ── 犯人は自分だった</h3><span class="cnt">5件</span>
+      <p class="gist"><b>動かないものを探すとき、まず疑うのは自分が書いた「無視する条件」。</b></p></summary>
+    <div class="tablewrap"><table>
+      <thead><tr><th class="w">起きたこと</th><th>なぜハマるか／一般化</th></tr></thead>
+      <tbody>
+        <tr><td><b>頭なでの6つの反応が、一度も出なかった</b><br>
+          「8秒を超える撫では物が載っている」と自分で書いた1行。実際の撫では 9.5 / 52 / 92秒</td>
+          <td><span class="why">閾値は決めないと先に進めないので、仮に置く。問題は、仮に置いたことを忘れること</span><br>
+          <b>仮の数字には、仮だと分かる印を残す</b></td></tr>
+        <tr><td><b>「もう少し緩く」と言われて、自分の判定を緩めた。効かなかった</b><br>
+          実際に止めていたのは相手側の <code>MIN_MOTION_CONFIDENCE</code></td>
+          <td><span class="why">触れるのは自分のコードだけなので、自分の条件をいじる</span><br>
+          <b>実際に効いている門番を、先に特定する</b></td></tr>
+        <tr><td><b>トルク復帰を「つまみを回したとき」にだけ書いた</b><br>
+          触らずに次へ行くと、脱力したまま。本番なら「なぜか首が動かない」</td>
+          <td><span class="why">「次に動かすときに戻せばいい」は自然に見える。入口が1つなら出口も1つに思える</span><br>
+          <b>状態を変える出口を、全部数える</b></td></tr>
+        <tr><td><b>撫でても LED だけ光らない。時計を2つ混ぜていた</b><br>
+          起動からの5桁と、1970年からの10桁。期限が常に過去で、点いた瞬間に消えていた</td>
+          <td><span class="why">型が同じ float の「秒」なので、渡して当然に見える。原点の違いはどこにも書かれない</span><br>
+          <b>同じ単位でも、原点が違えば別物</b></td></tr>
+        <tr><td><b>検算を <code>grep "×"</code> で絞っていたので、構文エラーが「異常なし」に見えた</b></td>
+          <td><span class="why">出力が多いと絞りたくなる。絞る条件は、正常系の文言から作ってしまう</span><br>
+          <b>絞るなら、異常系も拾える絞り方にする</b></td></tr>
+      </tbody>
+    </table></div>
+  </details>
+
+  <details class="type">
+    <summary><h3>型3 ── 測り方が間違っていた</h3><span class="cnt">6件</span>
+      <p class="gist"><b>数字があると、疑われずに下流へ流れる。</b>だから、間違った数字は推測より危険。</p></summary>
+    <div class="tablewrap"><table>
+      <thead><tr><th class="w">起きたこと</th><th>なぜハマるか／一般化</th></tr></thead>
+      <tbody>
+        <tr><td><b>テスト363件が緑なのに、画面が真っ白</b><br>
+          テスト用の偽 canvas が「何もしない」実装で、本物だけが例外を投げていた。
+          偽物を本物と同じところで怒らせたら、その場で14件落ちた</td>
+          <td><span class="why">偽物は「動かすための置物」なので、甘く作るほど楽で、テストは気持ちよく緑になる</span><br>
+          <b>検算用の偽物を、本物より甘くしない</b></td></tr>
+        <tr><td><b>可動域を「0〜64」と確定で書いた。実際は 0〜127</b><br>
+          本人が中央で止めた区間を、全域と解釈していた</td>
+          <td><span class="why">実際に測った数字なので、推測より信用できる気がする</span><br>
+          <b>不完全な実測は、推測より危険。両端が観測されたことを条件にする</b></td></tr>
+        <tr><td><b>首の振り幅が 1度。満点の基準を理想値で置いていた</b><br>
+          基準 0.026 に対し、実際のDJの音量は 0.005〜0.010 で3分の1</td>
+          <td><span class="why">基準は「本来これくらいのはず」で置きたくなる。理想値の方が綺麗</span><br>
+          <b>実測が理想と桁違いなら、捨てるのは理想の方</b></td></tr>
+        <tr><td><b>音量を平均で測って「狙い目」と判定した</b><br>
+          音量は足りていたが、拍は立っていなかった。拍が見ているのは「平均からの突出」</td>
+          <td><span class="why">測れる指標で測る。平均は出しやすく、それらしく見える</span><br>
+          <b>合否に使う指標は、相手の判定式から逆算して決める</b></td></tr>
+        <tr><td><b>比較器が「問題なし」と報告した。実際は 1回→15回に直っていた</b><br>
+          ×→○ の反転しか見ておらず、<b>改善を劣化として出しかけた</b></td>
+          <td><span class="why">デグレを見つける道具として作るので、良くなった方を見る目が無い</span><br>
+          <b>道具は、探すと決めたものしか見つけない</b></td></tr>
+        <tr><td><b>閾値を1本だけ引いたら、境界を数秒おきに往復した</b><br>
+          同じ形を1日に3回やっている</td>
+          <td><span class="why">境界が1本の方が分かりやすく、実装も1行で済む</span><br>
+          <b>入りと出で、別の線を引く</b></td></tr>
+      </tbody>
+    </table></div>
+  </details>
+
+  <details class="type">
+    <summary><h3>型4 ── 相手に見えていなかった</h3><span class="cnt">5件</span>
+      <p class="gist"><b>機能が動いていることと、その人が使えることは別。</b>合図は、相手が見ている場所から出す。</p></summary>
+    <div class="tablewrap"><table>
+      <thead><tr><th class="w">起きたこと</th><th>なぜハマるか／一般化</th></tr></thead>
+      <tbody>
+        <tr><td><b>試験の合図を、端末に <code>print</code> していた</b><br>
+          誰も端末を見ない。<b>当日と同じ失敗を、試験の中で繰り返していた</b></td>
+          <td><span class="why">端末は作り手の目の前にあり、出力を足すのが一番安い</span><br>
+          <b>作り手しか見ない画面は、体験に数えない</b></td></tr>
+        <tr><td><b>合図なしで録音したら、2回に1回は無音で終わった</b><br>
+          LEDを緑にしてから録るようにしたら通った</td>
+          <td><span class="why">機能が動いていれば使えると思う。「いつ話せばいいか」は作った側には自明</span><br>
+          <b>相手に見えていないものは、見せること自体が機能</b></td></tr>
+        <tr><td><b>外出先から使う操作パネルで、カメラをボタンにした</b><br>
+          その人にはロボットが見えない。<b>来た目的そのものを押させていた</b></td>
+          <td><span class="why">値が取れるから表示する、道具があるからボタンにする</span><br>
+          <b>その人に見えていないものは何か、から始める</b></td></tr>
+        <tr><td><b>「頭を撫でたらモードが変わる」ようにした</b><br>
+          可愛いから触る人がいる。機能を呼ぶ気などない</td>
+          <td><span class="why">入力装置が目の前にあると、使いたくなる。ジェスチャは作った側には分かりやすい</span><br>
+          <b>意図せず起きる操作に、状態変更を持たせない</b></td></tr>
+        <tr><td><b>待機中にキョロキョロさせたら、本当に気持ち悪かった</b><br>
+          完全静止だと電源が切れて見える。境界はまばたきだけだった</td>
+          <td><span class="why">「そこにいる感」を出そうとすると、動かしたくなる。動きの量＝存在感だと思う</span><br>
+          <b>存在感は動きの量ではなく、動く理由が読めるかで決まる</b></td></tr>
+      </tbody>
+    </table></div>
+  </details>
+
+  <details class="type">
+    <summary><h3>型5 ── 直感と逆だった</h3><span class="cnt">4件</span>
+      <p class="gist"><b>つまみが1つあると、直感の向きに回したくなる。</b>その前に、相手が何を見ているかを読む。</p></summary>
+    <div class="tablewrap"><table>
+      <thead><tr><th class="w">起きたこと</th><th>なぜハマるか／一般化</th></tr></thead>
+      <tbody>
+        <tr><td><b>音量が足りないので、拍の感度を上げた。悪化した</b><br>
+          下限が下がってハイハットや残響まで拾い、拍の間隔がバラバラに。実測では感度0.2が最良</td>
+          <td><span class="why">「拾えない＝感度が足りない」は直感として強い</span><br>
+          <b>音が大きいほど、感度は下げる</b></td></tr>
+        <tr><td><b>「派手さがない」と言われて、光源を速く揺らした。逆だった</b><br>
+          実際のムービングヘッドは<b>止まっていて、光だけが刻む</b></td>
+          <td><span class="why">「派手＝動き」と直結する。動かすのは実装が簡単で、やった感がある</span><br>
+          <b>ゆらゆら揺らすと、必ず安っぽくなる</b></td></tr>
+        <tr><td><b>首の動きを滑らかにしたら「一定すぎる」と言われた</b><br>
+          6種類のフレーズを8拍ごとに切り替えるだけで、印象が変わった</td>
+          <td><span class="why">「もっと自然に」を滑らかさの問題だと読む。補間を上げるのは手が届く改善</span><br>
+          <b>生き物らしさは、滑らかさではなく変化から来る</b></td></tr>
+        <tr><td><b>話し声に反応して踊るのを、バグとして消そうとした</b><br>
+          「喋っている最中に踊るような可愛い仕草もついてくる」で反転した</td>
+          <td><span class="why">仕様外の挙動は欠陥に見える。純度を上げるのが正しい仕事に感じる</span><br>
+          <b>予定外の反応は、消すのではなく強さを変える</b></td></tr>
+      </tbody>
+    </table></div>
+  </details>
+
+  <details class="type">
+    <summary><h3>型6 ── 計画が、現状に追い越されていた</h3><span class="cnt">7件</span>
+      <p class="gist"><b>計画を書いた時点では正しかった。</b>着手前に「これ、もう無いか？」を1回聞く。</p></summary>
+    <div class="tablewrap"><table>
+      <thead><tr><th class="w">起きたこと</th><th>なぜハマるか／一般化</th></tr></thead>
+      <tbody>
+        <tr><td><b>会話サーバを一式立てて、使わないことにした</b><br>
+          Apple Silicon で動かし、モデルを入れ、窓口まで自作した後で、<b>同じ経路が既にあった</b></td>
+          <td><span class="why">ROADMAPに「次はこれ」と書いてあるので、そこから始める</span><br>
+          <b>探すのは5分、作るのは半日</b></td></tr>
+        <tr><td><b>設計文書の「音声は未実装」を信じて、計画を丸ごと1つ間違えた</b><br>
+          実際には実装済みだった</td>
+          <td><span class="why">ロードマップが書いてあると、それが現状に見える</span><br>
+          <b>文書は書かれた時点で止まる。現在を映すのはディレクトリ</b></td></tr>
+        <tr><td><b>既存機能を見つけて「配線は要らない」と書いた</b><br>
+          つまみの角度もボタン押下も、音からは絶対に取れない</td>
+          <td><span class="why">既存機能が要件の一部を満たすと、残りも「その延長」に見える</span><br>
+          <b>新しい手段が見つかったら、要件表を1行ずつ消し込む</b></td></tr>
+        <tr><td><b>「当日は MacBook」という前提を丸ごと忘れて作った</b><br>
+          常駐化も設定も健康診断も、目の前の機械の前提で書いていた</td>
+          <td><span class="why">設計文書に「状態」は書いたが、「配置」の欄が無かった</span><br>
+          <b>文書に無いものは、いつか忘れる。移植性は思い出すのではなく検査する</b></td></tr>
+        <tr><td><b>焼き直したのに、元のクラウドを呼び続けた</b><br>
+          <code>NVS</code> は焼いても消えず、前の持ち主の値が残っていた</td>
+          <td><span class="why">焼き直したのだから初期状態だと感じる</span><br>
+          <b>前の持ち主が何を書き残したかを、始める前に確認する</b></td></tr>
+        <tr><td><b>設定は正しいのに繋がらない。関門が2段あった</b><br>
+          6桁コードの登録で止まっていて、そもそも接続まで到達していなかった</td>
+          <td><span class="why">接続先を設定したのだから、そこへ繋ぎに行くはずと思う</span><br>
+          <b>設定が効いていないのではなく、その手前で止まっていることがある</b></td></tr>
+        <tr><td><b>再現しない不具合を、対話で10回以上追った</b><br>
+          本人の時間を大量に使って、結論は出なかった</td>
+          <td><span class="why">目の前に実機と人がいると、聞けばすぐ分かる気がする</span><br>
+          <b>再現しないものを、対話で追わない。記録係を置く</b></td></tr>
+      </tbody>
+    </table></div>
+  </details>
+
+  <div class="note">
+    <b>型が6つある、ということ自体が持ち帰りです。</b>
+    詰まったとき、<b>「これはどの型か」</b>を先に問うと、探す範囲が決まります。
+    <b>①エラーが出ていないか ②自分が書いた無視条件は無いか ③測り方は相手の判定式に合っているか
+    ④相手に見えているか ⑤直感の逆ではないか ⑥もう誰かが作っていないか。</b>
+  </div>
+
+  <p class="foot">
+    全文は <code>docs/learnings.md</code>（1,878行）。<b>読まなくて構いません。</b>
+    あなたのエージェントに読ませてください ── <b>同じ穴に落ちる前に、渡してある状態から始められます。</b>
+  </p>
+
+</div>
+</body>
+</html>
