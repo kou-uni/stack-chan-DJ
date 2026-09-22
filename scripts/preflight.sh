@@ -5,6 +5,9 @@ set -uo pipefail
 ok(){ printf "  \033[32mOK\033[0m   %s\n" "$1"; }
 ng(){ printf "  \033[31mNG\033[0m   %s\n" "$1"; }
 
+echo "== 0. 2台がずれていないか =="
+"$(dirname $0)/../.venv/bin/python" "$(dirname $0)/sync_check.py" | sed 's/^/  /'
+
 echo "== 1. Ollama =="
 curl -sf http://localhost:11434/api/tags >/dev/null && ok "Ollama が応答" || ng "Ollama が落ちている"
 
