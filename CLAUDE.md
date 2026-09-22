@@ -36,7 +36,25 @@
 
 ```bash
 ./.venv/bin/python scripts/sync_check.py   # 直したものが、もう1台に伝わるか
+./scripts/sync.sh                          # この機械を最新に合わせる（2回目以降）
 ```
+
+**一から立ち上げるのは `bootstrap.sh`、2回目以降は `sync.sh`。**
+bootstrap は「既にあるものは触らない」作りなので、更新には使えない。
+
+### 2台での回し方（機能追加は続く）
+
+```
+  Mac Studio で作る  ──git push──▶  GitHub  ──git pull──▶  MacBook で ./scripts/sync.sh
+```
+
+- **運ぶのは git。**同じ LAN でなくてもコードは揃う
+- **同じ LAN が要るのは「実機が gateway を見つける」ときだけ**
+- ★**物理で触るのは DJ機材の USB だけ。**実機は `websocket.url` を空にしてあるので、
+  **mDNS で同じ LAN の gateway を自分で見つける**（本体に触らず切り替わる）
+- ★**同じ LAN で gateway を2台上げない。**実機がどちらに付くか決まらない。
+  開発するほうだけ残し、もう一方は `./scripts/stop.sh`（`sync.sh` が数えて警告する）
+- 顔を変えたら、実機へは `reload_avatar.py` で入れ直す（**焼き直しは要らない**）
 
 - **調整値は `.env.gateway` に書かない。**git に入らないので伝わらない。
   秘密は入っていないので、**`.env.gateway.example`（git）に書く**
