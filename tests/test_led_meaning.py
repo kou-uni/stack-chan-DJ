@@ -92,10 +92,20 @@ def test_知らない状態は無視する():
     assert _lit_over_time(s)
 
 
-def test_配布物と実装の対応が文書に残っている():
-    doc = (ROOT / "event" / "handson-guide.md").read_text(encoding="utf-8")
-    for word in ("緑", "青", "消灯"):
-        assert word in doc
+def test_色の意味が参加者に配る紙に書いてある():
+    """★「緑＝聞く は配布物に書いてある色」と当日言う。**書いていなければ嘘になる。**
+
+    2026-09-23：人格カードの紙（handson-guide.md）を企画ごと外したとき、
+    **色の約束がどの配布物にも無くなった。**この試験が気づいた。
+
+    ★進行表（shinkou）は**進行役だけが見るもの**なので、数に入れない。
+      **作り手しか見ない紙は、体験に数えない。**
+    """
+    pages = [p for p in (ROOT / "docs" / "pages" / "src").glob("*.html")
+             if p.name != "shinkou.html"]
+    ok = [p.name for p in pages
+          if all(w in p.read_text(encoding="utf-8") for w in ("緑", "青", "消灯"))]
+    assert ok, "色の意味が、参加者に配るどの紙にも書かれていない"
 
 
 # ── 光るのに音は要らない（2026-09-12 本人の指摘）───────────
