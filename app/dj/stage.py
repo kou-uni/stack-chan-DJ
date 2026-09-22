@@ -230,6 +230,7 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
             return web.json_response({"error": "鍵がちがいます"}, status=403)
         s = panel_state(con)
         s["watching"] = feed.viewers      # ★映像が流れているかを外から見えるように
+        s["device"] = await device_present(con)  # ★実機が居るか（居なくても speak は ok を返すため）
         return web.json_response(s)
 
     async def api_act(req):
@@ -296,6 +297,19 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
                 {"error": f"答えられません（{type(exc).__name__}）"}, status=502)
         return web.json_response({**r, "state": panel_state(con)})
 
+    async def device_present(con) -> bool:
+        """実機が繋がっているか。**居なくても speak は ok を返す**ので、ここで見る。
+
+        ★2026-09-22、電源の入っていない実機に台本を送って `ok: true` が返り、
+          「喋った」と誤って報告した。**送れたことと鳴ったことは別**。
+          gateway 側だけで完結する get_status を使う（実測16ms、音声の取り込みを邪魔しない）。
+        """
+        try:
+            r = await con.gw.call("get_status")
+            return '"connected": true' in r.content[0].text.lower()
+        except Exception:
+            return False
+
     async def api_speak(req):
         """書いた台本を、そのまま読ませる。**一方通行でよい長話用。**
 
@@ -320,7 +334,8 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
         except Exception as exc:
             return web.json_response(
                 {"error": f"読ませられません（{type(exc).__name__}）"}, status=502)
-        return web.json_response({**r, "state": panel_state(con)})
+        return web.json_response({**r, "device": await device_present(con),
+                                  "state": panel_state(con)})
 
     async def api_midi(req):
         """MIDI を流し込む。**割り当てを人手で確かめなくて済むように。**
