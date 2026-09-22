@@ -9,6 +9,21 @@
 
 ---
 
+## 並行して動いているもの（2026-09-23 追加）
+
+**Omi（首にかける録音機）のプロジェクトが別にある** → https://github.com/kou-uni/omi-stackchan
+
+1日の音声を録り、**手元の Mac だけで**文字起こし・要約し、Obsidian に知見として残して、
+夜にスタックチャンが問いかける仕組み。**クラウドは通らない。**
+
+**当日への影響はほぼ無い**（デモしない。本人が着けて録るだけ）:
+
+- 口上に一文足す → [event/privacy-notice.md](event/privacy-notice.md)
+- 持ち物に充電器 → [event/checklist.md](event/checklist.md)
+- 判断の経緯 → https://github.com/kou-uni/omi-stackchan/blob/main/docs/event-journey.md
+
+**リポジトリの統合はイベント後。** 締切直前に土台を動かさない。
+
 ## 現在地
 
 **済んだこと**
