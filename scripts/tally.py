@@ -30,9 +30,12 @@ def sh(*args: str) -> str:
 
 def tally() -> list[tuple[str, str]]:
     commits = len(sh("git", "log", "--oneline").splitlines())
-    first = sh("git", "log", "--format=%ad", "--date=short").splitlines()[-1]
-    y, m, d = (int(x) for x in first.split("-"))
-    days = (date.today() - date(y, m, d)).days + 1
+    # ★暦の日数を「かかった日数」と言わない。**毎日やっていたわけではない。**
+    #   2026-09-23 実測：git の暦は12日だが、コミットのある日は7日しかなかった。
+    #   さらに、git に入れ始めたのは 9/12 で、構想は 9/2、実機は 9/8 から。
+    #   **リポジトリは、始まりを知らない。**
+    touched = len(set(sh("git", "log", "--format=%ad", "--date=short").splitlines()))
+    days = touched
 
     code = sum(len(p.read_text(encoding="utf-8", errors="replace").splitlines())
                for p in list((ROOT / "app").rglob("*.py")) + [ROOT / "app/dj/stage.html"]
@@ -55,7 +58,7 @@ def tally() -> list[tuple[str, str]]:
         pass
 
     return [(f"{commits}", "コミット"),
-            (f"{days}日", f"{first[5:].replace('-', '/')} → 今日"),
+            (f"{days}日", "手を動かした日（gitに記録）"),
             (f"{code:,}", "行（本体＋背景）"),
             (f"{tests}", "自動テスト"),
             (f"{learn:,}", "行の失敗記録"),

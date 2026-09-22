@@ -1,0 +1,224 @@
+<title>原価と日数</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+  :root{--ink:#080a07;--ink2:#101409;--ink3:#181d10;--line:#2a3320;--line2:#3d4a2c;
+   --text:#eef3e6;--dim:#a2b08f;--faint:#6f7d5e;
+   --yen:#b8e986;--warn:#ffb347;--hot:#ff8f6b;
+   --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+   --sans:"Zen Kaku Gothic New",-apple-system,"Hiragino Sans",sans-serif}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:var(--sans);
+   line-height:1.85;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:960px;margin:0 auto;padding:56px 22px 110px}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;
+   color:var(--faint);text-transform:uppercase;margin:0 0 14px}
+  h1{font-size:clamp(30px,5vw,50px);font-weight:900;line-height:1.16;margin:0 0 20px;letter-spacing:-.015em}
+  .lede{font-size:17px;color:var(--dim);max-width:60ch;margin:0}
+  .lede b{color:var(--text)}
+
+  .hero{margin:40px 0 0;padding:30px 32px;background:var(--ink2);border:1px solid var(--line);
+   border-radius:16px;border-left:4px solid var(--yen)}
+  .hero .big{font-family:var(--mono);font-size:clamp(38px,8vw,64px);font-weight:700;
+   letter-spacing:-.03em;line-height:1;color:var(--yen);font-variant-numeric:tabular-nums}
+  .hero .cap{font-size:15px;color:var(--dim);margin:10px 0 0}
+  .hero .cap b{color:var(--text)}
+
+  h2{font-size:23px;font-weight:900;margin:78px 0 8px;letter-spacing:-.01em}
+  h2 .n{font-family:var(--mono);font-size:12px;letter-spacing:.16em;display:block;
+   margin-bottom:8px;font-weight:700;color:var(--yen)}
+  .sub{color:var(--dim);font-size:15px;margin:0 0 22px;max-width:64ch}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:13px;background:var(--ink2)}
+  table{border-collapse:collapse;width:100%;min-width:520px;font-size:14.5px}
+  th,td{padding:13px 18px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;color:var(--dim)}
+  thead th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--faint);
+   text-transform:uppercase;font-weight:700;background:var(--ink3);white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td b{color:var(--text)}
+  td.y{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--text)}
+  tr.sum td{background:var(--ink3);font-weight:700}
+  tr.sum td.y{color:var(--yen);font-size:16px}
+  .none{color:var(--faint);font-style:normal}
+
+  figure{margin:30px 0 0}
+  svg{display:block;width:100%;height:auto}
+  figcaption{font-size:12.5px;color:var(--faint);text-align:center;margin-top:12px}
+  .board{background:var(--ink2);border:1px solid var(--line);border-radius:14px;padding:14px;overflow-x:auto}
+
+  .note{background:var(--ink2);border:1px solid var(--line);border-left:3px solid var(--warn);
+   border-radius:0 12px 12px 0;padding:16px 22px;font-size:14.5px;color:var(--dim);margin:24px 0 0}
+  .note b{color:var(--text)}
+  code{font-family:var(--mono);font-size:12.5px;background:var(--ink3);padding:1px 6px;border-radius:5px;color:var(--text)}
+  .foot{margin-top:84px;padding-top:26px;border-top:1px solid var(--line);font-size:13.5px;color:var(--faint)}
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">スタックチャン勉強会 / 2026-09-29</p>
+  <h1>原価と日数</h1>
+  <p class="lede">
+    「うちでもできますか」に、<b>数字で答えます。</b><br>
+    今日見たもの全部の値段ではありません ──
+    <b>あなたが今夜、同じところから始めるのにいくら要るか</b>です。
+  </p>
+
+  <div class="hero">
+    <div class="big">¥19,494</div>
+    <p class="cap">
+      <b>いくらかかったか＝これで全部。買ったのは2つだけ</b>です。
+      あとは、たいていの人がもう持っています。<br>
+      <b>手を動かしたのは11日。</b>毎日ではありません。
+    </p>
+  </div>
+
+  <!-- ══ 原価 ══ -->
+  <h2><span class="n">COST</span>いくらかかったか</h2>
+  <p class="sub">
+    <b>全部でいくら</b>か、先に書きます ── <b>費用は ¥19,494。買ったものは2つだけ</b>です。
+    値段は<b>実際の購入額</b>で、参考価格ではありません。
+  </p>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>もの</th><th>何のため</th><th class="y">金額</th></tr></thead>
+    <tbody>
+      <tr><td><b>M5Stack K151</b><br><span class="none">CoreS3・サーボ2基・カメラ・マイク・3ゾーンタッチ・LED12個・バッテリー</span></td>
+          <td><b>これだけで、身体が動きます</b></td><td class="y">¥18,150</td></tr>
+      <tr><td><b>LEDテープ 30粒</b><br><span class="none">Grove接続。ケーブル同梱で追加購入なし</span></td>
+          <td>実機の周りを光らせる<br><b>無くても始められます</b></td><td class="y">¥1,344</td></tr>
+      <tr class="sum"><td colspan="2">合計</td><td class="y">¥19,494</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note">
+    <b>★この金額に入っていないものがあります。正直に書きます。</b><br>
+    <b>Mac が別に要ります。</b>頭脳をそこに置くので。ただし<b>特別な機械は要りません</b> ──
+    手元のノートで動きます。<br>
+    DJ機材・Webカメラ・スマートプラグ・モバイルバッテリーは、<b>元から持っていたもの</b>です。
+    <b>演出と、家から焼くために足したもので、始めるのに要りません。</b>
+  </div>
+
+  <!-- ══ 段階 ══ -->
+  <h2><span class="n">STAGES</span>どこまでやるかで、変わります</h2>
+  <p class="sub"><b>全部を一度に揃える必要はありません。</b>下の段は、やりたくなってからで間に合います。</p>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>段</th><th>できること</th><th class="y">追加</th></tr></thead>
+    <tbody>
+      <tr><td><b>① 動く</b></td>
+          <td>喋る・首が振れる・表情が変わる・撫でると応える。<b>頭脳は自分のMac</b></td>
+          <td class="y">¥18,150</td></tr>
+      <tr><td><b>② 光る</b></td>
+          <td>周りのLEDが、音や操作に連動する</td><td class="y">+¥1,344</td></tr>
+      <tr><td><b>③ 踊る</b></td>
+          <td>DJ機材のつまみが、そのまま首と光になる</td>
+          <td class="y"><span class="none">手持ちのMIDI機材</span></td></tr>
+      <tr><td><b>④ 家から作る</b></td>
+          <td>外出先から焼く・首が振れたか見る・固まったら電源を落とす</td>
+          <td class="y"><span class="none">カメラとスマートプラグ</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <!-- ══ 日数 ══ -->
+  <h2><span class="n">DAYS</span>何日かかったか</h2>
+  <p class="sub">
+    ★<b>暦の日数を「かかった日数」と言うと、嘘になります。</b>
+    毎日やっていたわけではないので、<b>触った日だけ</b>数えます。
+  </p>
+
+  <figure>
+    <div class="board">
+      <svg viewBox="0 0 1040 210" role="img"
+           aria-label="9月2日の構想から9月29日の本番まで。実際に手を動かしたのは11日で、間に空いた日がある">
+        <g font-family="Zen Kaku Gothic New, sans-serif">
+          <line x1="40" y1="96" x2="1000" y2="96" stroke="#2a3320" stroke-width="2"/>
+
+          <!-- 触った日 -->
+          <g fill="#b8e986">
+            <rect x="212" y="88" width="9" height="16" rx="2"/><rect x="264" y="88" width="9" height="16" rx="2"/>
+            <rect x="302" y="88" width="9" height="16" rx="2"/><rect x="340" y="88" width="9" height="16" rx="2"/>
+            <rect x="394" y="88" width="9" height="16" rx="2"/><rect x="446" y="88" width="9" height="16" rx="2"/>
+            <rect x="500" y="88" width="9" height="16" rx="2"/><rect x="538" y="88" width="9" height="16" rx="2"/>
+            <rect x="576" y="88" width="9" height="16" rx="2"/>
+            <rect x="726" y="88" width="9" height="16" rx="2"/><rect x="756" y="88" width="9" height="16" rx="2"/>
+          </g>
+          <g fill="#3d4a2c">
+            <rect x="614" y="92" width="9" height="8" rx="2"/><rect x="652" y="92" width="9" height="8" rx="2"/>
+            <rect x="690" y="92" width="9" height="8" rx="2"/><rect x="704" y="92" width="9" height="8" rx="2"/>
+          </g>
+          <g font-size="12" fill="#a2b08f">
+            <circle cx="60" cy="96" r="8" fill="#101409" stroke="#6f7d5e" stroke-width="2"/>
+            <text x="60" y="70" text-anchor="middle" font-weight="700" fill="#eef3e6">9/2</text>
+            <text x="60" y="130" text-anchor="middle">構想</text>
+
+            <circle cx="235" cy="96" r="8" fill="#101409" stroke="#b8e986" stroke-width="2"/>
+            <text x="235" y="70" text-anchor="middle" font-weight="700" fill="#eef3e6">9/8</text>
+            <text x="235" y="130" text-anchor="middle">実機が届く</text>
+            <text x="235" y="148" text-anchor="middle" font-size="11" fill="#6f7d5e">ここから手が動く</text>
+
+            <circle cx="470" cy="96" r="8" fill="#101409" stroke="#b8e986" stroke-width="2"/>
+            <text x="470" y="70" text-anchor="middle" font-weight="700" fill="#eef3e6">9/13</text>
+            <text x="470" y="130" text-anchor="middle" fill="#ff8f6b">演出に112コミット</text>
+            <text x="470" y="148" text-anchor="middle" font-size="11" fill="#6f7d5e">★1日でここが一番濃い</text>
+
+            <circle cx="780" cy="96" r="8" fill="#101409" stroke="#6f7d5e" stroke-width="2"/>
+            <text x="780" y="70" text-anchor="middle" font-weight="700" fill="#eef3e6">9/22</text>
+            <text x="780" y="130" text-anchor="middle">配布物を揃える</text>
+
+            <circle cx="985" cy="96" r="9" fill="#2a1a10" stroke="#ffb347" stroke-width="2.5"/>
+            <text x="985" y="70" text-anchor="middle" font-weight="700" fill="#ffb347">9/29</text>
+            <text x="985" y="130" text-anchor="middle" fill="#ffb347">本番</text>
+          </g>
+
+          <text x="660" y="74" font-size="11.5" fill="#6f7d5e" text-anchor="middle">触っていない日</text>
+
+          <text x="520" y="192" font-size="12.5" font-weight="700" fill="#b8e986" text-anchor="middle">
+            暦では 27日。手を動かしたのは 11日</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>色が濃い日が、実際に触った日</figcaption>
+  </figure>
+
+  <div class="note">
+    ★<b>一番時間を食ったのは「動かすこと」ではありませんでした。</b>
+    身体が動いて喋るところまでは、数日です。
+    <b>1日に112回直した日があって、それは全部「見せ方」でした</b> ──
+    光の反射、灯体の揺れ、影の切り抜き方。<br>
+    <b>動くことと、そこに居ることは、別の仕事です。</b>
+  </div>
+
+  <!-- ══ あなたの場合 ══ -->
+  <h2><span class="n">YOUR TURN</span>あなたの場合は、もっと短いはずです</h2>
+  <p class="sub">
+    <b>踏んだ穴が、もう渡してあるからです。</b>
+    下は実測の所要時間です（2026-09-08〜09）。
+  </p>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>手順</th><th>できるようになること</th><th class="y">所要</th></tr></thead>
+    <tbody>
+      <tr><td><b>① 出荷時で遊ぶ</b></td><td>買ったそのままで喋らせる</td><td class="y">30分</td></tr>
+      <tr><td><b>② 戻れるようにする</b></td><td><b>飛ばさない。</b>戻る場所を作る</td><td class="y">20分</td></tr>
+      <tr><td><b>③ アンバインド</b></td><td><b>ここで一度、喋らなくなります</b></td><td class="y">10分</td></tr>
+      <tr><td><b>④ 焼く</b></td><td>一番詰まるところ</td><td class="y">60分</td></tr>
+      <tr><td><b>⑤ gateway を立てる</b></td><td><b>頭脳が、自分のものになる</b></td><td class="y">20分</td></tr>
+      <tr class="sum"><td colspan="2">ここまでで</td><td class="y">2時間20分</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note" style="border-left-color:var(--yen)">
+    <b>つまり ──</b><br>
+    <b>¥18,150 と、2時間20分。</b>それで、
+    <b>声もカメラも外に出ない、自分の頭脳で動くロボット</b>が机の上に立ちます。<br>
+    <b>今夜、そこから始められます。</b>
+  </div>
+
+  <p class="foot">
+    道のりは <b>始め方の地図</b>、詰まる場所は <b>失敗カタログ</b>、
+    細部は <code>docs/textbook.md</code> に。
+    <b>読まなくて構いません。あなたのエージェントに読ませてください。</b>
+  </p>
+
+</div>
