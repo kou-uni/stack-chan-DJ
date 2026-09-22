@@ -30,6 +30,8 @@
   .wait{color:var(--faint);font-size:13.5px}
   .dots::after{content:"";animation:d 1.2s steps(4,end) infinite}
   @keyframes d{0%{content:""}25%{content:"・"}50%{content:"・・"}75%{content:"・・・"}}
+  .said{font-size:11.5px;color:var(--faint);line-height:1.65;margin:10px 0 0}
+  .said b{color:var(--dim)}
   .hint{color:var(--faint);font-size:13px;text-align:center;margin:auto 0;padding:0 20px}
   .hint b{color:var(--dim);display:block;margin-bottom:10px;font-size:14px}
   .ex{display:inline-block;margin:4px;padding:7px 12px;background:var(--ink2);
@@ -53,7 +55,9 @@
 <div id="log"><div class="hint" id="hint"><b>なんでも聞いてください</b>
   <span class="ex">何から始めればいい？</span>
   <span class="ex">ファームを焼くとき気をつけることは？</span>
-  <span class="ex">うちの会社でもできる？</span></div></div>
+  <span class="ex">うちの会社でもできる？</span></div>  <p class="said">聞かれた内容は、最後の「あなたのDJスタイル」に使います。<br>
+    <b>誰が聞いたかは記録していません。</b>持ち帰ってよいかは、最後に訊きます。</p>
+</div>
 <form id="f" autocomplete="off">
   <input id="q" placeholder="質問を書く" maxlength="200" enterkeyhint="send">
   <button class="go" id="go" type="submit">聞く</button>

@@ -212,12 +212,18 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
         if not idx:
             return web.json_response(
                 {"answer": ask.NO_ANSWER, "sources": []})
+        t0 = time.monotonic()
         try:
             async with qa_gate:
                 answer, sources = await ask.answer(text, idx, mode=mode)
         except Exception as exc:                      # noqa: BLE001
             print(f"★ 質疑に失敗: {type(exc).__name__}: {exc}")
             return web.json_response({"error": ask.BLOCKED}, status=502)
+        # ★聞かれたことを残す（与件C21）。**誰が聞いたかは残さない。**
+        #   答えられなかったものが、配布物の穴として一番効く（C22）
+        ask.remember(text, mode=mode.name,
+                     answered=answer not in (ask.NO_ANSWER, ask.BLOCKED),
+                     sources=sources, seconds=time.monotonic() - t0)
         return web.json_response({"answer": answer, "sources": sources})
 
     async def panel(req):

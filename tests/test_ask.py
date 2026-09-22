@@ -305,3 +305,48 @@ def test_よくある語では釣られない():
                       "実機を薄く保つのは、書き換え直しを減らすため")
     got = ask.pick(many + [one], "なぜ実機を薄く保つの？")
     assert got and got[0].doc == "薄く保つ", [s.doc for s in got[:3]]
+
+
+# ── 聞かれたことを残す（C21）──────────────────────────
+def test_質問を記録する(tmp_path):
+    """★F① の「あなたのDJスタイル」は、**聞かれたことが材料**。
+    記録していないと、当日その場で手集計することになる。"""
+    log = tmp_path / "qa.jsonl"
+    ask.remember("焼く順番は？", mode="today", answered=True,
+                 sources=["ファーム選び"], seconds=9.4, path=log)
+    rows = ask.recall(log)
+    assert len(rows) == 1
+    r = rows[0]
+    assert r["q"] == "焼く順番は？" and r["mode"] == "today"
+    assert r["answered"] is True and r["sources"] == ["ファーム選び"]
+    assert r["at"] and isinstance(r["sec"], float)
+
+
+def test_誰が聞いたかは残さない(tmp_path):
+    """★**答えられたかを知りたいのであって、誰が聞いたかは要らない。**
+    要らないものを残さない。それが一番強い守り方。"""
+    log = tmp_path / "qa.jsonl"
+    ask.remember("やあ", mode="uni", answered=False, sources=[], seconds=1.0, path=log)
+    raw = log.read_text(encoding="utf-8")
+    for banned in ("ip", "addr", "remote", "who", "user"):
+        assert banned not in raw.lower()
+
+
+def test_答えられなかったものが分かる(tmp_path):
+    """★**答えられなかったものが最重要**（与件 C22）。配布物の穴がそこに出る。"""
+    log = tmp_path / "qa.jsonl"
+    for q, ok in [("いくら？", True), ("Rustでも動く？", False), ("重さは？", False)]:
+        ask.remember(q, mode="today", answered=ok, sources=[], seconds=1.0, path=log)
+    d = ask.digest(ask.recall(log))
+    assert d["count"] == 3 and d["answered"] == 1
+    assert [x["q"] for x in d["unanswered"]] == ["Rustでも動く？", "重さは？"]
+
+
+def test_壊れた行があっても読める(tmp_path):
+    """★当日の途中で落ちても、そこまでの分は使える。"""
+    log = tmp_path / "qa.jsonl"
+    ask.remember("ひとつめ", mode="today", answered=True, sources=[], seconds=1.0, path=log)
+    with log.open("a", encoding="utf-8") as f:
+        f.write("{壊れた行\n")
+    ask.remember("ふたつめ", mode="today", answered=True, sources=[], seconds=1.0, path=log)
+    assert [r["q"] for r in ask.recall(log)] == ["ひとつめ", "ふたつめ"]

@@ -406,6 +406,67 @@ async def warm(model: str = DEFAULT_MODEL, url: str | None = None) -> bool:
     return bool(out.strip())
 
 
+# ── 聞かれたことを残す（与件 C21）─────────────────────
+#
+# ★F① の「あなたのDJスタイル」は、**聞かれたことが材料**。記録が無いと手集計になる。
+# ★そして**答えられなかったものが最重要**（C22）── 配布物の穴が、そこに出る。
+#
+# ★残すものを最小にする。**誰が聞いたかは残さない。**
+#   知りたいのは「答えられたか」であって「誰が聞いたか」ではない。
+#   **要らないものを残さない。それが一番強い守り方。**
+#   （消し忘れも、漏れようも無い）
+LOG_PATH = ROOT / "event" / "rec" / "qa.jsonl"   # ★rec/ は git に入らない
+
+
+def remember(question: str, mode: str, answered: bool, sources: list[str],
+             seconds: float, path: Path | None = None) -> None:
+    """1問を1行で残す。**落ちても当日を止めない。**"""
+    import json
+    from datetime import datetime
+    p = Path(path) if path else LOG_PATH
+    row = {"at": datetime.now().isoformat(timespec="seconds"),
+           "mode": mode, "q": question, "answered": bool(answered),
+           "sources": list(sources), "sec": round(float(seconds), 1)}
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with p.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    except OSError as exc:                           # noqa: BLE001
+        print(f"★ 質問を残せませんでした: {exc}")     # ★黙って落とさない
+
+
+def recall(path: Path | None = None) -> list[dict]:
+    """読み戻す。★**壊れた行は飛ばす。**途中で落ちても、そこまでは使える。"""
+    import json
+    p = Path(path) if path else LOG_PATH
+    if not p.exists():
+        return []
+    out = []
+    for line in p.read_text(encoding="utf-8").splitlines():
+        try:
+            out.append(json.loads(line))
+        except (ValueError, TypeError):
+            continue
+    return out
+
+
+def digest(rows: list[dict]) -> dict:
+    """F① の材料にする。★**答えられなかったものを、先に並べる。**"""
+    answered = [r for r in rows if r.get("answered")]
+    unans = [r for r in rows if not r.get("answered")]
+    modes: dict[str, int] = {}
+    docs: dict[str, int] = {}
+    for r in rows:
+        modes[r.get("mode", "?")] = modes.get(r.get("mode", "?"), 0) + 1
+        for s in r.get("sources", []):
+            docs[s] = docs.get(s, 0) + 1
+    secs = [r.get("sec", 0) for r in rows if r.get("sec")]
+    return {"count": len(rows), "answered": len(answered),
+            "unanswered": unans, "modes": modes,
+            "docs": sorted(docs.items(), key=lambda t: -t[1]),
+            "median_sec": sorted(secs)[len(secs) // 2] if secs else 0.0}
+
+
 # ── 出口 ────────────────────────────────────────────────
 def _patterns():
     """秘密の形は `scripts/secret_scan.py` に1箇所だけ置いてある。
