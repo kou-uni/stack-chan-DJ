@@ -24,6 +24,15 @@ else
 fi
 
 # ★台本とアセットは、こちらが持っている。道具側には置かない
+# ★置いたものを「道具側の改変」と誤認させない（pack-patches.sh が拾ってしまう）
+EX="$K/.git/info/exclude"
+grep -q "stackchan-text" "$EX" 2>/dev/null || cat >> "$EX" <<'EOF'
+# stackchan-lab が置いていくもの（道具側の改変ではない）
+content/stackchan-text.js
+assets/stackchan*.png
+dist/
+EOF
+
 cp event/kamishibai/text.js "$K/content/stackchan-text.js"
 mkdir -p "$K/assets" && cp event/kamishibai/assets/*.png "$K/assets/"
 
