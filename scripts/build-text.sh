@@ -44,3 +44,7 @@ SIZE=$(du -h event/text.html | cut -f1 | tr -d ' ')
 echo
 echo "  ○ event/text.html  ($SIZE)  ← 1枚のHTML。そのまま開ける"
 echo "    ★これは進行役だけのもの。配布物（docs/pages/）には置いていません。"
+echo
+echo "  スマホで見るなら → Artifact に再公開（同じURLが保たれる）:"
+echo "    https://claude.ai/artifact/JJJj5xMhrDkzJH5Eqnoi5S"
+echo "    Claude Code に「台本を Artifact に上げ直して」と言えば、この URL に載ります。"
