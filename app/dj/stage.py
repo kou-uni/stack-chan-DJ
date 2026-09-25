@@ -29,6 +29,7 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+ROOT_DIR = HERE.parents[1]
 
 # ★会場では IP も機械名も変わる（家＝Mac Studio／会場＝MacBook、テザリング）。
 #   **変わらない名前を1つ作って、そこに全部ぶら下げる。**
@@ -177,6 +178,22 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
         """なでかたの案内。★鍵なしで開ける。**操作ではないので誰が見てもよい**
         （会場でQRから開いてもらう）。"""
         return web.FileResponse(HERE / "guide.html", headers=NOCACHE)
+
+    async def text(req):
+        """当日の台本（紙芝居）。★**鍵が要る。**
+
+        ★参加者に見せない。**F の回収（伏線）が、前半で割れる。**
+          配る場所（`/p`）には置かず、`/panel` と同じ鍵で守る。
+        """
+        if not guard(req):
+            return web.Response(status=403, text="鍵がちがいます",
+                                content_type="text/plain", charset="utf-8")
+        f = ROOT_DIR / "event" / "text.html"
+        if not f.exists():
+            return web.Response(status=404, charset="utf-8",
+                                content_type="text/plain",
+                                text="まだ作られていません: ./scripts/build-text.sh")
+        return web.FileResponse(f, headers=NOCACHE)
 
     async def qa(_req):
         """参加者の質疑応答。★鍵なしで開ける（会場LANのQRから）。
@@ -391,6 +408,7 @@ async def run_stage(con, host: str, port: int, hz: float = 20.0):
                     web.get("/panel", panel),
                     web.get("/guide", guide),
                     web.get("/qa", qa), web.post("/api/qa", api_qa),
+                    web.get("/text", text),
                     web.get("/api/state", api_state),
                     web.post("/api/act", api_act),
                     web.get("/api/photo", api_photo),

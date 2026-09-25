@@ -51,3 +51,14 @@ def test_生成できるものは持ち運ばない():
     tracked = sc.sh("git", "ls-files", "app/avatar/").splitlines()
     assert not [p for p in tracked if p.endswith((".png", ".raw"))], \
         "生成物が git に入っている"
+
+
+def test_台本は配る場所に置かない():
+    """★台本を参加者に渡すと、**F の回収（伏線）が前半で割れる。**
+
+    `docs/pages/` は `/p` で一覧になる＝配る場所。**そこに置かない。**
+    """
+    from pathlib import Path
+    pages = {p.name for p in (ROOT / "docs" / "pages").glob("*.html")}
+    assert "text.html" not in pages, "台本が配る場所に出ている"
+    assert (ROOT / "event" / "kamishibai" / "text.js").exists()
