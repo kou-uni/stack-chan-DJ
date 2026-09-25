@@ -31,5 +31,8 @@ app/avatar/*.raw
 # ファームのビルド作業場（数GB・生成物）
 build/
 
+# 台本の紙芝居（生成物。./scripts/build-text.sh で作り直せる）
+event/text.html
+
 # 当日の録音と文字起こし（★人の声。リポジトリに入れない）
 event/rec/

@@ -30,6 +30,7 @@ REGENERABLE = (
     "firmware/", "backup/",
     ".venv/", "__pycache__/", ".pytest_cache/", ".coverage", ".DS_Store",
     "event/rec/",         # ★人の声。入れてはいけない
+    "event/text.html",    # build-text.sh で作り直せる
     ".env", "server/.env",
 )
 
