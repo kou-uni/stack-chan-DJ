@@ -4,6 +4,7 @@
     ./.venv/bin/python scripts/boot_measure.py            # 1回
     ./.venv/bin/python scripts/boot_measure.py --n 14     # 14回（中央値・最小・最大を出す）
     ./.venv/bin/python scripts/boot_measure.py --n 14 --tag old --out /tmp/boot.csv   # 記録も残す
+    ./.venv/bin/python scripts/boot_measure.py --wait-power-on   # ★電源ONの起動を測る（リセットしない。USBを挿して待ち、電源を入れる）
 
 ★1回では計測にならない（2026-09-26：同じファームで 33 秒と 18 秒が出た。OTA 待ちが 14 秒→1 秒）。
   ファームを比べるときは **両方を同じ本数**測る。本数の既定は 1 だが、比較は `--n 14`。
@@ -53,10 +54,8 @@ def parse(lines: list[str]) -> dict:
     return out
 
 
-def one_boot(port: str, limit_s: float = 45.0) -> dict:
-    import serial
-    s = serial.Serial(port, 115200, timeout=1)
-    s.dtr = False; s.rts = True; time.sleep(0.1); s.rts = False       # リセット
+def read_boot(s, limit_s: float = 45.0) -> list[str]:
+    """開いたシリアルから、顔が出るか時間切れまで読む。★リセットはしない（電源ONの計測でも使う）。"""
     t0 = time.time(); lines: list[str] = []
     while time.time() - t0 < limit_s:
         l = s.readline().decode("utf-8", "replace").rstrip()
@@ -64,8 +63,33 @@ def one_boot(port: str, limit_s: float = 45.0) -> dict:
             lines.append(ANSI.sub("", l))
             if "set_avatar: face=idle applied=1" in l:
                 break
+    return lines
+
+
+def one_boot(port: str, limit_s: float = 45.0, reset: bool = True) -> dict:
+    import serial
+    s = serial.Serial(port, 115200, timeout=1)
+    if reset:
+        s.dtr = False; s.rts = True; time.sleep(0.1); s.rts = False   # リセット
+    lines = read_boot(s, limit_s)
     s.close()
     return parse(lines)
+
+
+def wait_power_on(timeout_s: float = 600.0) -> dict | None:
+    """USB が現れるのを待ち、現れたら**リセットせずに**起動ログを読む。
+    電源を入れると USB-Serial/JTAG が数百 ms で現れ、起動ログの頭から読める。"""
+    print("  電源を入れてください（USB が現れるのを待っています。Ctrl-C でやめる）", flush=True)
+    t0 = time.time()
+    while time.time() - t0 < timeout_s:
+        port = find_port()
+        if port:
+            try:
+                return one_boot(port, limit_s=60.0, reset=False)
+            except Exception as exc:                          # noqa: BLE001  現れた直後は開けないことがある
+                print(f"  （開けなかった: {exc}。もう一度）", flush=True); time.sleep(0.5); continue
+        time.sleep(0.2)
+    return None
 
 
 def show(r: dict) -> str:
@@ -86,7 +110,20 @@ def main() -> int:
     ap.add_argument("--tag", default="")
     ap.add_argument("--out", type=Path)
     ap.add_argument("--rest", type=float, default=2.0, help="回と回の間に置く秒")
+    ap.add_argument("--wait-power-on", action="store_true", help="リセットせず、電源ONの起動を待って測る")
     a = ap.parse_args()
+    if a.wait_power_on:
+        r = wait_power_on()
+        if r is None:
+            print("★ 時間内に USB が現れませんでした"); return 1
+        print(f"  電源ON {show(r)}")
+        if a.out:
+            new = not a.out.exists()
+            with a.out.open("a", newline="") as f:
+                w = csv.writer(f)
+                if new: w.writerow(["tag", "pm"] + [k for k, _, _ in MARKS])
+                w.writerow([a.tag or "power-on", r["pm"]] + [r.get(k, "") for k, _, _ in MARKS])
+        return 0
     port = a.port or find_port()
     if not port:
         print("★ 実機の USB が見えません（上の箱の USB-C をデータ線で）"); return 1

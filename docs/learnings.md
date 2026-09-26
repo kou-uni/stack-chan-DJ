@@ -1974,3 +1974,6 @@ console はそのまま、実機の電源だけ入れ直した。gateway に戻�
 - ビルドの罠: `git submodule update --init firmware/components/smooth_ui_toolkit` を先に。clone 直後は空で `Failed to resolve component`
 - ★bash の `set -u` で `"$BIN（"` が `BIN�: unbound variable`。全角括弧の直前は `${BIN}` と書く
 - 放置後の比較は `scripts/boot_idle_ab.py`（交互・放置・1回ずつ）。結果はこの下に追記する
+  - **10 分放置では再現しない**（旧 10.3s／新 10.2s）。30 分放置を続けて測っている。
+    ★遅い起動の条件は「放置」ではなく**電源を切っていたこと**かもしれない。電源ONは USB のリセットでは作れない
+    → `boot_measure.py --wait-power-on`（リセットせず待つ）で、**リハ 9/28 の電源投入を本番の数字として測る**
