@@ -181,7 +181,7 @@ class LedState:
     #
     # ★**会話の色は入力より強い。** 配布物に「緑=聞く／青=喋る」と書いてある。
     #   撫でた瞬間だけ色が変わると、その紙が嘘になる（顔と声では返している）
-    POKE_S = {"touch": 2.6, "scratch": 0.9, "button": 0.7}
+    POKE_S = {"touch": 2.6, "scratch": 0.9, "button": 0.7, "nfc": 2.4}
 
     def poke(self, kind: str, now: float | None = None) -> None:
         """入力に返事をする。**期限は種類ごとに決め打ち。**
@@ -224,6 +224,20 @@ class LedState:
                 out.append([min(255, int(c[0] * k * g)),
                             min(255, int(c[1] * k * g)),
                             min(255, int(c[2] * k * g))])
+            return out
+        if kind == "nfc":
+            # ★受付の「ようこそ」。**中央から両側へ白が広がって、ミントに落ち着く**
+            #   （扉が開く形）。虹（撫で）とは別の出来事だと分かるように色を変える
+            open_ = 1.0 - f                              # 0 → 1 で広がる
+            mid = (self.count - 1) / 2.0
+            for i in range(self.count):
+                d = abs(i - mid) / max(1.0, mid)         # 中央 0 → 端 1
+                lit = 1.0 if d <= open_ else 0.0
+                white = max(0.0, 1.0 - open_ * 1.4)      # 最初は白、だんだんミントへ
+                r = int((255 * white + 62 * (1 - white)) * k * lit)
+                g = int((255 * white + 227 * (1 - white)) * k * lit)
+                b = int((255 * white + 155 * (1 - white)) * k * lit)
+                out.append([min(255, r), min(255, g), min(255, b)])
             return out
         if kind == "scratch":
             # ★こすりは**速くて白い**。音の解析を待たず、操作そのものに返す

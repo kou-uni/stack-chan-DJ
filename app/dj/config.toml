@@ -65,6 +65,16 @@ touch-face-s = 3.0
 touch-stuck-polls = 4
 knob-face = "embarrassed"
 
+[nfc]
+# ★受付。M5Stack RFID 2 Unit（WS1850S）を Grove Port A に挿す。ファームは触らない。
+#   名簿は event/rec/guests.toml（git に入れない。scripts/nfc_enroll.py で作る）
+#   0 で無効。実機に Unit が無いときは起動時に1行出して、他は動き続ける
+nfc-poll-s = 0.4           # ★1周 ≒ 9往復。実測して決める
+nfc-addr = 40              # 0x28
+nfc-speed = 100000
+nfc-face-s = 3.0
+nfc-debounce-s = 6.0
+
 [vision]
 face-every-s = 18.0
 camera-fov-deg = 35.0

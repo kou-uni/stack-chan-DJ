@@ -31,12 +31,17 @@ PLACES = {
 
 
 def host() -> str:
-    for nic in ("en0", "en1"):
-        ip = subprocess.run(["ipconfig", "getifaddr", nic],
-                            capture_output=True, text=True).stdout.strip()
-        if ip:
-            return ip
-    return "127.0.0.1"
+    """LAN 側の自分の IP。★インターフェース名（en0 など）を書かない。
+    機械ごとに違う（Mac Studio は en1 だった）。外向きの経路から逆引きする。"""
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("10.255.255.255", 1))      # ★送信はしない。経路を選ばせるだけ
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except OSError:
+        return "127.0.0.1"
 
 
 def token() -> str:

@@ -1,0 +1,5 @@
+# NFC 名簿の見本。実物は event/rec/guests.toml（git に入れない・人名）
+# 作り方:  ./.venv/bin/python scripts/nfc_enroll.py   ← かざして名前を打つだけ
+[guests]
+# deadbeef = "うに"
+# 04112233445566 = "さわのぼり"

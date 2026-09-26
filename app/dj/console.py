@@ -57,6 +57,7 @@ from midi_in import MidiMixin                   # noqa: E402
 from audio import AudioMixin                    # noqa: E402
 from jog import Jog
 from touch import TouchMixin                    # noqa: E402
+from nfc import NfcMixin                        # noqa: E402
 from vision import VisionMixin                  # noqa: E402
 import settings                                 # noqa: E402
 import presence as presence_mod                 # noqa: E402
@@ -78,7 +79,7 @@ from stage import (run_stage, stage_url, Advertiser,   # noqa: E402
 #   それらは「人が今まさに操作している」ので、勝手に無効化してはいけない。
 
 
-class Console(ExpressionMixin, MidiMixin, AudioMixin, TouchMixin, VisionMixin):
+class Console(ExpressionMixin, MidiMixin, AudioMixin, TouchMixin, NfcMixin, VisionMixin):
     """つなぐ役。**実機の状態は Presence に言い、Reconciler が書く**（設計 §4 I1）。"""
 
     # ── 状態を動かす共通の道具。ここ以外に持たせない ────────────
@@ -544,6 +545,8 @@ async def main_async(args):
             tasks.append(con.beat_supervisor())
         if args.touch_poll_s > 0:
             tasks.append(con.touch_loop())
+        if args.nfc_poll_s > 0:                      # ★NFC 受付（Port A の RFID 2 Unit）
+            tasks.append(con.nfc_loop())
         tasks.append(con.reconciler.loop())
         tasks.append(device_watchdog(gw, con, args))
         tasks.append(con.knob_face_loop())
@@ -615,6 +618,16 @@ def main() -> int:
     ap.add_argument("--touch-face-s", type=float, default=3.0, help="撫でられた顔を出す秒数")
     ap.add_argument("--knob-face", default="embarrassed",
                     help="つまみを触っている間の表情。空文字で無効")
+    # ★NFC 受付。ファームは触らず、Port A の I2C ツールで WS1850S を Mac から叩く
+    ap.add_argument("--nfc-poll-s", type=float, default=0.0,
+                    help="カードを見る間隔。0で無効。★受付は速度が全て。実測して決める")
+    ap.add_argument("--nfc-addr", type=lambda s: int(s, 0), default=0x28,
+                    help="RFID 2 Unit の I2C アドレス（既定 0x28）")
+    ap.add_argument("--nfc-speed", type=int, default=100000,
+                    help="I2C クロック。400k で応答しない Unit があるので 100k")
+    ap.add_argument("--nfc-face-s", type=float, default=3.0, help="挨拶の顔を出す秒数")
+    ap.add_argument("--nfc-debounce-s", type=float, default=6.0,
+                    help="同じカードをこの秒数内にもう一度読んでも1回扱い")
     ap.add_argument("--touch-stuck-polls", type=int, default=4,
                     help="同じ生値がこの回数続いたら『固着』とみなしてタッチを無視する")
     ap.add_argument("--off-ch", type=int, default=6, help="OFFボタン（MASTER）のチャンネル")
