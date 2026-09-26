@@ -58,6 +58,11 @@ class McpBus:
 
     @staticmethod
     def unpack(res) -> list[int]:
+        # ★gw.call は MCP の CallToolResult を返す。中身は content[0].text の JSON 文字列
+        #   （2026-09-26 実機で判明。dict だと思い込んでいた）
+        content = getattr(res, "content", None)
+        if content:
+            res = "".join(getattr(c, "text", "") for c in content)
         if isinstance(res, str):
             try:
                 res = json.loads(res)

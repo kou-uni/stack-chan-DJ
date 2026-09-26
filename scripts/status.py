@@ -22,6 +22,11 @@ async def main() -> int:
     running = subprocess.run(["pgrep", "-f", "app/dj/console.py"],
                              capture_output=True, text=True).stdout.split()
     print(f"{_mark(bool(running))} console      {'動いている PID ' + ' '.join(running) if running else '止まっている'}")
+    # ★OTA スタブ。落ちていると実機は「6桁コード」か「更新確認失敗」で止まり、gateway に来ない。
+    #   2026-09-26：これが落ちていて半日探した。**沈黙は故障と見分けがつかない。見えるようにする。**
+    ota = subprocess.run(["lsof", "-nP", "-iTCP:8778", "-sTCP:LISTEN", "-t"],
+                         capture_output=True, text=True).stdout.split()
+    print(f"{_mark(bool(ota))} OTAスタブ     {'8778 で待っている' if ota else '止まっている ← 実機が gateway に来ません（service.sh install）'}")
 
     try:
         async with Gateway("http://127.0.0.1:8767/mcp") as gw:

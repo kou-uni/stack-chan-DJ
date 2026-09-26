@@ -62,3 +62,13 @@ def test_台本は配る場所に置かない():
     pages = {p.name for p in (ROOT / "docs" / "pages").glob("*.html")}
     assert "text.html" not in pages, "台本が配る場所に出ている"
     assert (ROOT / "event" / "kamishibai" / "text.js").exists()
+
+
+def test_OTAスタブは常駐に入っている():
+    """★2026-09-26：手で `&` 起動していたスタブが死んで、実機が半日 gateway に来なかった。
+    実機は起動時に ota_url へ問い合わせ、**通るまで WebSocket に来ない。**
+    常駐の一員でなければ、Mac を再起動した日に必ず再発する。"""
+    s = (ROOT / "scripts" / "service.sh").read_text(encoding="utf-8")
+    assert "ota_stub.py" in s and "com.uni.stackchan.ota" in s
+    st = (ROOT / "scripts" / "status.py").read_text(encoding="utf-8")
+    assert "8778" in st, "status.py がスタブを見ていない"

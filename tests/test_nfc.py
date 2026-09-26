@@ -222,3 +222,14 @@ def test_実機の返事の形を読める():
     assert nfc.McpBus.unpack({"ok": True, "bytes": [1, 2]}) == [1, 2]
     with pytest.raises(nfc.BusError):
         nfc.McpBus.unpack({"ok": False, "error": "ESP_ERR_TIMEOUT"})
+
+
+def test_実機の返事はCallToolResultで来る():
+    """★2026-09-26 実機で判明。dict ではなく、content[0].text に JSON が入った物体。"""
+    class _T:  # TextContent のまね
+        def __init__(self, text): self.text = text
+    class _R:
+        def __init__(self, text): self.content = [_T(text)]
+    assert nfc.McpBus.unpack(_R('{"ok":true,"bytes":[40]}')) == [40]
+    with pytest.raises(nfc.BusError):
+        nfc.McpBus.unpack(_R('{"ok":false,"error":"ESP_ERR_TIMEOUT"}'))

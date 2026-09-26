@@ -17,6 +17,9 @@ LA="$HOME/Library/LaunchAgents"
 LOGDIR="$HOME/Library/Logs/stackchan"
 GW="com.uni.stackchan.gateway"
 CON="com.uni.stackchan.console"
+# ★OTA スタブ。実機は起動時に ota_url（:8778）へ問い合わせ、通るまで WebSocket に来ない。
+#   2026-09-26：手で `&` 起動していたスタブが死んでいて、実機が半日戻ってこなかった。
+OTA="com.uni.stackchan.ota"
 DOMAIN="gui/$(id -u)"
 
 mkdir -p "$LA" "$LOGDIR"
@@ -63,12 +66,13 @@ install)
   fi
   sleep 2
 
+  plist "$OTA" "$ROOT/.venv/bin/python" "$ROOT/scripts/ota_stub.py" "--port" "8778" > "$LA/$OTA.plist"
   plist "$GW"  "/bin/bash" "$ROOT/scripts/gateway.sh"                > "$LA/$GW.plist"
   # ★実機を待ち続ける（--wait-device 0）。電源を入れた瞬間に繋がる
   plist "$CON" "$ROOT/.venv/bin/python" "-u" "$ROOT/app/dj/console.py" \
         "--wait-device" "0" "--quiet"                                 > "$LA/$CON.plist"
 
-  for L in "$GW" "$CON"; do
+  for L in "$OTA" "$GW" "$CON"; do
     launchctl bootout  "$DOMAIN/$L" 2>/dev/null || true
     launchctl bootstrap "$DOMAIN" "$LA/$L.plist" || { echo "★ $L の登録に失敗"; exit 1; }
   done
