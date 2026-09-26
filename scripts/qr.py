@@ -31,8 +31,8 @@ PLACES = {
 
 
 def host() -> str:
-    """LAN 側の自分の IP。★インターフェース名（en0 など）を書かない。
-    機械ごとに違う（Mac Studio は en1 だった）。外向きの経路から逆引きする。"""
+    """LAN 側の自分の IP。★インターフェース名を書かない（機械ごとに違う）。
+    外向きの経路から逆引きする。"""
     import socket
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
