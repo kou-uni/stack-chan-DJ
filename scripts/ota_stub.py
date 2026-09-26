@@ -43,7 +43,11 @@ class Handler(BaseHTTPRequestHandler):
         self._reply()
 
     def log_message(self, fmt, *args):
-        print(f"  [ota-stub] {self.address_string()} {fmt % args}")
+        # ★実機は起動のたびにここへ来る。**1行残せば「実機が再起動した時刻」が Mac 側で分かる**
+        #   （2026-09-26。gateway は電源断を検知できない＝FIN が来ないので、起動の証拠がここにしか無い）
+        import sys, time
+        sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + f" 実機から {self.client_address[0]} {self.command} {self.path}\n")
+        sys.stderr.flush()
 
 
 def main() -> int:
