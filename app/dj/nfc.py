@@ -284,7 +284,9 @@ LINES_UNKNOWN = ["はじめまして！名前、まだ聞いてないや", "そ�
 class Greeter:
     """UID から、何と言うかを決める。**実機も時計も触らない**ので試験できる。"""
 
-    def __init__(self, guests: Guests, log_path: Path = VISITS_PATH, debounce_s: float = 6.0):
+    # ★置きっぱなしのカードは 48%/周でしか拾えない（実測）。6秒だと拾えない間が空いて
+    #   「はじめまして」を2回言った（実測、87秒後）。**離してから戻ってきた**と言えるのは 12 秒以上。
+    def __init__(self, guests: Guests, log_path: Path = VISITS_PATH, debounce_s: float = 12.0):
         self.guests, self.log_path, self.debounce_s = guests, log_path, debounce_s
         self.counts: dict[str, int] = {}
         self._last: dict[str, float] = {}
@@ -347,9 +349,9 @@ class NfcReactor:
         self.speaker_id = speaker_id
 
     async def react(self, g: Greeting, gw=None, busy: bool = False) -> None:
-        if not self.quiet:
-            who = g.name or "（未登録）"
-            print(f"    ▣ NFC {g.uid} {who} {g.count}回目 「{g.line}」")
+        # ★quiet でも出す。常駐は --quiet で動くので、黙ると「かざしたのに何も起きない」が追えない
+        who = g.name or "（未登録）"
+        print(f"    ▣ NFC {g.uid} {who} {g.count}回目 「{g.line}」" + ("（会話中: 声なし）" if busy else ""), flush=True)
         self.presence.overlay("nfc", "happy", self.face_s)
         if self.led is not None:
             self.led.poke("nfc")
@@ -379,6 +381,7 @@ class NfcMixin:
                              quiet=args.quiet)
         if not greeter.guests.table:
             print(f"    ▲ 名簿が空です: {GUESTS_PATH}（scripts/nfc_enroll.py で登録）")
+        last_err = 0.0
         while True:
             try:
                 uid = await rc.poll_uid()
@@ -388,7 +391,10 @@ class NfcMixin:
                         busy = bool(getattr(self.presence, "talk", None))
                         await reactor.react(g, self.gw, busy=busy)
             except Exception as exc:                # noqa: BLE001
-                if not args.quiet:
-                    print(f"    ★ NFC: {type(exc).__name__}: {str(exc)[:60]}")
+                # ★quiet でも1分に1回は言う。黙って死んでいるのが一番困る
+                now = time.monotonic()
+                if now - last_err > 60:
+                    print(f"    ★ NFC: {type(exc).__name__}: {str(exc)[:80]}", flush=True)
+                    last_err = now
                 await asyncio.sleep(1.0)
             await asyncio.sleep(args.nfc_poll_s)

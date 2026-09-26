@@ -626,7 +626,7 @@ def main() -> int:
     ap.add_argument("--nfc-speed", type=int, default=100000,
                     help="I2C クロック。400k で応答しない Unit があるので 100k")
     ap.add_argument("--nfc-face-s", type=float, default=3.0, help="挨拶の顔を出す秒数")
-    ap.add_argument("--nfc-debounce-s", type=float, default=6.0,
+    ap.add_argument("--nfc-debounce-s", type=float, default=12.0,
                     help="同じカードをこの秒数内にもう一度読んでも1回扱い")
     ap.add_argument("--touch-stuck-polls", type=int, default=4,
                     help="同じ生値がこの回数続いたら『固着』とみなしてタッチを無視する")

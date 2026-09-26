@@ -73,7 +73,7 @@ nfc-poll-s = 0.4           # ★1周 ≒ 9往復。実測して決める
 nfc-addr = 40              # 0x28
 nfc-speed = 100000
 nfc-face-s = 3.0
-nfc-debounce-s = 6.0
+nfc-debounce-s = 12.0          # ★置きっぱなしは48%/周でしか拾えない。6秒だと二度言う（実測）
 
 [vision]
 face-every-s = 18.0
