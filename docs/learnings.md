@@ -1965,3 +1965,12 @@ console はそのまま、実機の電源だけ入れ直した。gateway に戻�
 - → `WifiBoard::StartNetwork()` の Initialize 直後に `esp_wifi_set_ps(WIFI_PS_NONE)`（1行）。
   上書きではなく **隣の面（ota_0）に置いて起動**（`scripts/flash-slot.sh`）。ダメなら `--back` で 10 秒で戻る
 - **推測で焼かない。焼く前に区間を測り、焼いた後に同じ物差しで測る**（`flash-slot.sh --measure`）
+
+#### 焼いて測った（同日・追記）
+
+- **続けざまの再起動は、旧ファームでも 10 秒で顔が出た**（14回：中央 10.1s・最小 9.9・最大 13.5。`boot_measure.py --n 14`）。
+  33 秒・18 秒は**長く動かした後の最初の再起動**だけ。★1回の 33 秒を「毎回 33 秒」と読んでいた
+- 新ファームは起動ログが `wifi:pm start, type: 0`（省電力なし）。**入ったことはログで確かめた**
+- ビルドの罠: `git submodule update --init firmware/components/smooth_ui_toolkit` を先に。clone 直後は空で `Failed to resolve component`
+- ★bash の `set -u` で `"$BIN（"` が `BIN�: unbound variable`。全角括弧の直前は `${BIN}` と書く
+- 放置後の比較は `scripts/boot_idle_ab.py`（交互・放置・1回ずつ）。結果はこの下に追記する

@@ -86,7 +86,7 @@ PY
 |---|---|---|
 | ① | **実機をリセット**（USB から: `./scripts/rescue.sh --reset`／本体のリセットボタン） | 何も失わない |
 | ② | **設定モードに入れ直す**：NVS の `wifi` を消す → 起動時に設定 AP が立つ → ブラウザから Wi-Fi と **OTA URL** と **WebSocket URL** を入れ直す<br>`esptool erase-region 0x9000 0x6000`（`learnings.md` L758） | Wi-Fi と向き先の設定（入れ直せばよい） |
-| ③ | **前の面（OTA スロット）に戻す**：`scripts/ota_select.py` | 今の面のファーム（前の面が動くなら困らない） |
+| ③ | **前の面（OTA スロット）に戻す**：`./scripts/flash-slot.sh --back`（= `ota_select.py 1`）。★9/26 から **ota_0=新（省電力なし）／ota_1=旧** | 今の面のファーム（前の面が動くなら困らない） |
 | ④ | **焼き直す**：`firmware/merged-binary.bin` を `esptool write_flash 0x0` | 表情データ（`reload_avatar.py` で戻る）。NVS は消えない |
 | ⑤ | **出荷時に戻す**：`backup/` から `write_flash 0x0` | 自前構成ぜんぶ。会話はクラウドに戻る＝**プライバシーの主張が逆に濃くなる**ので、話としては成立する |
 
