@@ -21,7 +21,9 @@
 - [ ] ファーム更新を済ませる
 - [ ] 音量を上げる（Barは騒がしい）
 - [ ] `scripts/preflight.sh` が全部OKになる
-- [ ] **`status.py` の1行目「OTAスタブ」が○**（落ちていると実機は gateway に来ない。9/26 に半日溶かした）
+- [ ] **`status.py` の上4行（console / OTAスタブ / VOICEVOX / 実機）が全部○**
+- [ ] **NFC の来訪記録をリセット**（`event/rec/visits.jsonl` を退避して空に。テスト中の回数が残っていると初対面に「6回目だね」と言う）
+- [ ] ~~`status.py` の1行目「OTAスタブ」が○~~（落ちていると実機は gateway に来ない。9/26 に半日溶かした）
 - [ ] **実機の向き先 IP を MacBook が持つ**（`docs/rescue.md` §3。★未解決のまま当日を迎えない）
 - [ ] **受け入れテストを1回通す**（`scripts/acceptance.py`。実機が読み上げる）
 - [ ] Mac Studio で `scripts/keep-awake.sh` を起動しっぱなしにする

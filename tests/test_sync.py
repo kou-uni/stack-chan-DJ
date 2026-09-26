@@ -72,3 +72,11 @@ def test_OTAスタブは常駐に入っている():
     assert "ota_stub.py" in s and "com.uni.stackchan.ota" in s
     st = (ROOT / "scripts" / "status.py").read_text(encoding="utf-8")
     assert "8778" in st, "status.py がスタブを見ていない"
+
+
+def test_VOICEVOXも常駐に入っている():
+    """★2026-09-26：手で & 起動していた VOICEVOX が死んでいて、撫でも NFC も無言だった。
+    OTA スタブと同じ形。**手で立てたものは、いつか止まって、誰も気づかない。**"""
+    s = (ROOT / "scripts" / "service.sh").read_text(encoding="utf-8")
+    assert "voicevox/macos-arm64/run" in s and "com.uni.stackchan.voice" in s
+    assert "50021" in (ROOT / "scripts" / "status.py").read_text(encoding="utf-8")

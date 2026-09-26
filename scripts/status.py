@@ -27,6 +27,10 @@ async def main() -> int:
     ota = subprocess.run(["lsof", "-nP", "-iTCP:8778", "-sTCP:LISTEN", "-t"],
                          capture_output=True, text=True).stdout.split()
     print(f"{_mark(bool(ota))} OTAスタブ     {'8778 で待っている' if ota else '止まっている ← 実機が gateway に来ません（service.sh install）'}")
+    # ★声。落ちていると say が全部失敗し、撫でも NFC も無言になる（2026-09-26。誰も気づかなかった）
+    vv = subprocess.run(["lsof", "-nP", "-iTCP:50021", "-sTCP:LISTEN", "-t"],
+                        capture_output=True, text=True).stdout.split()
+    print(f"{_mark(bool(vv))} VOICEVOX      {'50021 で待っている' if vv else '止まっている ← 声が出ません（service.sh install）'}")
 
     try:
         async with Gateway("http://127.0.0.1:8767/mcp") as gw:

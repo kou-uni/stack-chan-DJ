@@ -20,6 +20,8 @@ CON="com.uni.stackchan.console"
 # ★OTA スタブ。実機は起動時に ota_url（:8778）へ問い合わせ、通るまで WebSocket に来ない。
 #   2026-09-26：手で `&` 起動していたスタブが死んでいて、実機が半日戻ってこなかった。
 OTA="com.uni.stackchan.ota"
+# ★VOICEVOX（声）。これも手で & 起動していて、死んだまま誰も気づかなかった（2026-09-26。撫でも NFC も無言だった）
+VOICE="com.uni.stackchan.voice"
 DOMAIN="gui/$(id -u)"
 
 mkdir -p "$LA" "$LOGDIR"
@@ -67,12 +69,20 @@ install)
   sleep 2
 
   plist "$OTA" "$ROOT/.venv/bin/python" "$ROOT/scripts/ota_stub.py" "--port" "8778" > "$LA/$OTA.plist"
+  if [ -x "$ROOT/vendor/voicevox/macos-arm64/run" ]; then
+    plist "$VOICE" "$ROOT/vendor/voicevox/macos-arm64/run" "--host" "127.0.0.1" "--port" "50021" > "$LA/$VOICE.plist"
+    VOICE_OK=1
+  else
+    echo "  ▲ VOICEVOX が無いので声は常駐に入れません（bootstrap.sh で入る）"; VOICE_OK=0
+  fi
+  # 手で立てていた VOICEVOX が居れば止める（ポートが被る）
+  OLDV="$(lsof -nP -iTCP:50021 -sTCP:LISTEN -t 2>/dev/null || true)"; [ -n "$OLDV" ] && kill -TERM $OLDV 2>/dev/null || true
   plist "$GW"  "/bin/bash" "$ROOT/scripts/gateway.sh"                > "$LA/$GW.plist"
   # ★実機を待ち続ける（--wait-device 0）。電源を入れた瞬間に繋がる
   plist "$CON" "$ROOT/.venv/bin/python" "-u" "$ROOT/app/dj/console.py" \
         "--wait-device" "0" "--quiet"                                 > "$LA/$CON.plist"
 
-  for L in "$OTA" "$GW" "$CON"; do
+  for L in "$OTA" ${VOICE_OK:+"$VOICE"} "$GW" "$CON"; do
     launchctl bootout  "$DOMAIN/$L" 2>/dev/null || true
     # ★bootout の直後に bootstrap すると「Input/output error (5)」で落ちることがある（2026-09-26）。
     #   消え終わるのを待ってから登録する。3回まで。
