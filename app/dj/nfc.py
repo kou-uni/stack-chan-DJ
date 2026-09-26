@@ -40,7 +40,7 @@ TModeReg, TPrescalerReg, TReloadRegH, TReloadRegL = 0x2A, 0x2B, 0x2C, 0x2D
 VersionReg = 0x37
 
 PCD_Idle, PCD_CalcCRC, PCD_Transceive, PCD_SoftReset = 0x00, 0x03, 0x0C, 0x0F
-PICC_REQA, PICC_SEL_CL1, PICC_SEL_CL2 = 0x26, 0x93, 0x95
+PICC_REQA, PICC_WUPA, PICC_HLTA, PICC_SEL_CL1, PICC_SEL_CL2 = 0x26, 0x52, 0x50, 0x93, 0x95
 
 I2C_ADDR = 0x28
 I2C_SPEED = 100_000          # ★ファーム内のメモ: 400k で応答しない Unit があった。100k が M5 の既定
@@ -48,6 +48,22 @@ I2C_SPEED = 100_000          # ★ファーム内のメモ: 400k で応答しな
 
 class BusError(RuntimeError):
     pass
+
+
+_NO_CARD = object()          # ★「カードが見えない」と「読み切れない」を区別する印
+
+
+def crc_a(data: list[int]) -> list[int]:
+    """ISO/IEC 14443-3 の CRC_A（初期値 0x6363、多項式 0x8408、下位バイト先）。
+
+    ★チップの CalcCRC を使うと往復が10回増える。手元で出せば0回。
+    """
+    crc = 0x6363
+    for b in data:
+        b ^= crc & 0xFF
+        b ^= (b << 4) & 0xFF
+        crc = ((crc >> 8) ^ (b << 8) ^ (b << 3) ^ (b >> 4)) & 0xFFFF
+    return [crc & 0xFF, crc >> 8]
 
 
 class McpBus:
@@ -90,9 +106,10 @@ class Rc522:
       カードが無いときの1周は 9 往復以内（試験で固定）。
     """
 
-    def __init__(self, bus, timer_wait_s: float = 0.03):
+    def __init__(self, bus, timer_wait_s: float = 0.025, tries: int = 2):
         self.bus = bus
         self.timer_wait_s = timer_wait_s
+        self.tries = tries
         self.version: int | None = None
 
     async def init(self) -> int:
@@ -111,34 +128,38 @@ class Rc522:
         self.version = (await b.read(VersionReg))[0]
         return self.version
 
-    async def _transceive(self, data: list[int], bits: int = 0) -> list[int] | None:
-        """1往復。応答が無ければ None。"""
+    async def _transceive(self, data: list[int], bits: int = 0,
+                          expect: int | None = None) -> list[int] | None:
+        """1往復。応答が無ければ None。
+
+        ★往復の数が体感の全て（1往復 ≈ 25ms）。**期待する長さが分かっているので
+          FIFO の残量を読まず、Error レジスタも読まない**（壊れた応答は BCC で落ちる）。
+          1送受信 = 8往復。以前は 12 だった（7バイト UID で 1.2 秒かかっていた）。
+        """
         b = self.bus
         # ★前の Transceive を止めてから書く。止めずに FIFO に書くと WrErr(0x80) になり、
         #   何も送れないまま TimerIRq だけが立つ（2026-09-26 実機で観測: ComIrq=0x47 Err=0x80）
         await b.write(CommandReg, [PCD_Idle])
-        await b.write(BitFramingReg, [bits & 0x07])
         await b.write(ComIrqReg, [0x7F])          # 割り込みフラグを消す
         await b.write(FIFOLevelReg, [0x80])       # FIFO を空に
         await b.write(FIFODataReg, data)
         await b.write(CommandReg, [PCD_Transceive])
-        await b.write(BitFramingReg, [0x80 | (bits & 0x07)])   # StartSend
+        await b.write(BitFramingReg, [0x80 | (bits & 0x07)])   # StartSend ＋ 最後のビット数
         await asyncio.sleep(self.timer_wait_s)    # ★何度も覗かず、タイマ分だけ1回待つ
         irq = (await b.read(ComIrqReg))[0]
-        if irq & 0x01 and not irq & 0x30:         # TimerIRq だけ ＝ 誰もいない
-            return None
-        if not irq & 0x30:
+        if not irq & 0x30:                        # RxIRq / IdleIRq が立っていない
+            if irq & 0x01:                        # TimerIRq だけ ＝ 誰もいない
+                return None
             await asyncio.sleep(self.timer_wait_s)
             irq = (await b.read(ComIrqReg))[0]
             if not irq & 0x30:
                 return None
-        err = (await b.read(ErrorReg))[0]
-        if err & 0x13:                            # BufferOvfl / ParityErr / ProtocolErr
-            return None
-        n = (await b.read(FIFOLevelReg))[0]
-        if n == 0:
+        if expect is None:
+            n = (await b.read(FIFOLevelReg))[0]
+            return await b.read(FIFODataReg, n) if n else []
+        if expect == 0:
             return []
-        return await b.read(FIFODataReg, n)
+        return await b.read(FIFODataReg, expect)
 
     async def _crc(self, data: list[int]) -> list[int]:
         b = self.bus
@@ -164,24 +185,61 @@ class Rc522:
         return len(five) == 5 and x == five[4]
 
     async def poll_uid(self) -> str | None:
-        """カードがあれば UID（16進小文字）。無ければ None。"""
-        atqa = await self._transceive([PICC_REQA], bits=7)
+        """カードがあれば鍵（16進小文字）。無ければ None。
+
+        ★検出は WUPA（0x52）。REQA だと、一度選んだカードが答えなくなる（実機で観測）。
+        ★★**7バイトのカードは、CL1 で取れる3バイトを鍵にする**（2026-09-26 に方針転換）。
+          MCP 越しの1段は 250ms。段が進むほどカードが脱落し、7バイトを読み切れるのは1割以下だった。
+          WUPA＋CL1 の2段なら5割以上通る。名前を呼ぶには3バイトで足りる（重なりは登録時に弾く）。
+        ★誰もいないなら粘らない。カードが見えて読み切れなかったときだけ `tries` 回まで。
+        """
+        for _ in range(self.tries):
+            got = await self._read_once()
+            if got is _NO_CARD:
+                return None
+            if got:
+                return got
+        return None
+
+    async def _read_once(self):
+        """鍵 / None（カードは見えたが読み切れない）/ _NO_CARD（誰もいない）"""
+        atqa = await self._transceive([PICC_WUPA], bits=7, expect=2)
         if atqa is None:
-            return None
-        part = await self._transceive([PICC_SEL_CL1, 0x20])
+            return _NO_CARD
+        part = await self._transceive([PICC_SEL_CL1, 0x20], expect=5)
         if not part or not self._bcc_ok(part):
             return None
-        if part[0] != 0x88:                       # 4バイト UID
+        if not any(part[:4]):                     # ★全部ゼロは UID ではない（実機で観測）
+            return None
+        if part[0] != 0x88:                       # 4バイト UID はそのまま
             return bytes(part[:4]).hex()
-        # 7バイト UID: CL1 を select してから CL2 を読む
+        return bytes(part[1:4]).hex()             # 7バイト UID の先頭3バイト
+
+    async def read_full_uid(self) -> str | None:
+        """7バイトを読み切る。**登録のときだけ**（当日の受付では使わない）。"""
+        atqa = await self._transceive([PICC_WUPA], bits=7, expect=2)
+        if atqa is None:
+            return None
+        part = await self._transceive([PICC_SEL_CL1, 0x20], expect=5)
+        if not part or not self._bcc_ok(part) or not any(part[:4]):
+            return None
+        if part[0] != 0x88:
+            return bytes(part[:4]).hex()
         sel = [PICC_SEL_CL1, 0x70, *part[:5]]
-        sel += await self._crc(sel)
-        if await self._transceive(sel) is None:
+        sel += crc_a(sel)
+        if await self._transceive(sel, expect=3) is None:
             return None
-        part2 = await self._transceive([PICC_SEL_CL2, 0x20])
-        if not part2 or not self._bcc_ok(part2):
+        part2 = await self._transceive([PICC_SEL_CL2, 0x20], expect=5)
+        if not part2 or not self._bcc_ok(part2) or not any(part2[:4]):
             return None
-        return bytes(part[1:4] + part2[:4]).hex()
+        return (bytes(part[1:4]) + bytes(part2[:4])).hex()
+
+    async def _halt(self) -> None:
+        """カードを HALT に。応答は無いのが正常（タイムアウトで None）。"""
+        try:
+            await self._transceive([PICC_HLTA, 0x00, *crc_a([PICC_HLTA, 0x00])], expect=0)
+        except Exception:
+            pass
 
 
 # ── 誰か・何回目か ────────────────────────────────────────

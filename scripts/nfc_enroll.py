@@ -38,6 +38,18 @@ def save_table(path: Path, table: dict[str, str]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def add_guest(path: Path, uid: str, name: str) -> bool:
+    """1件足す。★同じ鍵に別の名前は入れない（3バイトの鍵は重なりうる。登録時に気づく）。"""
+    uid = uid.lower()
+    table = load_table(path)
+    if uid in table and table[uid] != name:
+        print(f"  ★ {uid} は既に「{table[uid]}」です。別の人なら、そのカードは使わないでください（鍵が重なる）")
+        return False
+    table[uid] = name
+    save_table(path, table)
+    return True
+
+
 async def scan() -> int:
     async with Gateway(GATEWAY) as gw:
         res = await gw.call("i2c_scan")
@@ -73,9 +85,9 @@ async def enroll(path: Path) -> int:
             except EOFError:
                 break
             if name:
-                table[uid] = name
-                save_table(path, table)
-                print(f"    ○ 保存しました: {uid} = {name}（{len(table)}人）\n")
+                if add_guest(path, uid, name):
+                    table = load_table(path)
+                    print(f"    ○ 保存しました: {uid} = {name}（{len(table)}人）\n")
             else:
                 print()
 
@@ -85,7 +97,12 @@ def main() -> int:
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--scan", action="store_true")
     ap.add_argument("--file", type=Path, default=nfc.GUESTS_PATH)
+    ap.add_argument("--add", nargs=2, metavar=("UID", "名前"), help="対話せずに1件登録する")
     a = ap.parse_args()
+    if a.add:
+        ok = add_guest(a.file, a.add[0], a.add[1])
+        if ok: print(f"  ○ 保存しました: {a.add[0].lower()} = {a.add[1]} → {a.file}")
+        return 0 if ok else 1
     if a.list:
         t = load_table(a.file)
         print(f"  {a.file}（{len(t)}人）")

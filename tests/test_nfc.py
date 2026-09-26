@@ -58,8 +58,10 @@ class FakeChip:
             if self.uid is None:
                 self.regs[nfc.ComIrqReg] = 0x01              # TimerIRq = 応答なし
                 return
-            if sent == [nfc.PICC_REQA]:
+            if sent in ([nfc.PICC_REQA], [nfc.PICC_WUPA]):
                 self.fifo = [0x44, 0x00]                     # ATQA
+            elif sent[:1] == [nfc.PICC_HLTA]:
+                self.regs[nfc.ComIrqReg] = 0x01; return      # HALT は無応答が正常
             elif sent == [nfc.PICC_SEL_CL1, 0x20]:
                 part = list(self.uid[:4]) if len(self.uid) == 4 else [0x88] + list(self.uid[:3])
                 self.fifo = part + [_bcc(part)]
@@ -106,10 +108,11 @@ def test_4バイトのUIDを読む():
     assert run(r.poll_uid()) == "deadbeef"
 
 
-def test_7バイトのUIDも読む():
-    """★NTAG（よくあるシール型）は7バイト。**先頭の 0x88 は続きがある印**で、UIDの一部ではない。"""
+def test_7バイトのUIDも読み切れる_登録用():
+    """★NTAG（よくあるシール型）は7バイト。**先頭の 0x88 は続きがある印**で、UIDの一部ではない。
+    読み切るのは登録のときだけ（read_full_uid）。"""
     r = nfc.Rc522(FakeChip(uid=bytes([0x04, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66])))
-    assert run(r.poll_uid()) == "04112233445566"
+    assert run(r.read_full_uid()) == "04112233445566"
 
 
 def test_BCCが合わなければ捨てる():
@@ -233,3 +236,78 @@ def test_実機の返事はCallToolResultで来る():
     assert nfc.McpBus.unpack(_R('{"ok":true,"bytes":[40]}')) == [40]
     with pytest.raises(nfc.BusError):
         nfc.McpBus.unpack(_R('{"ok":false,"error":"ESP_ERR_TIMEOUT"}'))
+
+
+def test_全部ゼロのUIDは捨てる():
+    """★実機で観測（2026-09-26）：カードが端にあると 00000000 が返り、BCC も 0 で通ってしまう。
+    **ゼロは UID ではない。**"""
+    r = nfc.Rc522(FakeChip(uid=bytes([0, 0, 0, 0])))
+    assert run(r.poll_uid()) is None
+
+
+def test_CRCは手元で計算する():
+    """★チップに計算させると往復が10回増える（実測 7バイトで1.2秒）。ISO14443 の CRC_A は手元で出せる。"""
+    # 既知値: [0x93,0x70,0x88,0x04,0x3b,0x33,0x84] の CRC_A（MFRC522 ライブラリの検算値と一致すること）
+    crc = nfc.crc_a([0x50, 0x00])           # HALT コマンドの CRC_A は 0x57 0xCD（規格の例）
+    assert crc == [0x57, 0xCD]
+
+
+def test_受付の読み取りは2段で終わる():
+    """★WUPA＋CL1 だけ。段が増えるほど落ちる。"""
+    chip = FakeChip(uid=bytes([0x04, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66]))
+    run(nfc.Rc522(chip).poll_uid())
+    assert chip.calls <= 18, f"往復 {chip.calls} 回は多い"
+
+
+class FlakyChip(FakeChip):
+    """★実機で観測：CL1 は通るが、その後の SELECT/CL2 が電波の端でタイムアウトする。"""
+    def __init__(self, uid, fail_after_cl1=True):
+        super().__init__(uid); self.fail_after_cl1 = fail_after_cl1; self.full_reads = 0
+    def _command(self, cmd):
+        if cmd == nfc.PCD_Transceive and self.fail_after_cl1 and self.fifo[:2] == [nfc.PICC_SEL_CL1, 0x70]:
+            self.fifo = []; self.regs[nfc.ComIrqReg] = 0x01; return      # SELECT に答えない
+        super()._command(cmd)
+
+
+
+
+def test_1周の中で2回まで粘る():
+    """★1段でも落ちたら諦めると、6割×6割で3割しか読めない。"""
+    class OnceFlaky(FakeChip):
+        def __init__(self, uid): super().__init__(uid); self.n = 0
+        def _command(self, cmd):
+            if cmd == nfc.PCD_Transceive and self.fifo == [nfc.PICC_SEL_CL1, 0x20]:
+                self.n += 1
+                if self.n == 1:                             # 最初の CL1 だけ落とす
+                    self.fifo = []; self.regs[nfc.ComIrqReg] = 0x01; return
+            super()._command(cmd)
+    rc = nfc.Rc522(OnceFlaky(bytes([1, 2, 3, 4])))
+    assert run(rc.poll_uid()) == "01020304"
+
+
+# ── 方針転換（2026-09-26 実機）: 7バイトのカードは CL1 で取れる3バイトで同定する ──
+def test_7バイトのカードは3バイトで同定する():
+    """★実機：MCP 越しの1段が 250ms。段が進むほどカードが脱落し、7バイトを読み切れるのは1割以下。
+    **WUPA＋CL1 の2段なら5割以上通る。** 名前を呼ぶには3バイトで足りる（重なりは登録時に弾く）。"""
+    rc = nfc.Rc522(FlakyChip(bytes([0x04, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66])))
+    assert run(rc.poll_uid()) == "041122"
+
+
+def test_4バイトのカードは今までどおり():
+    assert run(nfc.Rc522(FakeChip(uid=bytes([0xDE, 0xAD, 0xBE, 0xEF]))).poll_uid()) == "deadbeef"
+
+
+def test_読み切れる時も同じ鍵になる():
+    """★同じカードが、読めた深さで別人になってはいけない。"""
+    uid = bytes([0x04, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66])
+    assert run(nfc.Rc522(FakeChip(uid=uid)).poll_uid()) == "041122"
+
+
+def test_登録で先頭が重なるカードは弾く(tmp_path):
+    import importlib.util
+    s = importlib.util.spec_from_file_location("enroll", ROOT / "scripts" / "nfc_enroll.py")
+    en = importlib.util.module_from_spec(s); s.loader.exec_module(en)
+    f = tmp_path / "g.toml"
+    en.save_table(f, {"041122": "A"})
+    assert en.add_guest(f, "041122", "B") is False       # ★同じ鍵に別名は入れない
+    assert en.add_guest(f, "049988", "B") is True
