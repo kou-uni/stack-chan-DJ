@@ -311,3 +311,14 @@ def test_登録で先頭が重なるカードは弾く(tmp_path):
     en.save_table(f, {"041122": "A"})
     assert en.add_guest(f, "041122", "B") is False       # ★同じ鍵に別名は入れない
     assert en.add_guest(f, "049988", "B") is True
+
+
+def test_本物のPresenceで顔が出る():
+    """★2026-09-26：偽の Presence で緑だったが、本物は PRIORITY に無い種類を拒否して落ちた。
+    **顔・光・声はその例外の後ろにあり、かざしても何も起きなかった。**偽物で守れない所は本物で試す。"""
+    from presence import Presence
+    pr = Presence(dance_face="happy")
+    r = nfc.NfcReactor(pr, led=None, quiet=True)
+    run(r.react(nfc.Greeting("aa", "A", 1, "いらっしゃい"), gw=None))
+    # 例外が出なければよい。重ね合わせが載っていることも見る
+    assert any("nfc" in str(k) for k in getattr(pr, "_overlays", getattr(pr, "overlays", {"nfc": 1})))

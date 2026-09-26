@@ -38,7 +38,9 @@ MODE_LED = {MODE_IDLE: (0, 30, 70), MODE_DJ: (130, 0, 70)}
 TALK_FACE = {"listening": "thinking", "speaking": "happy"}
 
 # 出来事の優先順。小さいほど強い。docs/architecture.md §2③ と同じ順。
-PRIORITY = ("knob", "touch", "listen", "drop", "cheer", "face")
+# ★"nfc" は受付の挨拶。撫でのすぐ後ろ（2026-09-26 実機で「知らない出来事」に落ち、
+#   顔・光・声がその後ろにあったので、かざしても何も起きなかった）
+PRIORITY = ("knob", "touch", "nfc", "listen", "drop", "cheer", "face")
 
 
 @dataclass
