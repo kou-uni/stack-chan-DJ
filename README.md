@@ -30,6 +30,7 @@
 | 📄 [原価と日数](docs/pages/genka.html) | **¥19,494**。買ったのは2つだけ。**2時間20分**で頭脳が自分のものになる |
 | 📄 [ファーム選び](docs/pages/firmware.html) | 5つの比較と、選んだ理由 |
 | 📄 [作ったもの、全部](docs/pages/tsukutta-mono.html) | 6系統＋土台。何を、どの順で、なぜ作ったか |
+| 📖 [NFC 受付](docs/nfc.md) | かざすと名前を呼ぶ。**ファームを触らずに** Mac から RFID Unit を読む。実測と罠 |
 | 📖 [教科書](docs/textbook.md) | 9章。**手順と、実際に詰まった場所** |
 | 📖 [学びログ](docs/learnings.md) | 1,878行。**エージェントに読ませる本体** |
 
