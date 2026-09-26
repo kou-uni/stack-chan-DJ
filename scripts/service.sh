@@ -74,7 +74,14 @@ install)
 
   for L in "$OTA" "$GW" "$CON"; do
     launchctl bootout  "$DOMAIN/$L" 2>/dev/null || true
-    launchctl bootstrap "$DOMAIN" "$LA/$L.plist" || { echo "★ $L の登録に失敗"; exit 1; }
+    # ★bootout の直後に bootstrap すると「Input/output error (5)」で落ちることがある（2026-09-26）。
+    #   消え終わるのを待ってから登録する。3回まで。
+    for try in 1 2 3; do
+      launchctl print "$DOMAIN/$L" >/dev/null 2>&1 && { sleep 1; continue; }
+      launchctl bootstrap "$DOMAIN" "$LA/$L.plist" 2>/dev/null && break
+      sleep 2
+    done
+    launchctl print "$DOMAIN/$L" >/dev/null 2>&1 || { echo "★ $L の登録に失敗"; exit 1; }
   done
   # gateway が立ってから console、の順にしたいので console だけ入れ直す
   sleep 6

@@ -114,6 +114,9 @@ class Rc522:
     async def _transceive(self, data: list[int], bits: int = 0) -> list[int] | None:
         """1往復。応答が無ければ None。"""
         b = self.bus
+        # ★前の Transceive を止めてから書く。止めずに FIFO に書くと WrErr(0x80) になり、
+        #   何も送れないまま TimerIRq だけが立つ（2026-09-26 実機で観測: ComIrq=0x47 Err=0x80）
+        await b.write(CommandReg, [PCD_Idle])
         await b.write(BitFramingReg, [bits & 0x07])
         await b.write(ComIrqReg, [0x7F])          # 割り込みフラグを消す
         await b.write(FIFOLevelReg, [0x80])       # FIFO を空に
