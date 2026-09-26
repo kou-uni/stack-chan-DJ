@@ -63,6 +63,40 @@ index f473e56..a0ef4d6 100644
          """Forward a firmware-originated stackchan event to the MCP client."""
          event_type = payload.get("event_type")
          subtype = payload.get("subtype")
+diff --git a/gateway/stackchan_mcp/mdns_advertiser.py b/gateway/stackchan_mcp/mdns_advertiser.py
+index 018f3f0..a67b64e 100644
+--- a/gateway/stackchan_mcp/mdns_advertiser.py
++++ b/gateway/stackchan_mcp/mdns_advertiser.py
+@@ -118,10 +118,28 @@ def _select_advertised_addresses(
+             continue
+         if _is_network_or_broadcast_address(address, prefix):
+             continue
++        # ★オーバーレイ網（Tailscale = CGNAT 100.64.0.0/10）は同じ LAN からは絶対に届かない。
++        #   載せると実機がそこへ繋ぎに行き、戻ってこない（2026-09-26 実測：
++        #   Tailscale.app が上がった夜から、実機が一度も gateway に来なくなった）。
++        if _is_overlay_address(address):
++            continue
+         seen.add(address)
+         usable.append(address)
+     usable.sort(key=_lan_reachability_tier)
+-    return usable
++    # ★LAN のアドレスが1つでもあるなら、それ以外は載せない。候補が多いほど外れる
++    private = [a for a in usable if _is_private_lan_address(a)]
++    return private if private else usable
++
++
++_OVERLAY_NETWORKS = (ipaddress.ip_network("100.64.0.0/10"),)   # CGNAT / Tailscale
++
++
++def _is_overlay_address(address: str) -> bool:
++    try:
++        ip = ipaddress.ip_address(address)
++    except ValueError:
++        return False
++    return any(ip in n for n in _OVERLAY_NETWORKS)
+ 
+ 
+ def _is_wildcard_host(host: str) -> bool:
 diff --git a/gateway/stackchan_mcp/stt/faster_whisper.py b/gateway/stackchan_mcp/stt/faster_whisper.py
 index f7b6533..a90dd1b 100644
 --- a/gateway/stackchan_mcp/stt/faster_whisper.py
