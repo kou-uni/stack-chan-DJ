@@ -371,3 +371,14 @@ def test_失敗が続いたら初期化し直す():
     for _ in range(3):
         run(sup.after_poll(error=True))
     assert sup.need_init is True
+
+
+def test_返ってこない呼び出しは時限で失敗にする():
+    """★実機が消えた瞬間に投げた MCP 呼び出しが返らず、**見張りごと固まって二度と動かなかった**
+    （2026-09-26 実機。再起動後、置いたカードに無反応・ログも無音）。固まるより失敗のほうがいい。"""
+    class Hang:
+        async def call(self, *a, **k):
+            await asyncio.sleep(60)
+    bus = nfc.McpBus(Hang(), timeout_s=0.05)
+    with pytest.raises(nfc.BusError):
+        run(bus.read(nfc.VersionReg))

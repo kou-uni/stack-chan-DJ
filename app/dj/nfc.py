@@ -69,8 +69,17 @@ def crc_a(data: list[int]) -> list[int]:
 class McpBus:
     """実機の Port A を、MCP の I2C ツールで叩く。"""
 
-    def __init__(self, gw, addr: int = I2C_ADDR, speed: int = I2C_SPEED):
+    def __init__(self, gw, addr: int = I2C_ADDR, speed: int = I2C_SPEED, timeout_s: float = 3.0):
         self.gw, self.addr, self.speed = gw, addr, speed
+        # ★時限。実機が消えた瞬間の呼び出しが返らず、見張りごと固まった（2026-09-26）。
+        #   固まるより失敗のほうがいい。失敗は数えられて、初期化し直しに繋がる
+        self.timeout_s = timeout_s
+
+    async def _call(self, name: str, **kw):
+        try:
+            return await asyncio.wait_for(self.gw.call(name, **kw), timeout=self.timeout_s)
+        except asyncio.TimeoutError as exc:
+            raise BusError(f"{name} が {self.timeout_s:.0f} 秒返ってこない") from exc
 
     @staticmethod
     def unpack(res) -> list[int]:
@@ -89,13 +98,13 @@ class McpBus:
         return [int(b) for b in res.get("bytes", [])]
 
     async def write(self, reg: int, data: list[int]) -> None:
-        res = await self.gw.call("i2c_write", addr=self.addr, bytes=[reg, *data],
-                                 scl_speed_hz=self.speed)
+        res = await self._call("i2c_write", addr=self.addr, bytes=[reg, *data],
+                               scl_speed_hz=self.speed)
         self.unpack(res if isinstance(res, (dict, str)) else {"ok": True})
 
     async def read(self, reg: int, n: int = 1) -> list[int]:
-        res = await self.gw.call("i2c_write_read", addr=self.addr, write_bytes=[reg],
-                                 n_bytes=n, scl_speed_hz=self.speed)
+        res = await self._call("i2c_write_read", addr=self.addr, write_bytes=[reg],
+                               n_bytes=n, scl_speed_hz=self.speed)
         return self.unpack(res)
 
 
