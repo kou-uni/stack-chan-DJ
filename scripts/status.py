@@ -43,6 +43,14 @@ async def main() -> int:
                 return
             head = await j("get_head_angles")
             print(f"○ 実機         繋がっている  首 yaw={head['yaw']} pitch={head['pitch']}")
+            # ★実機はどこを見に来ているか。mDNS が入っていない build なので固定 IP。
+            #   当日、別の Mac で受けるときに真っ先に見る行（2026-09-26）
+            try:
+                cfg = await j("gateway_config_get")
+                print(f"  実機の向き先  {cfg.get('connected_url') or cfg.get('url')}"
+                      f"  mDNS探索={'あり' if cfg.get('discovery_compiled_in') else 'なし（固定IP）'}")
+            except Exception:
+                pass
 
             # ★タッチは電源で false に戻る。**見えないと故障と区別がつかない**
             #   （2026-09-13：撫でても無反応。ここを見るまで分からなかった）

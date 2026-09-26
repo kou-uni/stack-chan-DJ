@@ -80,9 +80,11 @@ fi
 
 # ── 5. ★同じ LAN に gateway が2台いないか ───────────
 step "5. 実機は、どの Mac を見るか"
-echo "     ★この実機のファームには mDNS 探索が**入っていない**（gateway_config_get: discovery_compiled_in=false）。"
-echo "       実機は **ws://192.168.0.123:8775/ と http://192.168.0.123:8778/ を固定で**見に来る。"
-echo "       別の Mac で受けるなら、その Mac が 192.168.0.123 を持つか、実機の設定を変える（scripts/nfc_enroll.py --scan で疎通確認）。"
+# ★この実機のファームには mDNS 探索が入っていない（gateway_config_get: discovery_compiled_in=false）。
+#   実機は gateway（:8775）と OTA スタブ（:8778）を**固定 IP で**見に来る。IP は実機側（NVS）に書いてある。
+echo "     ★実機は gateway と OTA スタブを**固定 IP**で見に来ます（mDNS は入っていない）。"
+echo "       向き先は  ./.venv/bin/python scripts/status.py  の『実機の向き先』で確認。"
+echo "       別の Mac で受けるなら、その Mac がその IP を持つ必要があります。"
 OTHERS=$(dns-sd -t 2 -B _stackchan._tcp 2>/dev/null | tail -n +5 | awk '{print $NF}' | sort -u | grep -v '^$')
 N=$(printf "%s" "$OTHERS" | grep -c . || true)
 if [ "${N:-0}" -gt 1 ]; then
