@@ -128,6 +128,18 @@ class Rc522:
         self.version = (await b.read(VersionReg))[0]
         return self.version
 
+    async def healthy(self) -> bool:
+        """アンテナが入っているか（1往復）。
+
+        ★実機を再起動すると Unit も電源が切れ、アンテナ OFF の既定に戻る。**例外は出ない。
+          ただ何も読めなくなる。** だから定期的に見る。
+        """
+        try:
+            cur = (await self.bus.read(TxControlReg))[0]
+        except Exception:
+            return False
+        return (cur & 0x03) == 0x03
+
     async def _transceive(self, data: list[int], bits: int = 0,
                           expect: int | None = None) -> list[int] | None:
         """1往復。応答が無ければ None。
@@ -362,39 +374,98 @@ class NfcReactor:
                 pass                                # ★喋れなくても顔と光は出ている
 
 
+class NfcSupervisor:
+    """リーダーを**生かし続ける**役。初期化・再初期化の判断だけ持つ（実機なしで試験できる）。
+
+    ★実機が再起動すると Unit も電源が切れる。**受付は「立ち上がれば動く」でなければ困る。**
+      - 起動時に居なくても諦めない（前は return して二度と戻らなかった）
+      - console が「実機が戻った」と言ったら初期化し直す
+      - 定期点検でアンテナ落ちを拾う（例外は出ない壊れ方）
+      - 失敗が続いても初期化し直す
+    """
+
+    def __init__(self, rc: Rc522, check_every: int = 25, max_errors: int = 5):
+        self.rc, self.check_every, self.max_errors = rc, check_every, max_errors
+        self.need_init = True
+        self.polls = 0
+        self.errors = 0
+        self.version: int | None = None
+
+    def device_returned(self) -> None:
+        self.need_init = True
+
+    async def ensure_ready(self) -> bool:
+        """初期化が要るならやる。できたら True。"""
+        if not self.need_init:
+            return True
+        try:
+            self.version = await self.rc.init()
+        except Exception:
+            return False                            # ★諦めない。次に呼ばれたらまた試す
+        self.need_init = False
+        self.errors = 0
+        self.polls = 0
+        return True
+
+    async def after_poll(self, error: bool) -> None:
+        self.polls += 1
+        if error:
+            self.errors += 1
+            if self.errors >= self.max_errors:
+                self.need_init = True
+            return
+        self.errors = 0
+        if self.polls % self.check_every == 0 and not await self.rc.healthy():
+            self.need_init = True
+
+
 class NfcMixin:
     """console 側の入口。**問い合わせ型**（タッチと違い、実機は押してこない）。"""
+
+    def nfc_device_returned(self) -> None:
+        """console の init_device（実機が戻った）から呼ばれる。"""
+        sup = getattr(self, "_nfc_sup", None)
+        if sup is not None:
+            sup.device_returned()
 
     async def nfc_loop(self):
         args = self.args
         bus = McpBus(self.gw, addr=args.nfc_addr, speed=args.nfc_speed)
-        rc = Rc522(bus)
-        try:
-            ver = await rc.init()
-            print(f"    ▣ NFC リーダー 0x{args.nfc_addr:02x} 版 0x{ver:02x}"
-                  f"（{args.nfc_poll_s}秒ごと）")
-        except Exception as exc:                    # noqa: BLE001
-            print(f"    ★ NFC リーダーが見つかりません（Port A 0x{args.nfc_addr:02x}）: {exc}")
-            return                                  # ★無くても他は動かす
+        self._nfc_sup = sup = NfcSupervisor(Rc522(bus))
         greeter = Greeter(Guests.load(), debounce_s=args.nfc_debounce_s)
         reactor = NfcReactor(self.presence, led=self.led, face_s=args.nfc_face_s,
                              quiet=args.quiet)
         if not greeter.guests.table:
-            print(f"    ▲ 名簿が空です: {GUESTS_PATH}（scripts/nfc_enroll.py で登録）")
+            print(f"    ▲ 名簿が空です: {GUESTS_PATH}（scripts/nfc_enroll.py で登録）", flush=True)
+        announced = False
         last_err = 0.0
         while True:
+            if sup.need_init:
+                if await sup.ensure_ready():
+                    print(f"    ▣ NFC リーダー 0x{args.nfc_addr:02x} 版 0x{sup.version or 0:02x}"
+                          f"（{args.nfc_poll_s}秒ごと）" + ("・初期化し直し" if announced else ""), flush=True)
+                    announced = True
+                else:
+                    now = time.monotonic()
+                    if now - last_err > 60:
+                        print(f"    ▲ NFC リーダーが見つかりません（Port A 0x{args.nfc_addr:02x}）。待ちます", flush=True)
+                        last_err = now
+                    await asyncio.sleep(5.0)        # ★無くても他は動かす。居たらまた繋ぐ
+                    continue
+            error = False
             try:
-                uid = await rc.poll_uid()
+                uid = await sup.rc.poll_uid()
                 if uid:
                     g = greeter.greet(uid)
                     if g:
                         busy = bool(getattr(self.presence, "talk", None))
                         await reactor.react(g, self.gw, busy=busy)
             except Exception as exc:                # noqa: BLE001
-                # ★quiet でも1分に1回は言う。黙って死んでいるのが一番困る
+                error = True
                 now = time.monotonic()
                 if now - last_err > 60:
                     print(f"    ★ NFC: {type(exc).__name__}: {str(exc)[:80]}", flush=True)
                     last_err = now
                 await asyncio.sleep(1.0)
+            await sup.after_poll(error)
             await asyncio.sleep(args.nfc_poll_s)

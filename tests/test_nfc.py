@@ -322,3 +322,52 @@ def test_本物のPresenceで顔が出る():
     run(r.react(nfc.Greeting("aa", "A", 1, "いらっしゃい"), gw=None))
     # 例外が出なければよい。重ね合わせが載っていることも見る
     assert any("nfc" in str(k) for k in getattr(pr, "_overlays", getattr(pr, "overlays", {"nfc": 1})))
+
+
+# ── 実機を再起動しても受付が生き続ける（2026-09-26）──────────
+def test_アンテナが落ちていたら気づく():
+    """★実機を再起動すると Unit も電源が切れ、アンテナ OFF に戻る。**例外は出ない。ただ何も読めなくなる。**"""
+    chip = FakeChip(uid=None); rc = nfc.Rc522(chip)
+    run(rc.init())
+    assert run(rc.healthy()) is True
+    chip.regs[nfc.TxControlReg] = 0x80                 # 電源が入れ直された後の既定
+    assert run(rc.healthy()) is False
+
+
+def test_見張りは初期化に失敗しても諦めない():
+    """★起動時に Unit が居ないと、以前は return して二度と戻らなかった。"""
+    class Dead:
+        async def write(self, *a): raise nfc.BusError("no device")
+        async def read(self, *a): raise nfc.BusError("no device")
+    sup = nfc.NfcSupervisor(nfc.Rc522(Dead()))
+    assert run(sup.ensure_ready()) is False
+    assert sup.need_init is True                       # まだ諦めていない
+
+
+def test_実機が戻ったら初期化し直す():
+    chip = FakeChip(uid=None); rc = nfc.Rc522(chip); sup = nfc.NfcSupervisor(rc)
+    assert run(sup.ensure_ready()) is True
+    n = len(chip.writes)
+    sup.device_returned()                              # console の init_device から呼ばれる
+    assert run(sup.ensure_ready()) is True
+    assert len(chip.writes) > n, "初期化し直していない"
+
+
+def test_定期点検でアンテナ落ちを拾って初期化し直す():
+    chip = FakeChip(uid=None); rc = nfc.Rc522(chip)
+    sup = nfc.NfcSupervisor(rc, check_every=3)
+    run(sup.ensure_ready())
+    chip.regs[nfc.TxControlReg] = 0x80                 # 黙って落ちた
+    for _ in range(3):
+        run(sup.after_poll(error=False))
+    assert sup.need_init is True
+    assert run(sup.ensure_ready()) is True
+    assert chip.regs[nfc.TxControlReg] & 0x03 == 0x03
+
+
+def test_失敗が続いたら初期化し直す():
+    sup = nfc.NfcSupervisor(nfc.Rc522(FakeChip()), max_errors=3)
+    run(sup.ensure_ready())
+    for _ in range(3):
+        run(sup.after_poll(error=True))
+    assert sup.need_init is True

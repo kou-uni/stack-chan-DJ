@@ -362,6 +362,9 @@ async def init_device(gw, con, args, why: str = "起動") -> None:
       ⑤ モードを確定     — ④に上書きされないよう、必ず最後
     """
     await load_avatar(gw, args)
+    # ★実機が戻った＝RFID Unit も電源が入れ直された。受付を初期化し直す（2026-09-26）
+    if hasattr(con, "nfc_device_returned"):
+        con.nfc_device_returned()
 
     # ★タッチセンサは**電源を入れ直すと false に戻る。**
     #   2026-09-13、撫でても何も起きなくなった。実機は繋がっていて
