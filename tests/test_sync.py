@@ -92,3 +92,11 @@ def test_質疑応答botのモデルを新しいMacでも落とす():
     assert ask.DEFAULT_MODEL.startswith("qwen2.5")
     for name in ("bootstrap.sh", "sync.sh"):
         assert "pull-models.sh" in (ROOT / "scripts" / name).read_text(encoding="utf-8"), f"{name} が pull-models.sh を呼んでいない"
+
+
+def test_頭なでの受け口を新しいMacでも置く():
+    """★notify.yml は機械ごとのホーム直下。git にも bootstrap にも無く、新しい Mac では頭なでが黙る（2026-09-29）。"""
+    tpl = (ROOT / "config" / "notify.yml.example").read_text(encoding="utf-8")
+    assert "jsonl:" in tpl and "enabled: true" in tpl.split("jsonl:", 1)[1].split("\n", 2)[1]
+    for name in ("bootstrap.sh", "sync.sh"):
+        assert "ensure-notify.sh" in (ROOT / "scripts" / name).read_text(encoding="utf-8"), f"{name} が ensure-notify.sh を呼んでいない"

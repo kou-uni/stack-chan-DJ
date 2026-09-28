@@ -183,6 +183,8 @@ PY
 fi
 # ★質疑応答 bot のモデル（qwen2.5:14b）も。無いと当日 D ブロックで bot が黙る（2026-09-29）
 ./scripts/pull-models.sh || die "質疑応答 bot のモデルを落とせませんでした（scripts/pull-models.sh）"
+# ★頭なでの通知の受け口。無いと実機は送っているのに顔が反応しない（2026-09-29）
+./scripts/ensure-notify.sh || die "notify.yml を置けませんでした（scripts/ensure-notify.sh）"
 
 # ── 5. 設定 ───────────────────────────────────
 step "5. 設定"

@@ -12,6 +12,15 @@
 
 Mac Studio の SSH（22）は開いている。**clone 先は `~` 直下**（`~/Documents` 配下だと launchd の常駐が TCC で読めない。issue #3）。
 
+## 運ばないが、機械ごとに作られるもの（bootstrap / sync が置く）
+
+| もの | 作り方 |
+|---|---|
+| `~/.config/stackchan-mcp/notify.yml`（頭なでの受け口） | `scripts/ensure-notify.sh`（雛形 `config/notify.yml.example`） |
+| `~/.config/stackchan/panel-token`（操作パネルの鍵） | console が初回に作る。**人に見せない** |
+| `app/avatar/avatar_layered.raw`（表情） | bootstrap が `make_faces.py` → `pack_avatar.py` で作る |
+| `event/text.html`（台本） | `./scripts/build-text.sh` |
+
 ## それ以外は運ばない
 
 以前は「Mac Studio から 2GB 強をコピー」という想定だった。**いまは要らない。**

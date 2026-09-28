@@ -1,0 +1,20 @@
+# スタックチャンの物理イベント（頭なで）の届け先。
+#
+# ★2026-09-12、既定は全部 false だった。**だから通知がどこにも届いていなかった。**
+#   実機はちゃんと送っていて（stroke / duration_ms）、受け口が閉じていただけ。
+#   `get_touch_state` は idle のままなので、ポーリングでは永遠に気づけない。
+legacy_event:
+  enabled: false
+channels:
+  enabled: false
+jsonl:
+  enabled: true                       # ★ここを開ける。ファイルなら確実に読める
+  path: ~/.claude/stackchan-events.jsonl
+messages:
+  touch:
+    tap:
+      action: head_pat
+      template: "頭をタップされた"
+    stroke:
+      action: head_stroke
+      template: "頭を{duration_ms}ミリ秒なでられた"
