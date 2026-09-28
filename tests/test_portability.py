@@ -7,7 +7,8 @@
 当日の構成:
     自宅  gateway + console = Mac Studio
     会場  gateway + console = MacBook   ← DJ機材が USB なので必然
-    実機はどちらを見るかを mDNS で決める（本体に触らず切り替わる）
+    実機は固定 IP を見に来る（mDNS 探索は入っていない。2026-09-26 判明）。
+    切り替えは実機の設定画面で向き先を書き換える（docs/tethering.md）
 """
 import re
 import sys
@@ -18,6 +19,9 @@ ROOT = Path(__file__).resolve().parents[1]
 # その機械にしか無いもの。設定ファイル以外に書いてはいけない。
 MACHINE_SPECIFIC = re.compile(
     r"/Users/[a-z]+/|192\.168\.\d+\.\d+|/dev/cu\.usbmodem\d+|\ben[0-9]\b")
+
+# 実機（ファーム）側の固定値。どの Mac から見ても同じなので「その機械にしか無い値」ではない
+FIRMWARE_CONSTANTS = {"192.168.4.1"}      # 実機が設定モードで立てる Wi-Fi の設定画面
 
 # 調べる対象。ドキュメントと設定は対象外（そこには書いてよい）
 TARGETS = ([p for p in (ROOT / "app").rglob("*.py")]
@@ -39,7 +43,7 @@ def test_特定の機械に縛られた値がコードに無い():
     for p in TARGETS:
         for i, line in _code_lines(p):
             m = MACHINE_SPECIFIC.search(line)
-            if m:
+            if m and m.group() not in FIRMWARE_CONSTANTS:
                 bad.append(f"{p.relative_to(ROOT)}:{i}  {m.group()}")
     assert not bad, (
         "その機械にしか無い値がコードに埋まっている:\n  " + "\n  ".join(bad)
