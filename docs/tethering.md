@@ -56,7 +56,7 @@ git clone https://github.com/kou-uni/stack-chan-DJ.git && cd stack-chan-DJ && ./
 - 同じ iPhone のテザリングなら、MacBook はたいてい**同じ IP**をもらう。`tether_ip.sh` で確かめる
 - **違っていたら：実機を USB で挿して `./scripts/new_ip.sh`**（2026-09-29 追加）。
   この Mac の IP を拾い、gateway を入れ直し、実機の向き先2つを USB から書き換えて、繋がるまで待つ。
-  設定画面は使わない。NVS は消さない（元は `backup/` に退避）。**SSID が変わったときは直らない**（2 と 3 をやる）
+  設定画面は使わない。NVS は消さない（元は `backup/` に退避）。SSID も変わったら `./scripts/new_ip.sh --wifi <SSID>`（パスワードを聞かれる。家の分は残る）
 - 別名で逃げる手もある：`./scripts/tether_ip.sh --alias <昨日実機に教えた IP>` → 実機を再起動（同じ番地帯のときだけ）
 - iPhone を予備機に替えたら SSID が変わる → **2 と 3 をやり直す**（会場では B の 60 秒待ちで入れる）
 

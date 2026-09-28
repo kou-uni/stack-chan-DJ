@@ -2,6 +2,7 @@
 # 会場で Mac の IP が変わったら、これ1本。**実機を USB で挿してから走らせる。**
 #
 #   ./scripts/new_ip.sh
+#   ./scripts/new_ip.sh --wifi 会場のSSID     # 実機に会場の Wi-Fi も教える（パスワードを聞く）
 #
 #   1. この Mac のいまの IP を拾う
 #   2. gateway を入れ直す（写真の受け口などは起動時の IP を覚えているため）
@@ -9,8 +10,8 @@
 #   4. 実機が繋がるまで待って、繋がったかを言う
 #
 # ★設定画面（タップ → 192.168.4.1）は使わない。NVS は消さない。
-# ★Wi-Fi の名前（SSID）が変わった場合は、これでは直らない。実機が Wi-Fi に乗れないため。
-#   そのときは docs/tethering.md の設定画面の手順。
+# ★Wi-Fi の名前（SSID）が変わった場合は --wifi で実機に教える（家の分は残る。最大10件）。
+#   実機は 2.4GHz のみ・ログイン画面のある Wi-Fi には乗れない。
 set -uo pipefail
 cd "$(dirname "$0")/.."
 ok(){   printf "  \033[32m○\033[0m %s\n" "$1"; }
@@ -37,7 +38,7 @@ nc -z 127.0.0.1 8778 2>/dev/null || die "OTA スタブ（8778）が上がりま�
 ok "gateway と OTA スタブが待っています"
 
 step "3. 実機の向き先を書き換える"
-./.venv/bin/python scripts/set_target.py "$IP" || exit 1
+./.venv/bin/python scripts/set_target.py "$IP" "$@" || exit 1
 
 step "4. 実機が繋がるのを待つ"
 for i in {1..12}; do

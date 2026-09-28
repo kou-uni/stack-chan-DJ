@@ -4,6 +4,7 @@
     ./.venv/bin/python scripts/set_target.py            # いまの IP に向ける
     ./.venv/bin/python scripts/set_target.py 172.20.10.2
     ./.venv/bin/python scripts/set_target.py --show     # 向き先を見るだけ
+    ./.venv/bin/python scripts/set_target.py --wifi 会場のSSID   # 会場の Wi-Fi も教える
 
 ★会場で IP が変わったときの復旧用。**設定画面（タップ → 192.168.4.1）は要らない。**
   実機を USB で挿して、これ1本。
@@ -157,9 +158,30 @@ def targets_of(items) -> dict:
             if (rev.get(ns), key) in TARGETS}
 
 
+WIFI_KEYS = {("wifi", f"{k}{i or ''}") for i in range(10) for k in ("ssid", "password")}
+
+
+def add_wifi(items, ssid: str, password: str):
+    """会場の Wi-Fi を足す。家の分は残す（ファームは見つかったものに繋ぐ）。
+    ★ファームの形: wifi 名前空間に ssid/password、2件目から ssid1/password1 … 最大10件"""
+    ns = namespaces(items)["wifi"]
+    have = {k: read_str(e) for n, t, k, e in items if n == ns and ("wifi", k) in WIFI_KEYS}
+    slots = [i for i in range(10) if f"ssid{i or ''}" in have]
+    hit = [i for i in slots if have[f"ssid{i or ''}"] == ssid]
+    i = hit[0] if hit else next((j for j in range(10) if j not in slots), None)
+    if i is None:
+        die("実機に保存できる Wi-Fi が10件埋まっています")
+    want = {f"ssid{i or ''}": ssid, f"password{i or ''}": password}
+    out = [(n, t, k, make_str(n, k, want.pop(k)) if n == ns and k in want else e)
+           for n, t, k, e in items]
+    out += [(ns, TYPE_STR, k, make_str(ns, k, v)) for k, v in want.items()]
+    return out, i
+
+
 def same_except_targets(a, b) -> bool:
     rev = {v: k for k, v in namespaces(a).items()}
-    strip = lambda its: [(ns, t, k, e) for ns, t, k, e in its if (rev.get(ns), k) not in TARGETS]
+    strip = lambda its: [(ns, t, k, e) for ns, t, k, e in its
+                         if (rev.get(ns), k) not in set(TARGETS) | WIFI_KEYS]
     return strip(a) == strip(b)
 
 
@@ -203,6 +225,7 @@ def main() -> int:
     ap.add_argument("ip", nargs="?", help="向ける IP（省略時はこの Mac の IP）")
     ap.add_argument("--show", action="store_true", help="向き先を見るだけ")
     ap.add_argument("--force", action="store_true", help="同じでも書き直す")
+    ap.add_argument("--wifi", metavar="SSID", help="会場の Wi-Fi を足す（家の分は残る）。パスワードは聞く")
     ap.add_argument("--port", help="シリアルポート（省略時は自動）")
     ap.add_argument("--image", help="実機の代わりに NVS のファイルで試す（書き込まない）")
     a = ap.parse_args()
@@ -227,7 +250,14 @@ def main() -> int:
     ip = a.ip or mac_ip()
     print(f"  ○ 向ける先  {ip}")
     new_items = retarget(items, ip)
-    if targets_of(new_items) == now and not a.force:
+    if a.wifi:
+        import getpass
+        pw = getpass.getpass(f"    {a.wifi} のパスワード: ")
+        if len(pw) < 8:
+            die("パスワードが8文字未満です（WPA2 は8文字以上）")
+        new_items, slot = add_wifi(new_items, a.wifi, pw)
+        print(f"  ○ Wi-Fi  {a.wifi} を {slot + 1} 件目に入れます")
+    if targets_of(new_items) == now and not a.force and not a.wifi:
         print("  ○ もう向いています。何もしません")
         return 0
     if not same_except_targets(items, new_items):
