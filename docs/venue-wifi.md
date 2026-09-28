@@ -43,6 +43,12 @@ gateway 経由で切り替えて再起動まで送る。ボタンもケーブル
 
 ## 詰まりどころ（実機で踏んだ）
 
+- **表情データ・写真の URL は「実機が繋いできた経路の番地」で作る**（gateway の esp32_client.local_host）。
+  VISION_HOST（起動時の Wi-Fi の番地）のままだと、USB の実機から届かず顔が出ない（`http_open_failed`）
+- **家で Mac Studio の console が動いていると `stackchan.local` を取られる**（背景が Mac Studio 側を開く）。
+  家でも会場と同じにするため、2026-09-29 に Mac Studio の console / gateway / OTA の常駐を外した（戻すなら Mac Studio で `./scripts/service.sh install`）
+- 起動直後は OFF モード。**左デッキの PLAY で DJ モード**（LED と背景の照明が点く）。MASTER で OFF
+
 - **Mac は前にもらった番地を頼んでくる。** 番地を決め打ち（192.168.7.1）にすると繋がらない。だから「配った番地」に繋ぐ
 - **USB の割り当ては RTC 側のレジスタにあり、ソフトの再起動では戻らない。** `off` のときは起動時にシリアルへ戻している
 - 書き込み直後は Mac 側の USB シリアルが固まることがある → ケーブルを挿し直す

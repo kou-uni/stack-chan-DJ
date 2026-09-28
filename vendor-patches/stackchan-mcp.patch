@@ -531,10 +531,43 @@ index 14cb967..9cf607a 100644
              onset_count=self._onset_count,
          )
 diff --git a/gateway/stackchan_mcp/esp32_client.py b/gateway/stackchan_mcp/esp32_client.py
-index f473e56..a0ef4d6 100644
+index f473e56..78702d0 100644
 --- a/gateway/stackchan_mcp/esp32_client.py
 +++ b/gateway/stackchan_mcp/esp32_client.py
-@@ -905,6 +905,9 @@ class ESP32Manager:
+@@ -854,10 +854,31 @@ class ESP32Manager:
+                 if self._connection is connection:
+                     self._connection = None
+ 
++    def local_host(self) -> str:
++        """実機がいま繋いできた経路の、この Mac 側の番地（USB なら 192.168.7.x、Wi-Fi ならその番地）。
++
++        ★stackchan-lab 2026-09-29: VISION_HOST（起動時の Wi-Fi の番地）は、USB で繋いだ実機からは
++          届かない。表情データや写真の URL は「実機が実際に通ってきた道」の番地で作る。
++        """
++        conn = self._connection
++        try:
++            addr = conn._ws.local_address if conn is not None else None
++        except Exception:
++            addr = None
++        return addr[0] if addr else ""
++
++    def _rehost(self, url: str) -> str:
++        host = self.local_host()
++        if not url or not host or os.getenv("VISION_URL"):
++            return url
++        from urllib.parse import urlsplit, urlunsplit
++        u = urlsplit(url)
++        return urlunsplit(u._replace(netloc=f"{host}:{u.port}" if u.port else host))
++
+     async def _init_device(self, connection: ESP32Connection, device_id: str) -> None:
+         """Initialize MCP session with a newly connected device."""
+         if await connection.initialize(
+-            vision_url=self._vision_url,
++            vision_url=self._rehost(self._vision_url),
+             vision_token=self._vision_token,
+         ):
+             await connection.discover_tools()
+@@ -905,6 +926,9 @@ class ESP32Manager:
              )
  
      async def _emit_stackchan_event(self, payload: dict[str, Any]) -> None:
@@ -544,6 +577,20 @@ index f473e56..a0ef4d6 100644
          """Forward a firmware-originated stackchan event to the MCP client."""
          event_type = payload.get("event_type")
          subtype = payload.get("subtype")
+diff --git a/gateway/stackchan_mcp/gateway.py b/gateway/stackchan_mcp/gateway.py
+index 68bd753..d3889aa 100644
+--- a/gateway/stackchan_mcp/gateway.py
++++ b/gateway/stackchan_mcp/gateway.py
+@@ -54,7 +54,8 @@ class Gateway:
+         if explicit_url:
+             return explicit_url
+ 
+-        host = os.getenv("VISION_HOST")
++        # ★stackchan-lab 2026-09-29: 実機がいま繋いできた経路の番地を優先（USB でも Wi-Fi でも届く）
++        host = self.esp32.local_host() or os.getenv("VISION_HOST")
+         if not host:
+             logger.warning(
+                 "VISION_URL/VISION_HOST not set; defaulting to 127.0.0.1. "
 diff --git a/gateway/stackchan_mcp/mdns_advertiser.py b/gateway/stackchan_mcp/mdns_advertiser.py
 index 018f3f0..a67b64e 100644
 --- a/gateway/stackchan_mcp/mdns_advertiser.py
