@@ -53,10 +53,29 @@ if ! command -v brew >/dev/null; then
 fi
 ok "Homebrew あり"
 
-PY=$(command -v python3.14 || command -v python3 || true)
-[ -n "$PY" ] || die "python3 がありません。'brew install python@3.14' を実行してください"
+# ★~/Documents・~/Desktop・~/Downloads の下は macOS の保護（TCC）で
+#   launchd の常駐から読めない。gateway が "Operation not permitted" で上がらない
+case "$ROOT" in
+  "$HOME/Documents"*|"$HOME/Desktop"*|"$HOME/Downloads"*)
+    die "置き場所が $ROOT です。ここは macOS の保護で常駐から読めません。
+     ホーム直下などに移してください（例: mv \"$ROOT\" ~/stack-chan-DJ）。
+     .venv は場所を覚えているので、移したら 'rm -rf .venv' してからもう一度" ;;
+esac
+ok "置き場所 $ROOT"
+
+# ★Mac 標準の python3 は 3.9。依存と tomllib のために 3.11 以上が要る
+PY=""
+for c in python3.14 python3.13 python3.12 python3.11 python3; do
+  p=$(command -v $c) || continue
+  "$p" -c 'import sys;sys.exit(sys.version_info<(3,11))' 2>/dev/null && { PY=$p; break; }
+done
+[ -n "$PY" ] || die "Python 3.11 以上がありません（Mac 標準は 3.9）。'brew install python@3.14' を実行してください"
 PYV=$("$PY" -c 'import sys;print("%d.%d"%sys.version_info[:2])')
 ok "Python $PYV  ($PY)"
+# ★古い Python で作った .venv が残っていると、そのまま使われて依存で落ちる
+if [ -x .venv/bin/python ] && ! ./.venv/bin/python -c 'import sys;sys.exit(sys.version_info<(3,11))' 2>/dev/null; then
+  die ".venv が古い Python で作られています。'rm -rf .venv' してからもう一度"
+fi
 
 # 空き容量。VOICEVOX 2GB + モデル 3.3GB + 依存で 8GB は見ておく
 FREE=$(df -g . | tail -1 | awk '{print $4}')
