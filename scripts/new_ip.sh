@@ -12,6 +12,8 @@
 # ★設定画面（タップ → 192.168.4.1）は使わない。NVS は消さない。
 # ★Wi-Fi の名前（SSID）が変わった場合は --wifi で実機に教える（家の分は残る。最大10件）。
 #   実機は 2.4GHz のみ・ログイン画面のある Wi-Fi には乗れない。
+# ★本番は USB ケーブルで繋ぐ（scripts/usb_wired.py on, docs/venue-wifi.md）。これは Wi-Fi で繋ぐときの道具。
+#   USB で繋いでいる間は USB シリアルが使えないので、先に usb_wired.py off。
 set -uo pipefail
 cd "$(dirname "$0")/.."
 ok(){   printf "  \033[32m○\033[0m %s\n" "$1"; }
@@ -49,4 +51,10 @@ for i in {1..12}; do
   fi
   printf "    待っています… %d秒\n" $((i * 5))
 done
-die "60秒待っても来ません。'./scripts/rescue.sh --serial' で実機の言い分を聞く"
+printf "  \033[31m×\033[0m 60秒待っても来ません。よくある原因（上から）:\n"
+echo "     1. 会場の Wi-Fi が 5GHz だけ     → 実機は 2.4GHz しか乗れない"
+echo "     2. ログイン画面（同意ボタン）つき → 実機は乗れない"
+echo "     3. 端末どうしの通信が禁止       → 実機から Mac が見えない"
+echo "     どれでも同じ逃げ道: USB ケーブルで繋ぐ → ./.venv/bin/python scripts/usb_wired.py on（docs/venue-wifi.md）"
+echo "     実機の言い分を聞くなら: ./scripts/rescue.sh --serial"
+exit 1

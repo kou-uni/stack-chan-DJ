@@ -1,13 +1,334 @@
+diff --git a/firmware/main/CMakeLists.txt b/firmware/main/CMakeLists.txt
+index 01591f0..bda28de 100644
+--- a/firmware/main/CMakeLists.txt
++++ b/firmware/main/CMakeLists.txt
+@@ -47,6 +47,7 @@ set(INCLUDE_DIRS "." "display" "display/lvgl_display" "display/lvgl_display/jpg"
+ list(APPEND SOURCES
+     "boards/common/board.cc"
+     "boards/common/wifi_board.cc"
++    "boards/common/usb_wired.cc"
+     "boards/common/ml307_board.cc"
+     "boards/common/nt26_board.cc"
+     "boards/common/dual_network_board.cc"
+diff --git a/firmware/main/boards/common/usb_wired.cc b/firmware/main/boards/common/usb_wired.cc
+new file mode 100644
+index 0000000..a88682e
+--- /dev/null
++++ b/firmware/main/boards/common/usb_wired.cc
+@@ -0,0 +1,253 @@
++#include "usb_wired.h"
++#include "settings.h"
++#include "sdkconfig.h"
++
++#if CONFIG_TINYUSB_NET_MODE_NCM   // スタックチャンのビルドだけ（boards/stackchan/config.json）
++
++#include <cstdlib>
++#include <cstring>
++#include <esp_log.h>
++#include <esp_mac.h>
++#include <esp_netif.h>
++#include <esp_netif_net_stack.h>
++#include <esp_timer.h>
++#include <esp_event.h>
++#include <lwip/netif.h>
++#include <lwip/tcpip.h>
++#include <freertos/FreeRTOS.h>
++#include <freertos/task.h>
++#include <lwip/ip4_addr.h>
++#include <dhcpserver/dhcpserver.h>
++#include <dhcpserver/dhcpserver_options.h>
++
++#include "hal/usb_serial_jtag_ll.h"
++#include "tinyusb.h"
++#include "tinyusb_net.h"
++
++#define TAG "UsbWired"
++
++namespace UsbWired {
++namespace {
++
++esp_netif_t* s_netif = nullptr;
++volatile bool s_active = false;
++volatile uint32_t s_client_ip = 0;   // Mac に配った番地（ネットワークバイト順）
++int64_t s_start_us = 0;          // Start() を呼んだ時刻
++int64_t s_first_ready_us = 0;    // 初めて Mac に認識された時刻
++const char* s_result = "off";    // off / wired / wifi_fallback / install_failed
++std::function<void(bool)> s_on_change;
++
++// TinyUSB → lwIP。TinyUSB は受信バッファを使い回すので写してから渡す
++esp_err_t OnRecv(void* buffer, uint16_t len, void*) {
++    if (s_netif == nullptr) {
++        return ESP_OK;
++    }
++    void* copy = malloc(len);
++    if (copy == nullptr) {
++        return ESP_ERR_NO_MEM;
++    }
++    memcpy(copy, buffer, len);
++    return esp_netif_receive(s_netif, copy, len, nullptr);
++}
++
++// lwIP → TinyUSB。send_sync は TinyUSB 側に写し終えてから戻る
++esp_err_t Transmit(void*, void* buffer, size_t len) {
++    return tinyusb_net_send_sync(buffer, len, nullptr, pdMS_TO_TICKS(100));
++}
++
++void FreeRx(void*, void* buffer) {
++    free(buffer);
++}
++
++// Mac の Wi-Fi 側の番地（写真の受け口など）にも届くよう、経路を Mac に向ける
++void SetGwOnTcpip(void*) {
++    struct netif* n = (struct netif*)esp_netif_get_netif_impl(s_netif);
++    ip4_addr_t gw;
++    gw.addr = s_client_ip;
++    netif_set_gw(n, &gw);
++}
++
++// 実機の DHCP サーバが Mac に番地を配った
++void OnAssigned(void*, esp_event_base_t, int32_t, void* data) {
++    auto* e = static_cast<ip_event_ap_staipassigned_t*>(data);
++    if (e->esp_netif != s_netif) {
++        return;
++    }
++    s_client_ip = e->ip.addr;
++    tcpip_callback(SetGwOnTcpip, nullptr);
++    ESP_LOGI(TAG, "Mac got " IPSTR " over USB", IP2STR(&e->ip));
++}
++
++bool Ready() {
++    return tud_ready() && s_client_ip != 0;
++}
++
++void CreateNetif() {
++    esp_netif_init();
++
++    esp_netif_ip_info_t ip = {};
++    ip.ip.addr = ESP_IP4TOADDR(192, 168, 7, 2);
++    ip.gw.addr = 0;                                   // Mac に番地を配ったら、そこに向ける（OnAssigned）
++    ip.netmask.addr = ESP_IP4TOADDR(255, 255, 255, 0);
++
++    esp_netif_inherent_config_t base = ESP_NETIF_INHERENT_DEFAULT_ETH();
++    base.flags = (esp_netif_flags_t)(ESP_NETIF_DHCP_SERVER | ESP_NETIF_FLAG_AUTOUP);
++    base.ip_info = &ip;
++    base.if_key = "USB_NCM";
++    base.if_desc = "usb ncm";
++    base.route_prio = 200;                            // Wi-Fi（100）より優先
++
++    esp_netif_driver_ifconfig_t driver = {};
++    driver.handle = (void*)1;
++    driver.transmit = Transmit;
++    driver.driver_free_rx_buffer = FreeRx;
++
++    esp_netif_config_t cfg = {};
++    cfg.base = &base;
++    cfg.driver = &driver;
++    cfg.stack = ESP_NETIF_NETSTACK_DEFAULT_ETH;
++    s_netif = esp_netif_new(&cfg);
++    esp_event_handler_register(IP_EVENT, IP_EVENT_AP_STAIPASSIGNED, OnAssigned, nullptr);
++
++    uint8_t mac[6];
++    esp_read_mac(mac, ESP_MAC_ETH);
++    esp_netif_set_mac(s_netif, mac);
++
++    // ★先に netif を上げる（DHCP サーバが動き出す）。止めてから設定し、もう一度動かす
++    //   （逆順だと esp_netif_dhcps_option が「止まっていない」で弾かれる）
++    esp_netif_action_start(s_netif, nullptr, 0, nullptr);
++    esp_netif_action_connected(s_netif, nullptr, 0, nullptr);
++
++    // 経路（ルータ）は配らない＝Mac のネットは Wi-Fi のまま
++    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_dhcps_stop(s_netif));
++    dhcps_offer_t no_router = 0;
++    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_dhcps_option(s_netif, ESP_NETIF_OP_SET, ESP_NETIF_ROUTER_SOLICITATION_ADDRESS, &no_router, sizeof(no_router)));
++    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_dhcps_start(s_netif));
++}
++
++// 抜けた／挿さったを見張る
++void WatchTask(void*) {
++    while (true) {
++        bool ready = Ready();
++        if (ready && s_first_ready_us == 0) {
++            s_first_ready_us = esp_timer_get_time();
++        }
++        if (s_active && !ready) {
++            ESP_LOGW(TAG, "USB LAN disconnected");
++            s_active = false;
++            if (s_on_change) {
++                s_on_change(false);
++            }
++        } else if (!s_active && ready) {
++            ESP_LOGI(TAG, "USB LAN connected again");
++            s_active = true;
++            esp_netif_set_default_netif(s_netif);
++            if (s_on_change) {
++                s_on_change(true);
++            }
++        }
++        vTaskDelay(pdMS_TO_TICKS(500));
++    }
++}
++
++}  // namespace
++
++bool Enabled() {
++    Settings settings("network", false);
++    return settings.GetInt("usb", 0) == 1;
++}
++
++bool Start(int timeout_ms, std::function<void(bool up)> on_change) {
++    s_on_change = std::move(on_change);
++    s_start_us = esp_timer_get_time();
++
++    tinyusb_config_t tusb_cfg = {};
++    tusb_cfg.external_phy = false;
++    if (tinyusb_driver_install(&tusb_cfg) != ESP_OK) {
++        s_result = "install_failed";
++        ESP_LOGE(TAG, "tinyusb_driver_install failed");
++        return false;
++    }
++
++    // Mac から見える側の MAC（実機の MAC から作る。毎回同じ＝Mac の設定も毎回同じ）
++    tinyusb_net_config_t net_cfg = {};
++    esp_read_mac(net_cfg.mac_addr, ESP_MAC_ETH);
++    net_cfg.mac_addr[5] ^= 0x01;
++    net_cfg.on_recv_callback = OnRecv;
++    if (tinyusb_net_init(TINYUSB_USBDEV_0, &net_cfg) != ESP_OK) {
++        ESP_LOGE(TAG, "tinyusb_net_init failed");
++        return false;
++    }
++
++    CreateNetif();
++
++    ESP_LOGI(TAG, "Waiting for the Mac on USB (up to %d ms)", timeout_ms);
++    for (int waited = 0; waited < timeout_ms; waited += 200) {
++        if (Ready()) {
++            s_first_ready_us = esp_timer_get_time();
++            s_result = "wired";
++            s_active = true;
++            esp_netif_set_default_netif(s_netif);
++            ESP_LOGI(TAG, "USB LAN up: %s", WebsocketUrl().c_str());
++            xTaskCreate(WatchTask, "usb_wired", 3072, nullptr, 3, nullptr);
++            return true;
++        }
++        vTaskDelay(pdMS_TO_TICKS(200));
++    }
++    s_result = "wifi_fallback";
++    ESP_LOGW(TAG, "No Mac on USB. Falling back to Wi-Fi");
++    xTaskCreate(WatchTask, "usb_wired", 3072, nullptr, 3, nullptr);
++    return false;
++}
++
++bool Active() {
++    return s_active;
++}
++
++void RestoreSerial() {
++    usb_serial_jtag_ll_phy_enable_external(false);   // 内蔵 PHY を USB-Serial-JTAG へ
++}
++
++static std::string ClientIp() {
++    esp_ip4_addr_t a;
++    a.addr = s_client_ip;
++    char buf[16];
++    snprintf(buf, sizeof(buf), IPSTR, IP2STR(&a));
++    return buf;
++}
++
++std::string OtaUrl() {
++    return "http://" + ClientIp() + ":8778/";
++}
++
++std::string WebsocketUrl() {
++    return "ws://" + ClientIp() + ":8775/";
++}
++
++void AddStatus(cJSON* network) {
++    auto o = cJSON_CreateObject();
++    cJSON_AddBoolToObject(o, "enabled", Enabled());
++    cJSON_AddBoolToObject(o, "active", s_active);
++    cJSON_AddBoolToObject(o, "mounted", tud_mounted());
++    cJSON_AddStringToObject(o, "boot_result", s_result);
++    cJSON_AddStringToObject(o, "mac_ip", s_client_ip ? ClientIp().c_str() : "");
++    cJSON_AddNumberToObject(o, "ready_after_ms",
++                            s_first_ready_us ? (double)((s_first_ready_us - s_start_us) / 1000) : -1);
++    cJSON_AddItemToObject(network, "usb_wired", o);
++}
++
++}  // namespace UsbWired
++
++#else  // CONFIG_TINYUSB_NET_MODE_NCM ── 他のボードでは何もしない
++
++namespace UsbWired {
++bool Enabled() { return false; }
++bool Start(int, std::function<void(bool)>) { return false; }
++bool Active() { return false; }
++void RestoreSerial() {}
++void AddStatus(cJSON*) {}
++std::string OtaUrl() { return ""; }
++std::string WebsocketUrl() { return ""; }
++}  // namespace UsbWired
++
++#endif
+diff --git a/firmware/main/boards/common/usb_wired.h b/firmware/main/boards/common/usb_wired.h
+new file mode 100644
+index 0000000..ffa2692
+--- /dev/null
++++ b/firmware/main/boards/common/usb_wired.h
+@@ -0,0 +1,42 @@
++// USB ケーブルを有線 LAN にする（stackchan-lab 2026-09-29）。
++//
++// NVS の network.usb が 1 のとき、起動時に USB を CDC-NCM（macOS は標準で認識する
++// USB LAN アダプタ）として出す。Mac に挿さっていれば、Wi-Fi を使わずに gateway へ繋ぐ。
++//   実機: 192.168.7.2   Mac: 実機の DHCP サーバが配った番地（192.168.7.x）
++//   接続先は「Mac に配った番地」: OTA http://<それ>:8778/  WebSocket ws://<それ>:8775/
++//   ★番地を決め打ちしない。Mac は前にもらった番地を覚えていて、それを頼んでくる（2026-09-29 実機で確認）
++// 15 秒待って Mac が見えなければ、今までどおり Wi-Fi で繋ぐ。
++// network.usb が無い／0 なら何もしない（今までと同じ動き・USB シリアルも生きている）。
++//
++// ★会場の Wi-Fi が 5GHz だけでも、ログイン画面つきでも、実機は繋がる。
++// ★USB を LAN にしている間は、USB シリアル（ログ・esptool の自動リセット）は使えない。
++#pragma once
++
++#include <functional>
++#include <string>
++#include <cJSON.h>
++
++namespace UsbWired {
++
++// USB の LAN の向こうの Mac に繋ぐ URL（Active() のときだけ意味がある）
++std::string OtaUrl();
++std::string WebsocketUrl();
++
++// NVS の network.usb が 1 か
++bool Enabled();
++
++// USB を シリアル（USB-Serial-JTAG）に戻す。USB を LAN にした後の再起動用。
++// ★USB の割り当ては RTC 側のレジスタにあり、ソフトの再起動では戻らない（2026-09-29 実機で確認）
++void RestoreSerial();
++
++// USB を LAN として出し、Mac に認識されて番地を配り終えるまで最大 timeout_ms 待つ。
++// 認識されたら true。on_change は、後で抜けた(false)／挿し直した(true)ときに呼ばれる。
++bool Start(int timeout_ms, std::function<void(bool up)> on_change);
++
++// いま USB の LAN で繋がっているか（接続先の差し替えに使う）
++bool Active();
++
++// get_device_info の network に usb_wired を足す（USB を LAN にしている間はシリアルのログが見えないため）
++void AddStatus(cJSON* network);
++
++}  // namespace UsbWired
 diff --git a/firmware/main/boards/common/wifi_board.cc b/firmware/main/boards/common/wifi_board.cc
-index 377685b..37a60a8 100644
+index 377685b..0970991 100644
 --- a/firmware/main/boards/common/wifi_board.cc
 +++ b/firmware/main/boards/common/wifi_board.cc
-@@ -1,3 +1,4 @@
+@@ -1,4 +1,6 @@
 +#include <esp_wifi.h>
  #include "wifi_board.h"
++#include "usb_wired.h"
  
  #include "display.h"
-@@ -58,6 +59,14 @@ void WifiBoard::StartNetwork() {
+ #include "application.h"
+@@ -58,6 +60,29 @@ void WifiBoard::StartNetwork() {
      config.language = Lang::CODE;
      wifi_manager.Initialize(config);
  
@@ -19,9 +340,145 @@ index 377685b..37a60a8 100644
 +    //   電池持ちの挙動は変えない。
 +    esp_wifi_set_ps(WIFI_PS_NONE);
 +
++    // ★USB ケーブルを有線 LAN にする（stackchan-lab 2026-09-29, usb_wired.h）。
++    //   network.usb=1 で Mac に挿さっていれば Wi-Fi を使わない。見えなければ下の Wi-Fi へ
++    if (!UsbWired::Enabled()) {
++        UsbWired::RestoreSerial();   // 前回 USB を LAN にしていても、シリアルに戻す
++    } else {
++        bool up = UsbWired::Start(15000, [this](bool now_up) {
++            OnNetworkEvent(now_up ? NetworkEvent::Connected : NetworkEvent::Disconnected,
++                           now_up ? "USB" : "");
++        });
++        if (up) {
++            OnNetworkEvent(NetworkEvent::Connected, "USB");
++            return;
++        }
++    }
++
      // Set unified event callback - forward to NetworkEvent with SSID data
      wifi_manager.SetEventCallback([this](WifiEvent event, const std::string& data) {
          switch (event) {
+@@ -339,6 +364,7 @@ std::string WifiBoard::GetDeviceStatusJson() {
+     int rssi = wifi.GetRssi();
+     const char* signal = rssi >= -60 ? "strong" : (rssi >= -70 ? "medium" : "weak");
+     cJSON_AddStringToObject(network, "signal", signal);
++    UsbWired::AddStatus(network);   // ★USB の有線 LAN の状態（stackchan-lab 2026-09-29）
+     cJSON_AddItemToObject(root, "network", network);
+ 
+     // Chip temperature
+diff --git a/firmware/main/boards/stackchan/config.json b/firmware/main/boards/stackchan/config.json
+index 2cfccf7..5959ea9 100644
+--- a/firmware/main/boards/stackchan/config.json
++++ b/firmware/main/boards/stackchan/config.json
+@@ -8,8 +8,9 @@
+                 "CONFIG_CAMERA_GC0308=y",
+                 "CONFIG_CAMERA_GC0308_AUTO_DETECT_DVP_INTERFACE_SENSOR=y",
+                 "CONFIG_CAMERA_GC0308_DVP_YUV422_320X240_20FPS=y",
+-                "CONFIG_STACKCHAN_SERVO_FEETECH=y"
++                "CONFIG_STACKCHAN_SERVO_FEETECH=y",
++                "CONFIG_TINYUSB_NET_MODE_NCM=y"
+             ]
+         }
+     ]
+-}
+\ No newline at end of file
++}
+diff --git a/firmware/main/boards/stackchan/stackchan.cc b/firmware/main/boards/stackchan/stackchan.cc
+index 94702da..91ec055 100644
+--- a/firmware/main/boards/stackchan/stackchan.cc
++++ b/firmware/main/boards/stackchan/stackchan.cc
+@@ -1,3 +1,4 @@
++#include "usb_wired.h"
+ #include "wifi_board.h"
+ #include "cores3_audio_codec.h"
+ #include "display/lcd_display.h"
+@@ -5677,6 +5678,28 @@ private:
+                 return root;
+             });
+ 
++        // ★USB ケーブルを有線 LAN にする設定（stackchan-lab 2026-09-29, usb_wired.h）。
++        //   USB を LAN にしている間は USB シリアルが使えないので、gateway から切り替えられるようにする
++        mcp_server.AddTool(
++            "self.network.set_usb_wired",
++            "Enable or disable using the USB cable as a wired network (CDC-NCM) "
++            "to the Mac. When enabled and a Mac is on USB at boot, the device "
++            "uses 192.168.7.2 and connects to the Mac over USB without "
++            "Wi-Fi; otherwise it falls back to Wi-Fi after 15 s. Persists in NVS "
++            "(network.usb) and takes effect on the next reboot.",
++            PropertyList({Property("enabled", kPropertyTypeBoolean)}),
++            [](const PropertyList& properties) -> ReturnValue {
++                bool enabled = properties["enabled"].value<bool>();
++                Settings settings("network", true);
++                settings.SetInt("usb", enabled ? 1 : 0);
++                cJSON* root = cJSON_CreateObject();
++                cJSON_AddBoolToObject(root, "ok", true);
++                cJSON_AddBoolToObject(root, "enabled", enabled);
++                cJSON_AddBoolToObject(root, "active_now", UsbWired::Active());
++                cJSON_AddStringToObject(root, "takes_effect", "next_boot");
++                return root;
++            });
++
+         // Set head angles (yaw, pitch in degrees)
+         // SCS0009: 1 step = 0.3125 degrees, so 1 degree = 3.2 steps (= 16/5)
+         // yaw: -90..90 degrees (no hardware restriction). pitch: two-tier
+diff --git a/firmware/main/idf_component.yml b/firmware/main/idf_component.yml
+index f34ceeb..8ce6c64 100644
+--- a/firmware/main/idf_component.yml
++++ b/firmware/main/idf_component.yml
+@@ -135,6 +135,12 @@ dependencies:
+     rules:
+     - if: target in [esp32s3, esp32p4]
+ 
++  # USB ケーブルを有線 LAN にする（stackchan-lab 2026-09-29, boards/common/usb_wired.h）
++  espressif/esp_tinyusb:
++    version: "~1.7.6"
++    rules:
++    - if: target in [esp32s3]
++
+   ## Required IDF version
+   idf:
+     version: '>=5.5.2'
+diff --git a/firmware/main/ota.cc b/firmware/main/ota.cc
+index 3081ed3..37e5b34 100644
+--- a/firmware/main/ota.cc
++++ b/firmware/main/ota.cc
+@@ -1,3 +1,4 @@
++#include "boards/common/usb_wired.h"
+ #include "ota.h"
+ #include "system_info.h"
+ #include "settings.h"
+@@ -44,6 +45,10 @@ Ota::~Ota() {
+ }
+ 
+ std::string Ota::GetCheckVersionUrl() {
++    // ★USB の有線 LAN で繋がっているときは Mac（192.168.7.1）固定（usb_wired.h）
++    if (UsbWired::Active()) {
++        return UsbWired::OtaUrl();
++    }
+     Settings settings("wifi", false);
+     std::string url = settings.GetString("ota_url");
+     if (url.empty()) {
+diff --git a/firmware/main/protocols/websocket_protocol.cc b/firmware/main/protocols/websocket_protocol.cc
+index 274b398..bdac65a 100644
+--- a/firmware/main/protocols/websocket_protocol.cc
++++ b/firmware/main/protocols/websocket_protocol.cc
+@@ -1,3 +1,4 @@
++#include "boards/common/usb_wired.h"
+ #include "websocket_protocol.h"
+ #include "mdns_gateway_discovery.h"
+ #include "board.h"
+@@ -272,6 +273,11 @@ bool WebsocketProtocol::OpenAudioChannelInternal(bool report_error, bool arm_aud
+     // the upstream OTA server from overwriting the NVS values read below.
+     // This firmware always speaks to a stackchan-mcp gateway directly.
+     std::string nvs_url = settings.GetString("url");
++    // ★USB の有線 LAN で繋がっているときは Mac（192.168.7.1）固定（usb_wired.h）
++    if (UsbWired::Active()) {
++        nvs_url = UsbWired::WebsocketUrl();
++        ESP_LOGI(TAG, "USB LAN: using %s", nvs_url.c_str());
++    }
+     std::vector<std::string> gateway_candidates;
+     bool force_default_url = false;
+ #ifdef CONFIG_DEFAULT_WEBSOCKET_URL
 diff --git a/gateway/stackchan_mcp/beat/mode.py b/gateway/stackchan_mcp/beat/mode.py
 index 1406cb1..1f54bd2 100644
 --- a/gateway/stackchan_mcp/beat/mode.py
@@ -121,6 +578,59 @@ index 018f3f0..a67b64e 100644
  
  
  def _is_wildcard_host(host: str) -> bool:
+diff --git a/gateway/stackchan_mcp/stdio_server.py b/gateway/stackchan_mcp/stdio_server.py
+index af1eaf1..b6b8791 100644
+--- a/gateway/stackchan_mcp/stdio_server.py
++++ b/gateway/stackchan_mcp/stdio_server.py
+@@ -1074,6 +1074,16 @@ async def _dispatch_mcp_tool(
+             "self.robot.set_touch_sensor_enabled",
+             arguments,
+         ),
++        # ★USB ケーブルを有線 LAN にする（stackchan-lab 2026-09-29, firmware usb_wired.h）
++        "set_usb_wired": (
++            "self.network.set_usb_wired",
++            arguments,
++        ),
++        # ★実機を再起動する（電池があるのでケーブルを抜いても再起動しない。stackchan-lab 2026-09-29）
++        "reboot_device": (
++            "self.reboot",
++            {},
++        ),
+         "set_avatar": (
+             "self.display.set_avatar",
+             arguments,
+@@ -1740,6 +1750,31 @@ def create_server(notify_config: NotifyConfig | None = None) -> StackChanServer:
+                 ),
+                 inputSchema={"type": "object", "properties": {}},
+             ),
++            Tool(
++                name="reboot_device",
++                description=(
++                    "Reboot the device. Use after set_usb_wired, since the "
++                    "battery keeps it running when the USB cable is unplugged."
++                ),
++                inputSchema={"type": "object", "properties": {}},
++            ),
++            Tool(
++                name="set_usb_wired",
++                description=(
++                    "Use the USB cable as a wired network (CDC-NCM) to the Mac "
++                    "instead of Wi-Fi. Persists in NVS and takes effect on the "
++                    "next reboot. When enabled but no Mac is on USB at boot, the "
++                    "device falls back to Wi-Fi. While USB is the network, the "
++                    "USB serial port is unavailable, so use this to switch back."
++                ),
++                inputSchema={
++                    "type": "object",
++                    "properties": {
++                        "enabled": {"type": "boolean"},
++                    },
++                    "required": ["enabled"],
++                },
++            ),
+             Tool(
+                 name="set_touch_sensor_enabled",
+                 description=(
 diff --git a/gateway/stackchan_mcp/stt/faster_whisper.py b/gateway/stackchan_mcp/stt/faster_whisper.py
 index f7b6533..a90dd1b 100644
 --- a/gateway/stackchan_mcp/stt/faster_whisper.py

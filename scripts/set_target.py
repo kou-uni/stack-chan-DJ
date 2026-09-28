@@ -5,6 +5,7 @@
     ./.venv/bin/python scripts/set_target.py 172.20.10.2
     ./.venv/bin/python scripts/set_target.py --show     # 向き先を見るだけ
     ./.venv/bin/python scripts/set_target.py --wifi 会場のSSID   # 会場の Wi-Fi も教える
+    ./.venv/bin/python scripts/set_target.py --usb on     # USB ケーブルを有線 LAN にする（要 USB 版ファーム）
 
 ★会場で IP が変わったときの復旧用。**設定画面（タップ → 192.168.4.1）は要らない。**
   実機を USB で挿して、これ1本。
@@ -178,10 +179,55 @@ def add_wifi(items, ssid: str, password: str):
     return out, i
 
 
+def make_i32(ns: int, key: str, value: int) -> bytes:
+    e = bytearray(b"\xff" * 32)
+    e[0], e[1], e[2], e[3] = ns, 0x14, 1, 0xFF
+    e[8:24] = key.encode().ljust(16, b"\0")
+    e[24:28] = struct.pack("<i", value)
+    e[4:8] = struct.pack("<I", crc(e[0:4] + e[8:32]))
+    return bytes(e)
+
+
+def make_ns(name: str, index: int) -> bytes:
+    e = bytearray(b"\xff" * 32)
+    e[0], e[1], e[2], e[3] = 0, 0x01, 1, 0xFF
+    e[8:24] = name.encode().ljust(16, b"\0")
+    e[24] = index
+    e[4:8] = struct.pack("<I", crc(e[0:4] + e[8:32]))
+    return bytes(e)
+
+
+def set_usb(items, on: bool):
+    """network.usb（USB を有線 LAN にする。ファームの usb_wired.h）を 1/0 にする"""
+    nsid = namespaces(items)
+    out = list(items)
+    if "network" not in nsid:
+        idx = max(nsid.values()) + 1
+        out.append((0, 0x01, "network", make_ns("network", idx)))
+        nsid["network"] = idx
+    ns = nsid["network"]
+    entry = make_i32(ns, "usb", 1 if on else 0)
+    for i, (n, t, k, e) in enumerate(out):
+        if n == ns and k == "usb":
+            out[i] = (n, 0x14, k, entry)
+            return out
+    out.append((ns, 0x14, "usb", entry))
+    return out
+
+
+def usb_of(items):
+    ns = namespaces(items).get("network")
+    for n, t, k, e in items:
+        if ns is not None and n == ns and k == "usb":
+            return struct.unpack("<i", e[24:28])[0]
+    return None
+
+
 def same_except_targets(a, b) -> bool:
-    rev = {v: k for k, v in namespaces(a).items()}
+    rev = {v: k for k, v in {**namespaces(a), **namespaces(b)}.items()}
+    allowed = set(TARGETS) | WIFI_KEYS | {("network", "usb"), (None, "network")}
     strip = lambda its: [(ns, t, k, e) for ns, t, k, e in its
-                         if (rev.get(ns), k) not in set(TARGETS) | WIFI_KEYS]
+                         if (rev.get(ns) if ns else None, k) not in allowed]
     return strip(a) == strip(b)
 
 
@@ -225,6 +271,7 @@ def main() -> int:
     ap.add_argument("ip", nargs="?", help="向ける IP（省略時はこの Mac の IP）")
     ap.add_argument("--show", action="store_true", help="向き先を見るだけ")
     ap.add_argument("--force", action="store_true", help="同じでも書き直す")
+    ap.add_argument("--usb", choices=["on", "off"], help="USB ケーブルを有線 LAN にする（on）／しない（off）")
     ap.add_argument("--wifi", metavar="SSID", help="会場の Wi-Fi を足す（家の分は残る）。パスワードは聞く")
     ap.add_argument("--port", help="シリアルポート（省略時は自動）")
     ap.add_argument("--image", help="実機の代わりに NVS のファイルで試す（書き込まない）")
@@ -244,6 +291,7 @@ def main() -> int:
     now = targets_of(items)
     for k, v in now.items():
         print(f"    いまの {k:<14} {v}")
+    print(f"    いまの {'network.usb':<14} {({1: 'on（USB を有線 LAN に）', 0: 'off'}).get(usb_of(items), '未設定（off）')}")
     if a.show:
         return 0
 
@@ -252,12 +300,16 @@ def main() -> int:
     new_items = retarget(items, ip)
     if a.wifi:
         import getpass
-        pw = getpass.getpass(f"    {a.wifi} のパスワード: ")
+        import os
+        pw = os.environ.get("STACKCHAN_WIFI_PASSWORD") or getpass.getpass(f"    {a.wifi} のパスワード: ")
         if len(pw) < 8:
             die("パスワードが8文字未満です（WPA2 は8文字以上）")
         new_items, slot = add_wifi(new_items, a.wifi, pw)
         print(f"  ○ Wi-Fi  {a.wifi} を {slot + 1} 件目に入れます")
-    if targets_of(new_items) == now and not a.force and not a.wifi:
+    if a.usb:
+        new_items = set_usb(new_items, a.usb == "on")
+        print(f"  ○ USB の有線 LAN  {a.usb}")
+    if targets_of(new_items) == now and not a.force and not a.wifi and usb_of(new_items) == usb_of(items):
         print("  ○ もう向いています。何もしません")
         return 0
     if not same_except_targets(items, new_items):
