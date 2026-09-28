@@ -209,6 +209,7 @@ HTML は**視点の違う成果物**にする。
 | スタックチャン接続マップ（4シナリオ・構成図） | `scratchpad/stackchan-connection-map.html` |
 | スタックチャン書き込み手順（Phase 1 ランブック） | `scratchpad/stackchan-flashing-runbook.html` |
 | **当日の台本（紙芝居・37画面）** | `event/text.html` → https://claude.ai/artifact/JJJj5xMhrDkzJH5Eqnoi5S |
+| **配布物10枚（参加者に渡す公開ページ）** | `docs/pages/*.html` → https://kou-uni.github.io/workshop-of-stackchan-at-cryptobar/（repo `kou-uni/workshop-of-stackchan-at-cryptobar`、`scripts/publish-handouts.sh` で更新。進行表・台本は入れない） |
 
 ### 一次資料を複製しない
 

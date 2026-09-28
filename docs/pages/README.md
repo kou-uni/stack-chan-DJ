@@ -27,7 +27,8 @@
 
 1. **ファイルをダブルクリック** — 電波が無くても開く
 2. **同じLANのブラウザ** — `http://<MacのIP>:8779/p`（一覧）
-3. Artifact のURL（手元に無いとき）
+3. **公開ページ** https://kou-uni.github.io/workshop-of-stackchan-at-cryptobar/（配布用リポジトリ `kou-uni/workshop-of-stackchan-at-cryptobar`。
+   `shinkou.html` は入れない。**ここを直したら `scripts/publish-handouts.sh` で配布用にも写す**）
 
 ★**書体だけは Google Fonts から落ちます。** 電波が無いと代替の書体になりますが、
 中身は全部読めます（図も動きます）。
