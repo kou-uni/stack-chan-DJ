@@ -76,19 +76,49 @@ def one_boot(port: str, limit_s: float = 45.0, reset: bool = True) -> dict:
     return parse(lines)
 
 
-def wait_power_on(timeout_s: float = 600.0) -> dict | None:
-    """USB が現れるのを待ち、現れたら**リセットせずに**起動ログを読む。
-    電源を入れると USB-Serial/JTAG が数百 ms で現れ、起動ログの頭から読める。"""
-    print("  電源を入れてください（USB が現れるのを待っています。Ctrl-C でやめる）", flush=True)
-    t0 = time.time()
-    while time.time() - t0 < timeout_s:
+BOOT_MARK = re.compile(r"ESP-ROM:|rst:0x|Pro cpu start")
+
+
+def collect_power_on(s, deadline: float) -> dict | None:
+    """開いたシリアルを読み続け、**起動の頭（ROM の印）が来てから**顔までを集める。
+    それより前の行は捨てる（実機が動いたまま待つ場合、いまの出力が混ざる）。"""
+    lines: list[str] = []; booted = False
+    while time.time() < deadline:
+        l = ANSI.sub("", s.readline().decode("utf-8", "replace").rstrip())
+        if not l:
+            continue
+        if BOOT_MARK.search(l):
+            lines, booted = [], True
+        if booted:
+            lines.append(l)
+            if "set_avatar: face=idle applied=1" in l:
+                return parse(lines)
+    return None
+
+
+def wait_power_on(timeout_s: float = 900.0) -> dict | None:
+    """電源ONの起動を測る。USB が無ければ現れるまで待ち、あれば動いたまま**次の起動**を待つ。
+    途中で電源が切れて USB が消えても、戻ってきたら続きを読む。★リセットはしない。"""
+    import serial
+    print("  電源を入れ直してください（次の起動を待っています。Ctrl-C でやめる）", flush=True)
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
         port = find_port()
-        if port:
-            try:
-                return one_boot(port, limit_s=60.0, reset=False)
-            except Exception as exc:                          # noqa: BLE001  現れた直後は開けないことがある
-                print(f"  （開けなかった: {exc}。もう一度）", flush=True); time.sleep(0.5); continue
-        time.sleep(0.2)
+        if not port:
+            time.sleep(0.2); continue
+        try:
+            s = serial.Serial(port, 115200, timeout=1)
+        except Exception:                                     # noqa: BLE001  現れた直後は開けないことがある
+            time.sleep(0.5); continue
+        try:
+            r = collect_power_on(s, deadline)
+            if r is not None:
+                return r
+        except (serial.SerialException, OSError):
+            time.sleep(0.5)                                   # 電源が切れて USB が消えた。戻るのを待つ
+        finally:
+            try: s.close()
+            except Exception: pass                            # noqa: BLE001
     return None
 
 
@@ -115,7 +145,7 @@ def main() -> int:
     if a.wait_power_on:
         r = wait_power_on()
         if r is None:
-            print("★ 時間内に USB が現れませんでした"); return 1
+            print("★ 時間内に起動が来ませんでした"); return 1
         print(f"  電源ON {show(r)}")
         if a.out:
             new = not a.out.exists()

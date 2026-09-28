@@ -70,3 +70,16 @@ def test_power_on_path_does_not_reset(monkeypatch):
     monkeypatch.setattr(bm.time, "sleep", lambda s: None)
     bm.one_boot("/dev/fake", reset=True)
     assert "rts" in fake2.touched                                  # 通常はリセットする
+
+
+def test_collect_power_on_ignores_lines_before_the_boot_banner():
+    noise = ["I (600000) StackChanBoard: set_avatar: face=idle applied=1",   # 動いている最中の顔（起動ではない）
+             "I (600100) StackChanBoard: i2c.write addr=0x28 n=2 ok=1"]
+    fake = _FakeSerial(noise + ["ESP-ROM:esp32s3-20210327", "rst:0x1 (POWERON),boot:0x8"] + LOG)
+    r = bm.collect_power_on(fake, deadline=bm.time.time() + 5)
+    assert r["face"] == 17.75 and r["pm"] == "MIN_MODEM"
+
+
+def test_collect_power_on_gives_none_when_no_boot_comes():
+    fake = _FakeSerial(["I (1) x"])
+    assert bm.collect_power_on(fake, deadline=bm.time.time() + 0.3) is None
