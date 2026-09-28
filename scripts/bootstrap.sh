@@ -201,6 +201,18 @@ PY
   fi
 fi
 
+# ── 4b. 聞き取り ──────────────────────────────
+step "4b. 聞き取りのモデル（faster-whisper）"
+# ★初回に使ったときネットから取る作り。会場にネットが無いと最初の聞き取りで落ちる。
+#   だから先に取っておき、gateway は HF_HUB_OFFLINE=1 で動かす（.env.gateway）
+if HF_HUB_OFFLINE=1 ./.venv/bin/python -c "from faster_whisper import WhisperModel; WhisperModel('base', device='cpu', compute_type='int8')" >/dev/null 2>&1; then
+  ok "base は既にあります"
+else
+  ./.venv/bin/python -c "from faster_whisper import WhisperModel; WhisperModel('base', device='cpu', compute_type='int8')" >/dev/null 2>&1 \
+    || die "聞き取りのモデルを落とせませんでした（ネットに繋がっているか）"
+  ok "base を入れました（~/.cache/huggingface）"
+fi
+
 # ── 5. 設定 ───────────────────────────────────
 step "5. 設定"
 if [ -f .env.gateway ]; then
