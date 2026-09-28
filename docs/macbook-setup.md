@@ -8,6 +8,7 @@
 |---|---|---|
 | `event/rec/guests.toml`（NFC の名簿） | 人名 | `scp uni@<MacStudioのIP>:stackchan-lab/event/rec/guests.toml event/rec/` |
 | `firmware/merged-binary.bin` `firmware/xiaozhi.bin`（救済用） | 大きい・生成物 | `scp uni@<MacStudioのIP>:stackchan-lab/firmware/\*.bin firmware/` |
+| （任意）`~/Obsidian/ThoughtLog/{insights,decisions,concepts,interests,projects}` | 本人の思考ノート（2MB） | 質疑応答 bot の**「uni の相棒」モード**にだけ要る。無ければそのモードは空で答える。`scp -r` で運ぶ |
 
 Mac Studio の SSH（22）は開いている。**clone 先は `~` 直下**（`~/Documents` 配下だと launchd の常駐が TCC で読めない。issue #3）。
 

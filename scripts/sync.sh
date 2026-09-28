@@ -62,6 +62,10 @@ if changed "docs/pages/src/"; then
     && ok "配布物を固め直しました" || warn "配布物を固め直せませんでした"
 else ok "配布物は変わっていません"; fi
 
+# ── 2.5 モデル（無いものだけ）────────────────────
+step "2.5 Ollama のモデル"
+./scripts/pull-models.sh || echo "    ★モデルが足りません。質疑応答 bot が動きません"
+
 # ── 3. 検査 ────────────────────────────────────
 step "3. 検査"
 ./.venv/bin/python -m pytest tests/ -q >/tmp/sync-test.log 2>&1 \

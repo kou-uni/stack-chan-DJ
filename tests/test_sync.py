@@ -80,3 +80,15 @@ def test_VOICEVOXも常駐に入っている():
     s = (ROOT / "scripts" / "service.sh").read_text(encoding="utf-8")
     assert "voicevox/macos-arm64/run" in s and "com.uni.stackchan.voice" in s
     assert "50021" in (ROOT / "scripts" / "status.py").read_text(encoding="utf-8")
+
+
+def test_質疑応答botのモデルを新しいMacでも落とす():
+    """★bootstrap は think-model しか落としていなかった。qwen2.5:14b が無いと当日 bot が黙る（2026-09-29）。"""
+    import sys
+    sys.path.insert(0, str(ROOT / "app" / "dj"))
+    import ask
+    pull = (ROOT / "scripts" / "pull-models.sh").read_text(encoding="utf-8")
+    assert "ask.DEFAULT_MODEL" in pull, "pull-models.sh が質疑応答のモデル名を ask.py から取っていない"
+    assert ask.DEFAULT_MODEL.startswith("qwen2.5")
+    for name in ("bootstrap.sh", "sync.sh"):
+        assert "pull-models.sh" in (ROOT / "scripts" / name).read_text(encoding="utf-8"), f"{name} が pull-models.sh を呼んでいない"

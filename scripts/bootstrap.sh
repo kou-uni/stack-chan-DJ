@@ -181,6 +181,8 @@ PY
     ok "$MODEL を入れました"
   fi
 fi
+# ★質疑応答 bot のモデル（qwen2.5:14b）も。無いと当日 D ブロックで bot が黙る（2026-09-29）
+./scripts/pull-models.sh || die "質疑応答 bot のモデルを落とせませんでした（scripts/pull-models.sh）"
 
 # ── 5. 設定 ───────────────────────────────────
 step "5. 設定"
