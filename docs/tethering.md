@@ -1,64 +1,57 @@
-# テザリングで実機を MacBook に繋ぐ（当日の形）
+# 会場のネットワーク — 実機と MacBook を同じ網に置く
 
-**2026-09-29 に書いた。** 家では実機は `192.168.0.123`（Mac Studio）を固定で見に来る。
-会場は iPhone テザリング（`172.20.10.x`）で**番地帯が違う**ので、別名（`rescue.md` §3a）は効かない。
-**実機にテザリングの SSID を教えるついでに、向き先2つを MacBook の IP に書き換える。** これ1回。
+**2026-09-29 に書き直した。** 前の版は「iPhone テザリング = 172.20.10.x」を前提にしていたが、
+**手持ちの iPhone 2台はどちらも IPv6 しか配らず（KDDI 系）、IPv4 の DHCP が来ない**（issue #1）。
+実機（ESP32）は IPv4 前提なので、**テザリングには乗れない。** 前提から作り直す。
 
-**NVS は消さない。** 消すと Wi-Fi だけでなく画面・LED・音の設定も飛ぶ（`display` `led_strip` `audio` `aec` `model` `websocket`）。
-設定画面は**保存済み SSID を残したまま追加**できる。
-
-## 0. 先に MacBook を当日の形にする
+実機はファームに mDNS 探索が無く、**IP 直書き**で MacBook を見に来る（`ws://<IP>:8775/` と `http://<IP>:8778/`）。
+いまは家の `192.168.0.180`（MacBook）。**向き先の変更は 1 コマンド**になった:
 
 ```bash
-git clone https://github.com/kou-uni/stack-chan-DJ.git && cd stack-chan-DJ && ./scripts/bootstrap.sh
+./.venv/bin/python scripts/set_target.py <MacBookのIP>            # USB から NVS の3項目だけ書き換える（退避・検算つき）
+./.venv/bin/python scripts/set_target.py <MacBookのIP> --dry-run  # 何が変わるかを見るだけ
 ```
 
-- 名簿 `event/rec/guests.toml` を Mac Studio から手で運ぶ（git に無い）
-- **Mac Studio 側は `./scripts/stop.sh`**（gateway を2台上げない）
+NVS は消さない（Wi-Fi・画面・LED・音の設定は残る）。実機は再起動する。書く前に全項目の CRC を検算し、
+書いた後に読み戻して一致を確かめる。退避は `event/rec/nvs/`（git に入らない）。
 
-## 1. iPhone テザリング → MacBook → IP を控える
+## 3案。上から試す
 
-1. iPhone：設定 → インターネット共有 → **「互換性を優先」オン**（2.4GHz。実機は 5GHz に繋がれない）
-2. MacBook をそのテザリングに繋ぐ
-3. ```bash
-   ./scripts/tether_ip.sh        # IP と、実機に打つ URL 2行が出る（172.20.10.x のはず）
-   ./.venv/bin/python scripts/status.py   # 上3行（console / OTAスタブ / VOICEVOX）が○
-   ```
+| 案 | 何を使うか | MacBook の IP | 実機の Wi-Fi | 要るもの | 状態 |
+|---|---|---|---|---|---|
+| **B. MacBook が Wi-Fi を出す**（インターネット共有） | MacBook 自身が親機 | **`192.168.2.1` 固定**（macOS の既定） | MacBook の SSID | 何も買わない | **未検証。今から家で試す** |
+| A. トラベルルーター | 持ち歩く小さなルーター | ルーターで予約 | ルーターの SSID | 買う（当日入手できれば） | 未検証 |
+| C. 会場の Wi-Fi | 店の網 | 現地で分かる | 店の SSID | 何も要らない | 端末間通信を止める網だと詰む。**現地で `set_target.py`** |
 
-## 2. 実機を設定モードに入れる（3通り。上から）
+### B の手順（家で通してから出る）
 
-| 方法 | いつ | やること |
-|---|---|---|
-| **A. 起動直後に画面を短くタップ** | 家でも会場でも | 電源を入れて**顔が出る前**（起動中）に画面を1回ちょんと触る → 「Wi-Fi 設定モード」と出る |
-| B. 60秒待つ | 会場（家の SSID が無い場所） | 保存済みの Wi-Fi が見つからないと **60 秒で自動で**設定モードに入る |
-| C. NVS を消す | 最後の手段 | `esptool erase-region 0x9000 0x6000`。**先に `read-flash 0x9000 0x6000 nvs.bin` で退避。** 画面・音の設定も飛ぶ |
+1. **MacBook**: システム設定 → 一般 → 共有 → **インターネット共有**
+   - 共有する接続: **iPhone USB**（iPhone を USB で挿す。IPv6 だけでも、MacBook と実機の間の網は IPv4 で成立する）
+   - 相手のコンピュータ: **Wi-Fi** → Wi-Fi オプションで **名前・チャンネル 1/6/11（2.4GHz）・パスワード（WPA2/3）**
+   - オンにする。**MacBook の Wi-Fi は親機になる**（家の Wi-Fi からは外れる）
+2. `./scripts/tether_ip.sh` → **`192.168.2.1`** と出ることを確かめる（違えば、その IP を使う）
+3. **実機を USB で MacBook に挿し**、`./.venv/bin/python scripts/set_target.py 192.168.2.1`
+4. 実機に **MacBook の SSID を教える**：電源を入れて**顔が出る前に画面を1回タップ** → 実機が `Xiaozhi-91C4` を立てる →
+   別の端末（iPhone）でそれに繋ぎ **http://192.168.4.1** → MacBook の SSID とパスワードを選んで保存（Advanced は触らなくてよい。URL は 3 で入れてある）
+5. 実機が再起動 → `status.py` の4行が○ → NFC でカードをかざして声が出る
+6. **iPad も MacBook の Wi-Fi に繋いで**背景（QR）を出す。DJ 機材は USB なので網は無関係
 
-設定モードに入ると実機が **`Xiaozhi-91C4`** という Wi-Fi を立てる（末尾は MAC `…:91:c4`）。
+USB-C の口: DJ 機材 1・iPhone 1。実機の USB は 3 のときだけ（あとは給電だけ）。足りなければハブ。
 
-## 3. 設定画面で 3 つ入れる
+### B が動かなかったら
 
-1. MacBook（またはもう1台の iPhone）を **`Xiaozhi-91C4`** に繋ぐ → ブラウザで **http://192.168.4.1**
-2. 一覧から **iPhone のテザリング名**を選び、パスワードを入れる（家の SSID は保存済み一覧に残ってよい）
-3. **Advanced** を開いて、`tether_ip.sh` が出した2行をそのまま:
-   - **OTA URL** `http://<MacBookのIP>:8778/`
-   - **WebSocket URL** `ws://<MacBookのIP>:8775/`
-   - Token・Fallback は触らない
-4. 保存 → 実機が再起動 → テザリングに繋ぎ → OTA スタブ → gateway → **顔が出る**（30 秒は待つ）
+- 共有がオンにならない → 共有元を「Thunderbolt ブリッジ」など**存在する別の口**にして試す（上流は要らない。MacBook と実機の間だけ通ればよい）
+- 実機が SSID を見つけない → Wi-Fi オプションのチャンネルが 5GHz（36 以上）になっていないか
+- **A に切り替える**：ルーターの SSID を実機に教え（4 と同じ）、MacBook の IP をルーターで予約 → `set_target.py <そのIP>`
 
-```bash
-./.venv/bin/python scripts/status.py     # 4行目「実機 繋がっている」と、向き先が MacBook の IP
-```
+### C しか無いとき（現地）
 
-来なければ `./scripts/rescue.sh --serial`（USB で実機の言い分を聞く）。
-
-## 4. 当日、会場で
-
-- 同じ iPhone のテザリングなら、MacBook はたいてい**同じ IP**をもらう。`tether_ip.sh` で確かめる
-- 違っていたら：`./scripts/tether_ip.sh --alias <昨日実機に教えた IP>` → 実機を再起動
-- iPhone を予備機に替えたら SSID が変わる → **2 と 3 をやり直す**（会場では B の 60 秒待ちで入れる）
+1. MacBook を店の Wi-Fi に繋ぐ → `./scripts/tether_ip.sh` で IP を控える
+2. 実機に店の SSID を教える（上の 4）→ `set_target.py <MacBookのIP>`
+3. 来なければ **端末間通信が止められている**（客用 Wi-Fi に多い）。**B に戻る**
 
 ## なぜこの形か
 
-- 実機のファームに mDNS 探索が入っていない（`discovery_compiled_in=false`）ので、**向き先は IP 直書きしかない**
-- `ota_url` は MCP から変えられない。**変えられるのは設定画面だけ。** だから SSID を教えるタイミングに寄せた
-- OTA スタブが居ないと実機は gateway に来ない（`rescue.md`）。**向き先は2つセットで**同じ IP にする
+- `ota_url` は MCP から変えられず、設定画面は手数が多い → **USB から NVS の該当項目だけ**書く道具にした
+- **向き先が固定なら、MacBook の IP を固定する。** B は macOS が `192.168.2.1` を必ず配るので、**現地で番地を調べる工程が消える**
+- 家で通したものだけ持っていく。**会場で初めて試す工程を残さない**

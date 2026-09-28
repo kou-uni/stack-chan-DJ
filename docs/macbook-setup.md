@@ -2,7 +2,16 @@
 
 **当日、頭脳もふくめて全部この機械に載る。** ここが通らないと、会場では何も動かない。
 
-## 手で運ぶものは無い
+## 手で運ぶもの（git に入れていないもの。2026-09-29 訂正）
+
+| もの | なぜ git に無いか | 運び方 |
+|---|---|---|
+| `event/rec/guests.toml`（NFC の名簿） | 人名 | `scp uni@<MacStudioのIP>:stackchan-lab/event/rec/guests.toml event/rec/` |
+| `firmware/merged-binary.bin` `firmware/xiaozhi.bin`（救済用） | 大きい・生成物 | `scp uni@<MacStudioのIP>:stackchan-lab/firmware/\*.bin firmware/` |
+
+Mac Studio の SSH（22）は開いている。**clone 先は `~` 直下**（`~/Documents` 配下だと launchd の常駐が TCC で読めない。issue #3）。
+
+## それ以外は運ばない
 
 以前は「Mac Studio から 2GB 強をコピー」という想定だった。**いまは要らない。**
 GitHub に入っていないものは、**取ってくるか、その場で作る**ようにしてある。
