@@ -54,7 +54,8 @@ bootstrap は「既にあるものは触らない」作りなので、更新に�
   いま焼いてあるファームには mDNS 探索が**入っていない**（`gateway_config_get` →
   `discovery_compiled_in=false`。2026-09-26 に判明。それまでの「mDNS で見つける」は嘘だった）。
   実機は **`ws://192.168.0.123:8775/`（gateway）と `http://192.168.0.123:8778/`（OTAスタブ）**を固定で見る。
-  **別の Mac で受けるには、その Mac が 192.168.0.123 を持つ**（当日の MacBook はここが未解決）
+  **別の Mac で受けるには、その Mac が 192.168.0.123 を持つ**。★テザリングは番地帯が違うので別名は効かず、
+  **実機の設定画面で向き先を MacBook の IP に書き換える**（[docs/tethering.md](docs/tethering.md)、2026-09-29）
 - ★★**OTA スタブ（:8778）が落ちていると、実機は gateway に来ない。**起動時に OTA 確認が通るまで
   WebSocket に進まない。`service.sh install` で常駐。`status.py` の1行目で見える
 - ★**同じ LAN で gateway を2台上げない。**実機がどちらに付くか決まらない。

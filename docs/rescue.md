@@ -50,6 +50,8 @@ grep -E "ESP32 connecting|ESP32 ready|disconnected" ~/Library/Logs/stackchan/com
 
 ## 3. 実機が見に来る IP を、この Mac が持っていない（★当日の MacBook がこれになる）
 
+★**テザリング（番地帯が違う）では (a) の別名は効かない。** 当日の MacBook は `docs/tethering.md`（設定画面で向き先を書き換える）。
+
 実機は `ws://<IP>:8775/`（gateway）と `http://<IP>:8778/`（OTA）を**同じ IP** で見る。
 
 **手が2つ。どちらか。**
