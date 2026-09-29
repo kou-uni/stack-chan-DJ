@@ -61,7 +61,11 @@ def test_台本は配る場所に置かない():
     from pathlib import Path
     pages = {p.name for p in (ROOT / "docs" / "pages").glob("*.html")}
     assert "text.html" not in pages, "台本が配る場所に出ている"
-    assert (ROOT / "event" / "kamishibai" / "text.js").exists()
+    # 2026-09-29 から台本の本体は公開 repo（workshop-of-stackchan-at-cryptobar/kamishibai）。
+    # ここにコピーを置くと2箇所を手で書くことになる。build-text.sh は取ってきて組むだけ。
+    assert not (ROOT / "event" / "kamishibai").exists(), "台本のコピーがこの repo に残っている（2箇所になる）"
+    bt = (ROOT / "scripts" / "build-text.sh").read_text(encoding="utf-8")
+    assert "workshop-of-stackchan-at-cryptobar" in bt and "kamishibai/text.js" in bt
 
 
 def test_OTAスタブは常駐に入っている():
